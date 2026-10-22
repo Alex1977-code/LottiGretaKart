@@ -29,7 +29,10 @@ app.prepend(canvas);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 
-const quality = params.has('quality') ? Number(params.get('quality')) : (isTouch() ? 1 : 2);
+// Grafikstufe: 1 sparsam, 2 hoch, 3 ultra (URL > Einstellung > Standard: Handy hoch, PC ultra)
+let savedQuality = null;
+try { savedQuality = localStorage.getItem('lgkart.quality'); } catch (_) { /* egal */ }
+const quality = params.has('quality') ? Number(params.get('quality')) : savedQuality ? Number(savedQuality) : (isTouch() ? 2 : 3);
 const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.1, 1600);
 
 const ctx = {
@@ -49,7 +52,7 @@ ctx.step = (n = 60, dt = 1 / 60, draw = true) => { for (let i = 0; i < n; i++) c
 let pixelScale = 1;
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
-  const maxPx = quality >= 2 ? 2.6e6 : 1.4e6;
+  const maxPx = quality >= 3 ? 3.6e6 : quality >= 2 ? 2.4e6 : 1.4e6;
   let ratio = Math.min(window.devicePixelRatio || 1, 2);
   ratio = Math.min(ratio, Math.sqrt(maxPx / (w * h))) * pixelScale;
   renderer.setPixelRatio(ratio);

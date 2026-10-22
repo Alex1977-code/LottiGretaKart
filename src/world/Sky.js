@@ -35,9 +35,10 @@ export class Sky {
     this.sunDir = new THREE.Vector3(...theme.sun.dir).normalize();
     this.sun.castShadow = !!theme.shadows && quality > 0;
     const sc = this.sun.shadow.camera;
-    const R = 34;
-    sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 1; sc.far = 160;
-    this.sun.shadow.mapSize.set(quality > 1 ? 2048 : 1024, quality > 1 ? 2048 : 1024);
+    const R = quality >= 3 ? 48 : 34;
+    sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 1; sc.far = 180;
+    const ms = quality >= 3 ? 4096 : quality > 1 ? 2048 : 1024;
+    this.sun.shadow.mapSize.set(ms, ms);
     this.sun.shadow.bias = -0.0006;
     this.sun.shadow.normalBias = 0.04;
     scene.add(this.sun, this.sun.target);

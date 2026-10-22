@@ -83,7 +83,9 @@ export class WorldView {
             if (hh < 1.4 && roadW < 0.5) { const f = smooth(1.4, 0.4, hh); for (let q = 0; q < 3; q++) tmp[q] += ((hh < 0 ? sandWet[q] : sand[q]) - tmp[q]) * f; }
             if (hh > 16) { const f = smooth(16, 32, hh); for (let q = 0; q < 3; q++) tmp[q] += ((hh > 34 ? rockDark[q] : rock[q]) - tmp[q]) * f; }
             if (hh > 40) { const f = smooth(40, 48, hh); for (let q = 0; q < 3; q++) tmp[q] += (snow[q] - tmp[q]) * f; }
-            cols[k * 3] = tmp[0]; cols[k * 3 + 1] = tmp[1]; cols[k * 3 + 2] = tmp[2];
+            // feine Helligkeits-Flecken, damit Wiesen nicht flach wirken
+            const nz2 = 0.93 + 0.07 * Math.sin(x * 0.11 + Math.sin(z * 0.07) * 2) * Math.cos(z * 0.13 - x * 0.03) + 0.05 * Math.sin(x * 0.53 + z * 0.41);
+            cols[k * 3] = tmp[0] * nz2; cols[k * 3 + 1] = tmp[1] * nz2; cols[k * 3 + 2] = tmp[2] * nz2;
           }
         }
         // zwei Detailstufen: volles Raster nah, jede dritte Zelle in der Ferne
@@ -322,7 +324,7 @@ export class WorldView {
     d.noShadow = true; // Wälder werfen keine Schatten (Leistung); Bäume an den Strecken schon
     d.tile = 160;
     const rnd = new Rnd(1234);
-    const n = Math.round((this.quality >= 2 ? 1000 : 550));
+    const n = Math.round(this.quality >= 3 ? 1700 : this.quality >= 2 ? 1150 : 550);
     const green = [0x5cbf3a, 0x4fae34, 0x6fd04a, 0x3f9a2a], autumn = [0xe8702a, 0xf0a020, 0xd84a2a, 0xffc040, 0x9cc83a];
     for (let k = 0, tries = 0; k < n && tries < n * 8; tries++) {
       const x = b.minX + rnd.frac() * (b.maxX - b.minX), z = b.minZ + rnd.frac() * (b.maxZ - b.minZ);
@@ -355,6 +357,28 @@ export class WorldView {
       const amb = w.ambienceAt(x, z);
       if (amb.some((r) => (r.theme === 'snow' || r.theme === 'castle') && r.w > 0.4)) continue;
       d.add('flower', x, h, z, 1 + rnd.frac() * 0.5, [0xff6fa8, 0xffffff, 0xffd21f, 0xb47fe6, 0xff8a2a][Math.floor(rnd.frac() * 5)], rnd.frac() * 6);
+      k++;
+    }
+    // Grasbüschel und Kiesel nah an den Straßen (dort schaut man hin) – Farbe nach Region
+    const nT = this.quality >= 3 ? 14000 : this.quality >= 2 ? 7000 : 0;
+    const roads = w.roads;
+    for (let k = 0, tries = 0; k < nT && tries < nT * 4; tries++) {
+      const tr = roads[Math.floor(rnd.frac() * roads.length)];
+      const i = Math.floor(rnd.frac() * tr.N);
+      const side = rnd.frac() < 0.5 ? -1 : 1;
+      const lat = side * (tr.hw[i] + (tr.closed ? tr.margin : 1.5) + 0.8 + rnd.frac() ** 1.6 * 45);
+      const x = tr.px[i] - tr.tz[i] * lat, z = tr.pz[i] + tr.tx[i] * lat;
+      const h = w.heightAt(x, z);
+      if (h < 0.6 || !w.isFree(x, z, 0.5)) continue;
+      const amb = w.ambienceAt(x, z);
+      const top = amb.reduce((a, r) => (r.w > a.w ? r : a), amb[0]).theme;
+      const peb = top === 'cave' || top === 'castle' || top === 'highway' ? rnd.frac() < 0.6 : rnd.frac() < 0.08;
+      if (peb) d.add('pebble', x, h, z, 0.8 + rnd.frac() * 1.4, [0x9a92a0, 0xb0a8b4, 0x8a8296][Math.floor(rnd.frac() * 3)], rnd.frac() * 6);
+      else {
+        const th = getTheme(top);
+        const c = new THREE.Color(rnd.frac() < 0.5 ? th.grass : th.grass2).multiplyScalar(0.78 + rnd.frac() * 0.3);
+        d.add('tuft', x, h - 0.05, z, 0.8 + rnd.frac() * 0.9, c.getHex(), rnd.frac() * 6);
+      }
       k++;
     }
     d.build();

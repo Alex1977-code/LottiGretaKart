@@ -101,7 +101,24 @@ const snowman = () => g('snowman', () => new Build()
   .box(0.12, 0.12, 1.1, 0xe8392d, { p: [0, 2.48, 0] }, 0.03)
   .geometry());
 
-const KINDS = { roundTree, pineTree, bush, flower, mushroom, rock, crystal, stalactite, hill, building, block, palm, umbrella, starfish, snowman };
+// Grasbüschel: drei gekreuzte schmale Halme-Fächer (keine Schatten, sehr viele Instanzen)
+const tuft = () => g('tuft', () => {
+  const b = new Build();
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + 0.4;
+    b.cone(0.07, 0.55 + (i % 3) * 0.15, 0xffffff, { p: [Math.cos(a) * 0.12, 0.28, Math.sin(a) * 0.12], r: [Math.sin(a) * 0.35, 0, Math.cos(a) * 0.35] }, 3);
+  }
+  return b.geometry();
+});
+// Kieselsteine
+const pebble = () => g('pebble', () => new Build()
+  .sphere(0.22, 0xffffff, { p: [0, 0.06, 0], s: [1.3, 0.55, 1] }, 6, 4)
+  .sphere(0.15, 0xffffff, { p: [0.3, 0.04, 0.12], s: [1.2, 0.6, 1] }, 6, 4)
+  .geometry());
+
+const KINDS = { tuft, pebble, roundTree, pineTree, bush, flower, mushroom, rock, crystal, stalactite, hill, building, block, palm, umbrella, starfish, snowman };
+// Sichtweite (m) für Kleinkram, der in der Ferne ohnehin nicht zu erkennen ist
+const NEAR_ONLY = { tuft: 110, pebble: 90, flower: 170, starfish: 90 };
 // Hindernis-Radius je Art (× Größe) in der offenen Welt
 const COLLIDE = { roundTree: 0.5, pineTree: 0.45, mushroom: 0.9, rock: 1.0, block: 0.6, crystal: 0.4, palm: 0.35, umbrella: 0.12, snowman: 0.85 };
 
@@ -110,7 +127,7 @@ export class Decor {
     this.race = race;
     this.world = world;           // Insel-Welt: freie Plätze und Hindernisse kommen von dort
     this.quality = quality;
-    this.density = quality >= 2 ? 1 : 0.55;   // Handy: weniger Kulisse
+    this.density = quality >= 3 ? 1.5 : quality >= 2 ? 1 : 0.55;   // sparsam: weniger Kulisse, ultra: mehr
     this.track = track;
     this.theme = theme;
     this.group = new THREE.Group();
@@ -527,17 +544,21 @@ export class Decor {
       for (const part of tiles.values()) {
         const im = new THREE.InstancedMesh(KINDS[kind](), vcol(kind === 'crystal' ? 0.2 : 0.55, kind === 'crystal' ? { emissive: 0x2a4a6a } : {}, kind === 'crystal' ? 'crystal' : ''), part.length);
         part.forEach((e, i) => { im.setMatrixAt(i, e.m); im.setColorAt(i, e.c); });
-        im.castShadow = this.noShadow ? false : this.quality >= 2 ? !['hill', 'flower', 'building', 'stalactite', 'starfish'].includes(kind) : ['roundTree', 'pineTree', 'mushroom', 'palm'].includes(kind);
+        im.castShadow = this.noShadow ? false : this.quality >= 2 ? !['hill', 'flower', 'building', 'stalactite', 'starfish', 'tuft', 'pebble'].includes(kind) : ['roundTree', 'pineTree', 'mushroom', 'palm'].includes(kind);
         im.receiveShadow = true;
         im.computeBoundingSphere();
         im.name = `kulisse:${kind}`;
         this.group.add(im);
+        // Kleinkram nur in der Nähe zeichnen
+        const near = NEAR_ONLY[kind];
+        if (near && this.world) (this.nearTiles ??= []).push({ im, x: im.boundingSphere.center.x, z: im.boundingSphere.center.z, r: near + im.boundingSphere.radius });
       }
     }
     (this.race.scene ?? this.race).add(this.group);
   }
 
   update(dt, t, cam = null) {
+    if (cam && this.nearTiles) for (const n of this.nearTiles) n.im.visible = (n.x - cam.x) ** 2 + (n.z - cam.z) ** 2 < n.r * n.r;
     if (this.beams) this.beams.forEach((b, i) => { b.rotation.y = (i / this.beams.length) * Math.PI * 2 + Math.sin(t * 0.4 + i) * 0.5; });
     for (const e of this.models) {
       // ferne Modelle ausblenden und nicht animieren

@@ -168,7 +168,13 @@ export class Racer {
 
     // --- Lenken und Driften
     const steerIn = disabled ? 0 : clamp(input.steer ?? 0, -1, 1);
-    this.steer = damp(this.steer, steerIn, 12, dt);
+    // Lenkung baut sich kurz auf (feinfühlig bei Tasten, kein Zucken) und geht schneller zurück auf geradeaus
+    {
+      const back = Math.abs(steerIn) < Math.abs(this.steer) || steerIn * this.steer < 0;
+      const rate = back ? 9 : 5.5;
+      const dS = steerIn - this.steer;
+      this.steer += Math.sign(dS) * Math.min(Math.abs(dS), rate * dt);
+    }
     const d = this.drift;
     const driftPressed = !!input.drift && !this.prevInput.drift;
     if (this.grind && driftPressed) {
@@ -377,6 +383,9 @@ export class Racer {
     const r0 = g(this.pos.x + fz * 0.6, this.pos.z - fx * 0.6), r1 = g(this.pos.x - fz * 0.6, this.pos.z + fx * 0.6);
     const pitch = Math.atan2(h1 - h0, 1.6), roll = Math.atan2(r0 - r1, 1.2);
     this.root.position.copy(this.pos);
+    // Fahrbahn und Curbs liegen ein paar Zentimeter über dem Gelände: Räder darauf stellen statt hinein
+    this.visLift = damp(this.visLift ?? 0.07, this.surface === 'road' ? 0.075 : 0.02, 14, dt || 1);
+    this.root.position.y += this.visLift;
     if (this.onWater && !this.air) this.root.position.y += 0.06 * Math.sin(t * 5 + this.slot);
     // Drehungen: Drift (Kart zeigt nach innen), Schleudern, Überschlag, Trick
     const d = this.drift;

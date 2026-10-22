@@ -4,7 +4,8 @@ Ein Funrennen im Stil von Mario Kart – mit den Figuren und der Welt aus **Lott
 ([LottiGretaWorld](https://github.com/Alex1977-code/LottiGretaWorld)). Läuft im Browser (PC und Handy im
 Querformat), installierbar als PWA. Alle Grafiken und Töne entstehen per Code – keine externen Assets.
 
-**Spielen (immer die neueste Version):** https://claude.ai/artifact/1vGX9FKhPnW2eDyYtmeHSJ
+**Spielen (immer die neueste Version):** https://alex1977-code.github.io/LottiGretaKart/ (GitHub Pages) ·
+https://claude.ai/artifact/1vGX9FKhPnW2eDyYtmeHSJ
 
 ## Fahrerinnen und Fahrer
 
@@ -113,5 +114,5 @@ ein Platz auf der Insel und mindestens eine Verbindungsstraße in `src/world/wor
 
 ## Veröffentlichen
 
-`.github/workflows/deploy.yml` baut bei jedem Push auf `main`/`master` und veröffentlicht auf GitHub Pages
-(einmalig: Settings → Pages → Source „GitHub Actions“).
+`.github/workflows/deploy.yml` baut bei jedem Push auf den Standard-Branch (bzw. `main`/`master`) und veröffentlicht auf
+GitHub Pages unter https://alex1977-code.github.io/LottiGretaKart/ (einmalig: Settings → Pages → Source „GitHub Actions“).

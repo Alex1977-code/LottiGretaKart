@@ -31,9 +31,11 @@ export class TouchControls {
       for (const t of e.changedTouches) {
         if (t.identifier !== this.steerId) continue;
         let dx = t.clientX - this.x0;
-        const max = 70;
+        const max = 78;
         if (Math.abs(dx) > max) { this.x0 = t.clientX - Math.sign(dx) * max; dx = Math.sign(dx) * max; }
-        touch.steer = -dx / max;
+        // kleine Totzone und weiche Kurve: kleine Daumenbewegungen lenken fein, voller Ausschlag voll
+        const n = Math.max(0, Math.abs(dx) / max - 0.06) / 0.94;
+        touch.steer = -Math.sign(dx) * Math.pow(n, 1.35);
         this.wheel.style.left = `${this.x0}px`;
         this.wheel.firstElementChild.style.transform = `rotate(${dx * 1.3}deg)`;
       }

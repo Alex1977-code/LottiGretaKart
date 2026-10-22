@@ -10,6 +10,9 @@ class GameAudio {
     this.musicName = null;
   }
 
+  /** Zustand für Tests: läuft der Audiokontext, welches Musikstück spielt? */
+  get state() { return { ctx: engine.ctx?.state ?? 'none', music: music.current ?? null, pending: music.pending ?? null }; }
+
   get muted() { return engine.muted; }
   toggleMute() { return engine.toggleMuted(); }
 

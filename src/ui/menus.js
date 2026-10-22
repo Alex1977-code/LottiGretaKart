@@ -14,6 +14,7 @@ import { touch, isTouch } from './input.js';
 
 const POINTS = [15, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
 const STAT_NAMES = { speed: 'Tempo', accel: 'Beschleunigung', weight: 'Gewicht', handling: 'Lenkung', offroad: 'Gelände' };
+const MODE_NAMES = { gp: 'Grand Prix', ko: 'K.-o.-Tour', single: 'Einzelrennen', free: 'Freie Fahrt', trial: 'Zeitfahren' };
 const SAVE_KEY = 'lgkart.settings.v1';
 const BEST_KEY = 'lgkart.best.v1';
 const CUP_KEY = 'lgkart.cups.v1';
@@ -38,7 +39,13 @@ export class Menus {
     this.screen = null;
     this.trackThumbs = {};
     try { ctx.collected = new Set(JSON.parse(localStorage.getItem(STAR_KEY) ?? '[]')); } catch (_) { ctx.collected = new Set(); }
+    document.body.classList.toggle('touch-ui', isTouch());
   }
+
+  /** Kopfzeile (schräger Reiter) und Tasten-Hinweise. */
+  head(title, sub = '') { return `<header class="mhead"><b><span>${title}</span></b>${sub ? `<small class="chip">${sub}</small>` : ''}</header>`; }
+  hints(back = true) { return `<footer class="mhints"><span><i class="a">A</i>Enter · Auswählen</span>${back ? '<span><i>B</i>Esc · Zurück</span>' : ''}</footer>`; }
+  get modeSub() { return `${MODE_NAMES[this.mode] ?? ''} · ${CC[this.settings.cc].label}`; }
 
   // ------------------------------------------------------------------ Grundlagen
   hideAll() { this.el.innerHTML = ''; this.el.className = 'menus'; this.screen = null; }
@@ -101,23 +108,25 @@ export class Menus {
   showTitle() {
     this.ensureDemo();
     preloadIcons(this.ctx.renderer, RACERS);
+    const item = (mode, ic, col, name, sub, focus = false) => `<button class="mitem" data-mode="${mode}" style="--ic:${col}" ${focus ? 'data-focus' : ''}><i class="ic">${ic}</i><span><b>${name}</b><small>${sub}</small></span></button>`;
     const el = this.show('title', `
-      <div class="panel title">
-        <h1 class="logo"><span class="l1">Lotti</span><span class="amp">&amp;</span><span class="l2">Greta</span><span class="kart">KART</span></h1>
-        <p class="sub">Eine ganze Insel voller Strecken – fahr von Rennen zu Rennen!</p>
-        <div class="row col">
-          <button class="big" data-mode="gp" data-focus>🏆 Grand Prix</button>
-          <button class="big" data-mode="ko">💥 K.-o.-Tour</button>
-          <button class="big" data-mode="single">🏁 Einzelrennen</button>
-          <button class="big alt" data-mode="free">🗺️ Freie Fahrt</button>
-          <button class="big alt" data-mode="trial">⏱️ Zeitfahren</button>
+      <div class="mscreen title">
+        <div class="mside">
+          <h1 class="logo"><span class="l1">Lotti</span><span class="amp">&amp;</span><span class="l2">Greta</span><span class="kart">KART</span></h1>
+          <nav class="mlist">
+            ${item('gp', '🏆', '#ffb800', 'Grand Prix', `${CUPS.length} Cups · von Strecke zu Strecke`, true)}
+            ${item('ko', '💥', '#e60012', 'K.-o.-Tour', 'Rallye über die Insel – die Letzten fliegen raus')}
+            ${item('single', '🏁', '#1e6cff', 'Einzelrennen', `${TRACKS.length} Strecken zur Wahl`)}
+            ${item('free', '🗺️', '#22b03c', 'Freie Fahrt', 'Insel erkunden, Sternmünzen sammeln')}
+            ${item('trial', '⏱️', '#9b4dff', 'Zeitfahren', 'Allein gegen die Uhr')}
+          </nav>
+          <div class="mtools">
+            <button class="small" data-act="settings">⚙️ Einstellungen</button>
+            <button class="small" data-act="help">❓ Steuerung</button>
+            <button class="small btn-mute" data-act="mute">${this.ctx.audio.muted ? '🔇' : '🔊'}</button>
+          </div>
         </div>
-        <div class="row">
-          <button class="small" data-act="settings">⚙️ Einstellungen</button>
-          <button class="small" data-act="help">❓ Steuerung</button>
-          <button class="small btn-mute" data-act="mute">${this.ctx.audio.muted ? '🔇' : '🔊'}</button>
-        </div>
-      </div>`, 'center');
+      </div>${this.hints(false)}`);
     this.on('[data-mode]', (b) => { this.mode = b.dataset.mode; this.showRacers(); });
     this.on('[data-act="settings"]', () => this.showSettings());
     this.on('[data-act="help"]', () => this.showHelp());
@@ -127,32 +136,34 @@ export class Menus {
 
   showHelp() {
     this.show('help', `
-      <div class="panel help">
-        <h2>Steuerung</h2>
-        <div class="cols">
-          <div>
-            <h3>Tastatur</h3>
-            <p><kbd>←</kbd><kbd>→</kbd> lenken &nbsp; <kbd>↑</kbd> Gas &nbsp; <kbd>↓</kbd> Bremse / rückwärts</p>
-            <p><kbd>Leertaste</kbd> Hüpfer &amp; Driften – lange in der Kurve halten, loslassen = <b>Mini-Turbo</b> (blau → orange → pink)</p>
-            <p><kbd>X</kbd> Gegenstand &nbsp; <kbd>Esc</kbd> Pause &nbsp; <kbd>M</kbd> Ton</p>
-            <p>Startturbo: Gas genau bei der <b>2</b> drücken!</p>
-            <p><b>Aufladesprung:</b> Drift-Taste geradeaus gedrückt halten und loslassen – damit springst du auf <b>Schienen</b> und grindest los.</p>
+      <div class="mscreen">
+        ${this.head('Steuerung')}
+        <div class="mbody"><div class="glass help">
+          <div class="cols">
+            <div>
+              <h3>Tastatur</h3>
+              <p><kbd>←</kbd><kbd>→</kbd> lenken &nbsp; <kbd>↑</kbd> Gas &nbsp; <kbd>↓</kbd> Bremse / rückwärts</p>
+              <p><kbd>Leertaste</kbd> Hüpfer &amp; Driften – lange in der Kurve halten, loslassen = <b>Mini-Turbo</b> (blau → orange → pink)</p>
+              <p><kbd>X</kbd> Gegenstand &nbsp; <kbd>Esc</kbd> Pause &nbsp; <kbd>M</kbd> Ton</p>
+              <p>Startturbo: Gas genau bei der <b>2</b> drücken!</p>
+              <p><b>Aufladesprung:</b> Drift-Taste geradeaus gedrückt halten und loslassen – damit springst du auf <b>Schienen</b> und grindest los.</p>
+            </div>
+            <div>
+              <h3>Handy (quer)</h3>
+              <p>Linke Hälfte: Daumen nach links/rechts ziehen = lenken (wenig ziehen = fein lenken). Gas gibt das Kart von selbst.</p>
+              <p>Rechts: <b>DRIFT</b> halten, <b>★</b> Gegenstand, <b>BREMSE</b>.</p>
+              <h3>Gamepad</h3>
+              <p>Stick lenken, A Gas, B Bremse, R Driften, L Gegenstand.</p>
+            </div>
           </div>
-          <div>
-            <h3>Handy (quer)</h3>
-            <p>Linke Hälfte: Daumen nach links/rechts ziehen = lenken. Gas gibt das Kart von selbst.</p>
-            <p>Rechts: <b>DRIFT</b> halten, <b>★</b> Gegenstand, <b>BREMSE</b>.</p>
-            <h3>Gamepad</h3>
-            <p>Stick lenken, A Gas, B Bremse, R Driften, L Gegenstand.</p>
-          </div>
-        </div>
-        <h3>Gegenstände aus den Funkel-Kisten</h3>
-        <p class="items-help">Turbo-Beere · Panzer · Goldpanzer (sucht sich ein Ziel) · Krabbelkäfer (hinten ablegen) · Kickbombe · Funkenblüte (3 Funkenbälle) · Funkelstern (unverwundbar) · Riesentrank · Zauberkugel (trifft die Spitze)</p>
-        <p class="items-help">Bitcoins machen dein Kart schneller (bis zu 10). Turbo-Pfeile und Schanzen nutzen – in der Luft Drift drücken für einen Trick-Turbo! Über den See fährst du einfach auf dem Wasser.</p>
-        <h3>Die Insel</h3>
-        <p class="items-help"><b>Grand Prix</b>: ab dem zweiten Rennen fährst du über die Landstraße zur nächsten Strecke. <b>K.-o.-Tour</b>: quer über die Insel, an jedem Checkpoint scheiden die Letzten aus. <b>Freie Fahrt</b>: erkunde alles und finde die 36 Sternmünzen.</p>
-        <div class="row"><button data-back data-focus>Zurück</button></div>
-      </div>`, 'center');
+          <h3>Gegenstände aus den Funkel-Kisten</h3>
+          <p class="items-help">Turbo-Beere · Panzer · Goldpanzer (sucht sich ein Ziel) · Krabbelkäfer (hinten ablegen) · Kickbombe · Funkenblüte (3 Funkenbälle) · Funkelstern (unverwundbar) · Riesentrank · Zauberkugel (trifft die Spitze)</p>
+          <p class="items-help">Bitcoins machen dein Kart schneller (bis zu 10). Turbo-Pfeile und Schanzen nutzen – in der Luft Drift drücken für einen Trick-Turbo! Über den See fährst du einfach auf dem Wasser.</p>
+          <h3>Die Insel</h3>
+          <p class="items-help"><b>Grand Prix</b>: ab dem zweiten Rennen fährst du über die Landstraße zur nächsten Strecke. <b>K.-o.-Tour</b>: quer über die Insel, an jedem Checkpoint scheiden die Letzten aus. <b>Freie Fahrt</b>: erkunde alles und finde die 36 Sternmünzen.</p>
+          <div class="row"><button data-back data-focus>Zurück</button></div>
+        </div></div>
+      </div>${this.hints()}`, 'full');
     this.on('[data-back]', () => this.showTitle());
   }
 
@@ -160,22 +171,34 @@ export class Menus {
     const s = this.settings;
     const ccBtns = Object.entries(CC).map(([k, v]) => `<button class="opt ${Number(k) === s.cc ? 'on' : ''}" data-cc="${k}">${v.label}<small>${k} ccm</small></button>`).join('');
     const lapBtns = [1, 2, 3, 5].map((n) => `<button class="opt ${n === s.laps ? 'on' : ''}" data-laps="${n}">${n}</button>`).join('');
+    const q = this.ctx.quality;
+    const qBtns = [[1, 'Sparsam', 'ältere Handys'], [2, 'Hoch', 'Standard'], [3, 'Ultra', 'mehr Details']].map(([v, n, d]) => `<button class="opt ${v === q ? 'on' : ''}" data-q="${v}">${n}<small>${d}</small></button>`).join('');
     this.show('settings', `
-      <div class="panel settings">
-        <h2>Einstellungen</h2>
-        <h3>Klasse</h3><div class="row">${ccBtns}</div>
-        <h3>Runden</h3><div class="row">${lapBtns}</div>
-        <h3>Lenkhilfe</h3><div class="row">
-          <button class="opt ${s.assist ? 'on' : ''}" data-assist="1">an<small>bleibt auf der Strecke</small></button>
-          <button class="opt ${!s.assist ? 'on' : ''}" data-assist="0">aus</button>
-        </div>
-        <h3>Handy: Gas</h3><div class="row">
-          <button class="opt ${s.autoGas ? 'on' : ''}" data-gas="1">automatisch</button>
-          <button class="opt ${!s.autoGas ? 'on' : ''}" data-gas="0">Knopf</button>
-        </div>
-        <div class="row"><button class="small" data-act="reset">Bestzeiten löschen</button></div>
-        <div class="row"><button data-back data-focus>Fertig</button></div>
-      </div>`, 'center');
+      <div class="mscreen">
+        ${this.head('Einstellungen')}
+        <div class="mbody center"><div class="glass">
+          <div class="setlist">
+            <h3>Klasse</h3><div class="row">${ccBtns}</div>
+            <h3>Runden</h3><div class="row">${lapBtns}</div>
+            <h3>Lenkhilfe</h3><div class="row">
+              <button class="opt ${s.assist ? 'on' : ''}" data-assist="1">an<small>bleibt auf der Strecke</small></button>
+              <button class="opt ${!s.assist ? 'on' : ''}" data-assist="0">aus</button>
+            </div>
+            <h3>Handy: Gas</h3><div class="row">
+              <button class="opt ${s.autoGas ? 'on' : ''}" data-gas="1">automatisch</button>
+              <button class="opt ${!s.autoGas ? 'on' : ''}" data-gas="0">Knopf</button>
+            </div>
+            <h3>Grafik</h3><div class="row">${qBtns}</div>
+          </div>
+          <div class="row"><button class="small" data-act="reset">Bestzeiten löschen</button><button class="go" data-back data-focus>Fertig</button></div>
+        </div></div>
+      </div>${this.hints()}`, 'full');
+    this.on('[data-q]', (b) => {
+      const v = Number(b.dataset.q);
+      if (v === q) return;
+      try { localStorage.setItem('lgkart.quality', String(v)); } catch (_) { /* egal */ }
+      location.reload();   // die Insel wird mit der neuen Detailstufe neu gebaut
+    });
     this.on('[data-cc]', (b) => { s.cc = Number(b.dataset.cc); save(SAVE_KEY, s); this.showSettings(); });
     this.on('[data-laps]', (b) => { s.laps = Number(b.dataset.laps); save(SAVE_KEY, s); this.showSettings(); });
     this.on('[data-assist]', (b) => { s.assist = b.dataset.assist === '1'; save(SAVE_KEY, s); this.showSettings(); });
@@ -195,19 +218,23 @@ export class Menus {
         <img src="${racerIcon(r, d)}" alt="" /><span>${d.name}</span>
       </button>`).join('');
     this.show('racers', `
-      <div class="panel racers">
-        <h2>Wer fährt?</h2>
-        <div class="grid">${cards}</div>
-        <div class="info"></div>
-        <div class="row"><button data-back>Zurück</button><button class="go" data-go>Los geht's!</button></div>
-      </div>`, 'wide');
-    const info = this.el.querySelector('.info');
+      <div class="mscreen">
+        ${this.head('Wer fährt?', this.modeSub)}
+        <div class="mbody split">
+          <div class="grid racers">${cards}</div>
+          <div class="glass profile"></div>
+        </div>
+      </div>${this.hints()}`, 'full');
+    const info = this.el.querySelector('.profile');
     const pick = (id) => {
       this.settings.racer = id; save(SAVE_KEY, this.settings);
       const d = RACER_BY_ID[id];
       for (const c of this.el.querySelectorAll('.card')) c.classList.toggle('on', c.dataset.id === id);
-      info.innerHTML = `<h3 style="color:${d.color}">${d.name}</h3><p>${d.blurb}</p>
-        <div class="stats">${Object.entries(d.stats).map(([k, v]) => `<div class="stat"><span>${STAT_NAMES[k]}</span><i>${'<b></b>'.repeat(v)}${'<em></em>'.repeat(5 - v)}</i></div>`).join('')}</div>`;
+      info.innerHTML = `<img src="${racerIcon(r, d)}" alt="" /><h3 style="color:${d.color}">${d.name}</h3><p>${d.blurb}</p>
+        <div class="stats">${Object.entries(d.stats).map(([k, v]) => `<div class="stat"><span>${STAT_NAMES[k]}</span><i><u style="width:${v * 20}%"></u></i></div>`).join('')}</div>
+        <div class="row"><button data-back>Zurück</button><button class="go" data-go>Los geht's!</button></div>`;
+      for (const b2 of info.querySelectorAll('[data-back]')) b2.onclick = () => { this.ctx.audio.sfx('select'); this.showTitle(); };
+      for (const b2 of info.querySelectorAll('[data-go]')) b2.onclick = () => { this.ctx.audio.sfx('select'); this.afterRacer(); };
     };
     pick(this.settings.racer ?? 'lotti');
     for (const c of this.el.querySelectorAll('.card')) {
@@ -216,8 +243,6 @@ export class Menus {
       c.addEventListener('dblclick', () => this.afterRacer());
     }
     this.el.querySelector(`.card[data-id="${this.settings.racer}"]`)?.focus({ preventScroll: true });
-    this.on('[data-back]', () => this.showTitle());
-    this.on('[data-go]', () => this.afterRacer());
   }
 
   afterRacer() {
@@ -229,17 +254,16 @@ export class Menus {
 
   showTours() {
     const cards = KO_TOURS.map((t) => `<button class="card cup" data-tour="${t.id}">
-        <div class="trophy">💥</div><span>${t.name}</span>
+        <div class="trophy won">💥</div><span>${t.name}</span>
         <small>${t.stops.map((id) => TRACK_BY_ID[id].short ?? TRACK_BY_ID[id].name).join(' → ')}</small>
         <small>12 Fahrer · ${t.survivors.length} Checkpoints</small>
       </button>`).join('');
     this.show('tours', `
-      <div class="panel cups">
-        <h2>K.-o.-Tour · ${CC[this.settings.cc].label}</h2>
-        <p class="sub" style="text-align:center">Quer über die Insel! An jedem Checkpoint scheiden die Letzten aus.</p>
-        <div class="grid cups">${cards}</div>
-        <div class="row"><button data-back>Zurück</button></div>
-      </div>`, 'wide');
+      <div class="mscreen">
+        ${this.head('Tour wählen', this.modeSub)}
+        <div class="mbody"><div class="grid cups">${cards}</div>
+        <div class="row"><button data-back>Zurück</button></div></div>
+      </div>${this.hints()}`, 'full');
     this.on('[data-tour]', (b) => this.startKO(KO_TOURS.find((t) => t.id === b.dataset.tour)));
     this.on('[data-back]', () => this.showRacers());
   }
@@ -298,11 +322,11 @@ export class Menus {
       </button>`;
     }).join('');
     this.show('cups', `
-      <div class="panel cups">
-        <h2>Grand Prix · ${CC[this.settings.cc].label}</h2>
-        <div class="grid cups">${cards}</div>
-        <div class="row"><button data-back>Zurück</button></div>
-      </div>`, 'wide');
+      <div class="mscreen">
+        ${this.head('Cup wählen', this.modeSub)}
+        <div class="mbody"><div class="grid cups">${cards}</div>
+        <div class="row"><button data-back>Zurück</button></div></div>
+      </div>${this.hints()}`, 'full');
     this.on('[data-cup]', (b) => this.startGP(CUPS.find((c) => c.id === b.dataset.cup)));
     this.on('[data-back]', () => this.showRacers());
   }
@@ -316,11 +340,11 @@ export class Menus {
       </button>`;
     }).join('');
     this.show('tracks', `
-      <div class="panel tracks">
-        <h2>${this.mode === 'trial' ? 'Zeitfahren' : 'Einzelrennen'} – Strecke wählen</h2>
-        <div class="grid tracks">${cards}</div>
-        <div class="row"><button data-back>Zurück</button></div>
-      </div>`, 'wide');
+      <div class="mscreen">
+        ${this.head('Strecke wählen', this.modeSub)}
+        <div class="mbody"><div class="grid tracks">${cards}</div>
+        <div class="row"><button data-back>Zurück</button></div></div>
+      </div>${this.hints()}`, 'full');
     this.on('[data-track]', (b) => this.startSingle(TRACK_BY_ID[b.dataset.track]));
     this.on('[data-back]', () => this.showRacers());
   }
@@ -397,15 +421,17 @@ export class Menus {
     }
     const last = gp && this.gp.index >= this.gp.cup.tracks.length - 1;
     this.show('results', `
-      <div class="panel results">
-        <h2>${title || trackDef?.name || ''}</h2>
-        ${record && me ? `<p class="record">Neue Bestzeit: ${fmtTime(me.time)}!</p>` : ''}
-        <table>${rows}</table>
-        <div class="row">
-          ${gp ? `<button class="go" data-next data-focus>${last ? 'Gesamtwertung' : 'Nächstes Rennen'}</button>` : `<button class="go" data-again data-focus>Nochmal</button><button data-other>${ko ? 'Andere Tour' : 'Andere Strecke'}</button>`}
-          <button data-menu>Menü</button>
-        </div>
-      </div>`, 'results');
+      <div class="mscreen">
+        ${this.head(title || trackDef?.name || 'Ergebnis', gp ? `${this.gp.cup.name} · Rennen ${this.gp.index + 1}/${this.gp.cup.tracks.length}` : '')}
+        <div class="mbody"><div class="results-wrap">
+          ${record && me ? `<p class="record">Neue Bestzeit: ${fmtTime(me.time)}!</p>` : ''}
+          <table>${rows}</table>
+          <div class="row">
+            ${gp ? `<button class="go" data-next data-focus>${last ? 'Gesamtwertung' : 'Nächstes Rennen'}</button>` : `<button class="go" data-again data-focus>Nochmal</button><button data-other>${ko ? 'Andere Tour' : 'Andere Strecke'}</button>`}
+            <button data-menu>Menü</button>
+          </div>
+        </div></div>
+      </div>${this.hints(false)}`, 'results dim');
     this.ctx.hud.show(false);
     this.ctx.touch.show(false);
     this.on('[data-next]', () => {
@@ -428,15 +454,15 @@ export class Menus {
     if (myPlace <= 3 && (!this.cups[cupKey] || myPlace < this.cups[cupKey])) { this.cups[cupKey] = myPlace; save(CUP_KEY, this.cups); }
     const trophy = myPlace === 1 ? 'Gold-Pokal' : myPlace === 2 ? 'Silber-Pokal' : myPlace === 3 ? 'Bronze-Pokal' : null;
     this.ctx.setScene(new Ceremony(this.ctx, order.slice(0, 3).map((id) => RACER_BY_ID[id])));
-    const podium = order.slice(0, 3).map((id, i) => `<div class="pod p${i + 1}"><img src="${racerIcon(r, RACER_BY_ID[id])}" alt="" /><span>${RACER_BY_ID[id].name}</span><b>${g.points[id]}</b><div class="step">${i + 1}</div></div>`);
     const rows = order.map((id, i) => `<tr class="${id === this.settings.racer ? 'me' : ''}"><td class="pl">${i + 1}.</td><td><img src="${racerIcon(r, RACER_BY_ID[id])}" alt="" /></td><td>${RACER_BY_ID[id].name}</td><td class="tot">${g.points[id]}</td></tr>`).join('');
     this.show('standings', `
-      <div class="panel standings side">
-        <h2>${g.cup.name} – Gesamtwertung</h2>
-        ${trophy ? `<p class="record big">🏆 ${trophy} für ${RACER_BY_ID[this.settings.racer].name}!</p>` : `<p>Platz ${myPlace} – beim nächsten Mal klappt's!</p>`}
-        <div class="podium">${podium[1]}${podium[0]}${podium[2]}</div>
-        <table class="compact">${rows}</table>
-        <div class="row"><button class="go" data-menu data-focus>Zum Menü</button></div>
+      <div class="mscreen standings">
+        <div class="glass">
+          <h2>${g.cup.name} – Gesamtwertung</h2>
+          ${trophy ? `<p class="record big">🏆 ${trophy} für ${RACER_BY_ID[this.settings.racer].name}!</p>` : `<p style="text-align:center;font-weight:800">Platz ${myPlace} – beim nächsten Mal klappt's!</p>`}
+          <table class="compact">${rows}</table>
+          <div class="row"><button class="go" data-menu data-focus>Zum Menü</button></div>
+        </div>
       </div>`, 'results');
     if (trophy) this.ctx.audio.sfx('star');
     this.on('[data-menu]', () => { this.gp = null; this.ctx.endRace(); this.showTitle(); });
@@ -450,15 +476,13 @@ export class Menus {
     this.ctx.audio.setMotor(false);
     this.ctx.audio.sfx('pause');
     this.show('pause', `
-      <div class="panel pause">
+      <div class="mscreen"><div class="mbody center"><div class="pausebox">
         <h2>Pause</h2>
-        <div class="row col">
-          <button class="big" data-resume data-focus>Weiter</button>
-          <button data-restart>Neustart</button>
-          <button class="btn-mute" data-mute>${this.ctx.audio.muted ? '🔇 Ton aus' : '🔊 Ton an'}</button>
-          <button data-quit>Aufgeben</button>
-        </div>
-      </div>`, 'center dim');
+        <button class="go" data-resume data-focus>Weiter</button>
+        <button data-restart>Neustart</button>
+        <button class="btn-mute" data-mute>${this.ctx.audio.muted ? '🔇 Ton aus' : '🔊 Ton an'}</button>
+        <button data-quit>Aufgeben</button>
+      </div></div></div>`, 'dim');
     this.on('[data-resume]', () => this.resume());
     this.on('[data-mute]', (b) => { const m = this.toggleMute(); b.textContent = m ? '🔇 Ton aus' : '🔊 Ton an'; });
     this.on('[data-restart]', () => {

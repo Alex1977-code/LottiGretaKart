@@ -600,14 +600,18 @@ export class Race {
       // Verfolger-Kamera hinter dem Kart; beim Driften schwingt sie mit
       const r = target;
       const vy = r.yaw + (r.visDrift ?? 0) * 0.45;
-      cs.yaw = cs.yaw + wrapA(vy - cs.yaw) * (1 - Math.exp(-(r.spinT > 0 ? 1.5 : 7) * dt));
+      cs.yaw = cs.yaw + wrapA(vy - cs.yaw) * (1 - Math.exp(-(r.spinT > 0 ? 1.5 : 5.5) * dt));
       const dist = 4.4 * (0.75 + 0.25 * r.giantScale) + clamp(r.speed / 30, 0, 1) * 0.5;
       const h = 1.85 * (0.75 + 0.25 * r.giantScale);
       const cx = Math.cos(cs.yaw), cz = -Math.sin(cs.yaw);
       pos.set(r.pos.x - cx * dist, r.pos.y + h, r.pos.z - cz * dist);
       const gy = Math.max(0, this.world.heightAt(pos.x, pos.z)) + 0.8;
       if (pos.y < gy) pos.y = gy;
-      look.set(r.pos.x + cx * 3, r.pos.y + 1.0, r.pos.z + cz * 3);
+      // Blick leicht in die Kurve hinein (Lenkung/Drift), damit man sieht, wohin es geht
+      const lead = clamp((r.steer ?? 0) * 0.9 + (r.drift.on ? r.drift.dir * 0.6 : 0), -1.2, 1.2);
+      cs.lead = damp(cs.lead ?? 0, lead, 4, dt);
+      const lx = cx * 3 + cz * cs.lead * 1.6, lz = cz * 3 - cx * cs.lead * 1.6; // + = links
+      look.set(r.pos.x + lx, r.pos.y + 1.0, r.pos.z + lz);
       const blend = this.state === 'countdown' && this.stateT < 1.2 ? 1 - Math.exp(-3 * dt) : this.spectate ? 1 - Math.exp(-4 * dt) : 1;
       const yS = cs.pos.y;
       cs.pos.lerp(pos, blend);
