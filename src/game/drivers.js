@@ -17,7 +17,7 @@ const HIP_U = 0.5;          // Hüfte der Heldin über dem Fußpunkt (Avatar-Ein
 class HeroDriver {
   constructor(view, racer, kart) {
     this.root = new THREE.Group();
-    this.height = 1.08;                      // Körpergröße im Kart (m) – etwas größer als im Kurs, wie im Vorbild
+    this.height = 1.2;                       // Körpergröße im Kart (m) – größer als im Kurs, gut sichtbar wie im Vorbild
     const s = this.height / AVATAR_H;
     this.root.scale.setScalar(s);
     // Becken auf den Sitz: Fußpunkt liegt um die Hüfthöhe tiefer
@@ -43,6 +43,7 @@ class HeroDriver {
     c.state = 'kart';
     c.speed = info.speed; c.vy = info.vy ?? 0; c.grounded = info.grounded ?? true;
     c.steer = info.steer; c.mood = info.mood; c.phase = info.phase ?? 0;
+    c.drift = info.drift ?? 0; c.look = info.look ?? 1;
     c.power = info.power === 'stern' ? 'stern' : 'none';
     try { this.avatar.animate(dt, t); } catch (err) { console.error('Heldin-Animation:', err); this.avatar = null; }
   }
@@ -53,7 +54,7 @@ class HeroDriver {
 class PflaumeDriver {
   constructor(view, racer, kart) {
     this.root = new THREE.Group();
-    const s = 0.78 / AVATAR_H;
+    const s = 0.9 / AVATAR_H;
     this.root.scale.setScalar(s);
     this.root.position.set(-0.08, -0.06, 0);
     kart.seat.add(this.root);
@@ -78,7 +79,7 @@ class PflaumeDriver {
     c.state = info.mood === 'cheer' ? 'victory' : info.mood === 'hit' ? 'jump' : info.mood === 'boost' ? 'ride' : 'idle';
     c.speed = info.mood === 'boost' ? 0 : 0; c.vy = info.mood === 'hit' ? 3 : 0; c.grounded = info.mood !== 'hit';
     c.power = info.power === 'stern' ? 'yellow' : info.power === 'riese' ? 'red' : 'none';
-    this.root.rotation.y = 0.35 * info.steer;
+    lean(this, dt, info);
     try { this.avatar.animate(dt, t); } catch (err) { console.error('Pflaume-Animation:', err); this.avatar = null; }
   }
 
@@ -90,7 +91,7 @@ class ModelDriver {
     this.racer = racer;
     this.root = new THREE.Group();
     const seat = racer.seat ?? {};
-    this.root.scale.setScalar(seat.scale ?? 1);
+    this.root.scale.setScalar((seat.scale ?? 1) * 1.1);
     this.root.position.set(seat.x ?? 0, seat.y ?? 0, 0);
     kart.seat.add(this.root);
     this.model = getModel(racer.model, racer.modelOpts ?? {});
@@ -102,12 +103,11 @@ class ModelDriver {
 
   update(dt, t, info) {
     const a = this.racer.anims ?? {};
-    let anim = a[info.mood] ?? a.drive ?? 'idle';
+    let anim = a[info.mood] ?? (info.mood === 'trick' ? a.cheer : null) ?? a.drive ?? 'idle';
     if (anim !== this.anim) { this.anim = anim; this.animT = 0; } else this.animT += dt;
-    // Lenken: Oberkörper dreht mit, beim Jubel hüpft die Figur im Sitz
-    this.root.rotation.y = 0.3 * info.steer;
-    this.root.rotation.x = -0.12 * info.steer;
-    const hop = info.mood === 'cheer' ? Math.abs(Math.sin(this.animT * 7)) * 0.12 : 0;
+    // Lenken: Oberkörper dreht mit und legt sich in die Kurve, beim Jubel hüpft die Figur im Sitz
+    lean(this, dt, info);
+    const hop = info.mood === 'cheer' || info.mood === 'trick' ? Math.abs(Math.sin(this.animT * 7)) * 0.12 : 0;
     this.model.root.position.y = hop;
     this.model.update(dt, { anim, speed: 2, progress: info.mood === 'throw' ? info.phase : undefined });
   }
@@ -137,6 +137,21 @@ class BaronDriver {
   }
 
   dispose() { this.model.dispose(); this.root.removeFromParent(); }
+}
+
+/**
+ * Gemeinsame Körperhaltung für Modell-Fahrer: in die Kurve legen (Driften kräftiger), über die Schulter schauen,
+ * beim Trick eine ganze Drehung im Sitz. Weich nachgeführt.
+ */
+function lean(d, dt, info) {
+  const k = 1 - Math.exp(-10 * dt);
+  const l = info.steer + 0.6 * (info.drift ?? 0);
+  let yaw = 0.3 * l, roll = -0.16 * l;
+  if (info.mood === 'look') yaw = (info.look ?? 1) * 1.1 * Math.sin(Math.min(1, info.phase ?? 0) * Math.PI);
+  d.yaw = (d.yaw ?? 0) + (yaw - (d.yaw ?? 0)) * k;
+  d.roll = (d.roll ?? 0) + (roll - (d.roll ?? 0)) * k;
+  d.trickSpin = info.mood === 'trick' ? Math.min(1, info.phase ?? 0) * Math.PI * 2 : 0;
+  d.root.rotation.set(d.roll, d.yaw + d.trickSpin, 0);
 }
 
 export function createDriver(view, racer, kart) {

@@ -258,8 +258,10 @@ export class Race {
     if (r.isPlayer) this.playerFinished();
   }
 
-  onHit(r, kind) {
+  onHit(r, kind, by) {
     if (r.isPlayer) this.shake = Math.max(this.shake, kind === 'tumble' ? 0.9 : 0.4);
+    // wer getroffen hat, freut sich kurz
+    if (by && by !== r && by.driver) by.gloatT = 1.1;
   }
 
   onStar(r, on) {
@@ -432,6 +434,8 @@ export class Race {
     this.app.sky.blend(ws);
     const dark = ws.reduce((a, x) => a + ((x.name === 'cave' || x.name === 'circus') ? x.w : x.name === 'castle' ? x.w * 0.6 : 0), 0);
     this.playerLight.intensity = 26 * dark;
+    // in Höhle und Zelt kaum Studio-Reflexionen
+    if (this.app.scene.environment) this.app.scene.environmentIntensity = (this.app.envIntensity ?? 0.42) * (1 - 0.7 * Math.min(1, dark));
     this.darkness = dark;
   }
 

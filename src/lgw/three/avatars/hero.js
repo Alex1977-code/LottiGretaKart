@@ -1296,19 +1296,32 @@ export class HeroAvatar extends Avatar3D {
       case 'kart': {
         // LottiGretaKart: sitzt im Kart (Becken auf dem Sitz, Beine nach vorn), Hände am Lenkrad.
         // c.steer (-1..1, + = links), c.mood: 'drive' | 'boost' | 'hit' | 'cheer' | 'throw' (phase 0..1) | 'sad'
-        const steer = clamp(c.steer ?? 0, -1, 1), mood = c.mood ?? 'drive';
+        const steer = clamp(c.steer ?? 0, -1, 1), mood = c.mood ?? 'drive', drift = c.drift ?? 0;
         const sf = clamp((speed * upm) / RUN_SPEED, 0, 1.6);
         const bump = 0.01 * Math.sin(t * 31) * clamp(sf, 0, 1);
+        // in die Kurve legen (beim Driften kräftiger), Blick in die Kurve
+        const lean = steer + 0.6 * drift;
         const o = {
-          bob: bump, lean: 0.12, torso: 0, torsoX: 0.14 * steer, roll: 0.1 * steer,
+          bob: bump, lean: 0.12, torso: 0, torsoX: 0.22 * lean, roll: 0.16 * lean,
           thighZn: 1.45, thighZf: 1.45, thighXn: -0.16, thighXf: 0.16, kneeN: 0.55, kneeF: 0.55, footN: -0.25, footF: -0.25,
           // Lenkrad: beide Hände vorn auf Brusthöhe, beim Lenken dreht das Rad (Arme gegengleich)
           armZn: 1.05 + 0.32 * steer, armZf: 1.05 - 0.32 * steer, armXn: -0.32, armXf: 0.32,
           elbowN: 0.95, elbowF: 0.95, twistN: 0.55, twistF: -0.55,
-          headY: 0.45 * steer, headZ: 0.08, headX: -0.08 * steer,
+          headY: 0.5 * steer + 0.25 * drift, headZ: 0.08, headX: -0.12 * lean,
           mouth: 0.15, eyes: 1, hairBack: 0.35 + 0.55 * sf, hairLift: 0.12 * Math.sin(t * 9) * sf,
         };
         if (mood === 'boost') Object.assign(o, { lean: 0.22, mouth: 1, eyes: 1.15, hairBack: 1.3 });
+        else if (mood === 'trick') {
+          // Trick in der Luft: Arme hoch und weit auseinander, Kopf in den Nacken, jubeln
+          const k = Math.sin(clamp(phase, 0, 1) * Math.PI);
+          Object.assign(o, { lean: -0.05, armXn: -2.4 * k - 0.32 * (1 - k), armZn: 0.4 + 0.65 * (1 - k), elbowN: 0.25, twistN: 0, armXf: 2.4 * k + 0.32 * (1 - k), armZf: 0.4 + 0.65 * (1 - k), elbowF: 0.25, twistF: 0, headZ: 0.3 * k, mouth: 1, eyes: 1.2, hairLift: 0.6 * k });
+        } else if (mood === 'look') {
+          // Blick über die Schulter nach hinten (wer kommt da?), eine Hand bleibt am Lenkrad
+          const side = c.look ?? 1, k = Math.sin(clamp(phase, 0, 1) * Math.PI);
+          Object.assign(o, { torsoY: 0.5 * side * k, headY: 1.15 * side * k, headZ: 0.05, headX: 0.12 * side * k, eyes: 1.1, mouth: 0.35 });
+          if (side > 0) Object.assign(o, { armZn: 1.05 - 0.6 * k, armXn: -0.32 - 0.25 * k, elbowN: 0.95 - 0.5 * k });
+          else Object.assign(o, { armZf: 1.05 - 0.6 * k, armXf: 0.32 + 0.25 * k, elbowF: 0.95 - 0.5 * k });
+        }
         else if (mood === 'hit') {
           const sh = Math.sin(st * 26);
           Object.assign(o, { lean: 0.28, armZn: 1.9, armZf: 2.1, armXn: -0.9, armXf: 0.9, elbowN: 0.3, elbowF: 0.3, twistN: 0, twistF: 0, headZ: 0.3 + 0.08 * sh, headY: 0.3 * sh, eyes: 0.25, mouth: 0.9, hairLift: 0.7 });

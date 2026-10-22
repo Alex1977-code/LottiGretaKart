@@ -23,6 +23,7 @@ export class Ceremony {
     this.state = 'ceremony';
     this.camera = app.camera;
     this.scene = new THREE.Scene();
+    if (app.scene?.environment) { this.scene.environment = app.scene.environment; this.scene.environmentIntensity = app.envIntensity ?? 0.42; }
     this.theme = getTheme('grass');
     this.sky = new Sky(this.scene, this.theme, { quality: app.quality ?? 1 });
     this.effects = new Effects(this.scene);

@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { getRenderer } from './lgw/three/renderer.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { audio } from './game/audio.js';
 import { Hud } from './ui/hud.js';
 import { Menus } from './ui/menus.js';
@@ -120,6 +121,8 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && ctx.race && !ctx.race.demo && !ctx.paused && ctx.race.state !== 'done') menus.pause();
 });
 
+const ENV_INTENSITY = 0.42;
+
 // ------------------------------------------------------------------ Welt bauen (einmal), dann Menü oder Direktstart
 const loading = document.createElement('div');
 loading.id = 'loading';
@@ -134,7 +137,15 @@ async function boot() {
   await nextFrame();
   ctx.world = new World();
   ctx.scene = new THREE.Scene();
-  ctx.sky = new Sky(ctx.scene, getTheme('grass'), { quality, sunDisc: true });
+  // Umgebungslicht (Studio-Reflexionen): Figuren und Karts glänzen wie Spielzeug-Plastik, Chrom spiegelt
+  if (quality >= 2) {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    ctx.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    ctx.scene.environmentIntensity = ENV_INTENSITY;
+    ctx.envIntensity = ENV_INTENSITY;
+    pmrem.dispose();
+  }
+  ctx.sky = new Sky(ctx.scene, getTheme('grass'), { quality, sunDisc: true, envLight: quality >= 2 });
   ctx.worldView = new WorldView(ctx.world, ctx.scene, { quality });
   await ctx.worldView.build((k, text) => setProgress(0.2 + 0.75 * k, `${text} …`));
   // Shader vorab übersetzen (kein Ruckeln beim ersten Bild)

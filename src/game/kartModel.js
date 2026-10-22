@@ -55,6 +55,27 @@ function bodyGeo(st) {
     // Startnummern-Plakette vorn
     b.cyl(0.13, 0.13, 0.04, 0xfff8ee, { p: [0.86, 0.3, 0], r: [0, 0, Math.PI / 2] }, 18);
     b.cyl(0.085, 0.085, 0.05, st.main, { p: [0.87, 0.3, 0], r: [0, 0, Math.PI / 2] }, 16);
+    // Scheinwerfer (Glas mit Fassung) und Rücklichter
+    for (const z of [-0.24, 0.24]) {
+      b.sphere(0.085, st.trim, { p: [0.66, 0.4, z], s: [0.7, 1, 1] }, 14, 10);
+      b.sphere(0.07, 0xfffbe0, { p: [0.7, 0.405, z], s: [0.55, 1, 1] }, 14, 10);
+      b.box(0.05, 0.07, 0.14, 0xff2a2a, { p: [-0.89, 0.46, z * 1.15] }, 0.02, 1);
+    }
+    // Abzeichen auf den Seitenkästen: weiße Scheibe mit farbigem Stern-Kern
+    for (const s of [-1, 1]) {
+      b.cyl(0.11, 0.11, 0.02, 0xfff8ee, { p: [-0.12, 0.35, s * 0.515], r: [Math.PI / 2, 0, 0] }, 18);
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2 + Math.PI / 2;
+        b.cone(0.03, 0.08, st.accent, { p: [-0.12 + Math.cos(a) * 0.04, 0.35 + Math.sin(a) * 0.04, s * 0.53], r: [0, 0, a - Math.PI / 2] }, 4);
+      }
+      b.cyl(0.03, 0.03, 0.025, st.accent, { p: [-0.12, 0.35, s * 0.528], r: [Math.PI / 2, 0, 0] }, 10);
+      // Zierstreifen entlang des Seitenkastens
+      b.box(1.0, 0.04, 0.02, st.accent, { p: [-0.12, 0.43, s * 0.51] }, 0.01, 1);
+    }
+    // Trittbretter und Kotflügel über den Vorderrädern
+    for (const s of [-1, 1]) {
+      b.box(0.3, 0.05, 0.22, st.accent, { p: [KART.wheelFront.x, KART.wheelFront.r * 2 + 0.06, s * KART.wheelFront.z] , r: [0, 0, 0.12] }, 0.03);
+    }
     return b.geometry();
   });
 }
@@ -64,6 +85,11 @@ function wheelGeo(r, rim) {
     const b = new Build();
     const w = r * 0.95;
     b.cyl(r, r, w, TIRE, { r: [Math.PI / 2, 0, 0] }, 20);
+    // Reifenprofil: Stollen rundherum (man sieht das Drehen)
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      b.box(r * 0.2, r * 0.12, w * 0.86, TIRE_SIDE, { p: [Math.cos(a) * r * 1.02, Math.sin(a) * r * 1.02, 0], r: [0, 0, a + Math.PI / 2] }, 0.01, 1);
+    }
     b.torus(r * 0.86, r * 0.16, TIRE_SIDE, { p: [0, 0, w / 2] }, 8, 20);
     b.torus(r * 0.86, r * 0.16, TIRE_SIDE, { p: [0, 0, -w / 2] }, 8, 20);
     // Felge mit Nabe und Speichen-Noppen (Drehung sichtbar)
@@ -105,6 +131,7 @@ function flameTexture() {
   return flameTex;
 }
 
+let CHROME = null;
 export const SPARK_COLORS = [0xffffff, 0x58b8ff, 0xffa030, 0xff5ad0];
 
 export function buildKart(style) {
@@ -114,6 +141,17 @@ export function buildKart(style) {
   root.add(body);
   const shell = mesh(bodyGeo(style), vcol(0.38), {}, true);
   body.add(shell);
+
+  // Chromteile (spiegeln die Umgebung): Auspuffrohre, Motordeckel, Federbeine vorn
+  const chrome = new Build();
+  for (const z of [-0.2, 0.2]) {
+    chrome.cyl(0.06, 0.075, 0.3, 0xe8ecf4, { p: [-0.98, 0.36, z], r: [0, 0, Math.PI / 2] }, 14);
+    chrome.torus(0.062, 0.014, 0xe8ecf4, { p: [-1.13, 0.36, z], r: [0, Math.PI / 2, 0] }, 6, 14);
+  }
+  chrome.box(0.3, 0.04, 0.5, 0xd8dce8, { p: [-0.7, 0.53, 0] }, 0.02, 1);
+  for (const s of [-1, 1]) chrome.cyl(0.018, 0.018, 0.36, 0xd8dce8, { p: [KART.wheelFront.x - 0.05, 0.27, s * (KART.wheelFront.z - 0.17)], r: [Math.PI / 2, 0, 0] }, 8);
+  const chromeMesh = mesh(cachedGeo('kart:chrome', () => chrome.geometry()), (CHROME ??= new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.9, roughness: 0.18 })), {}, true);
+  body.add(chromeMesh);
 
   const seat = new THREE.Object3D();
   seat.position.set(KART.seatX, KART.seatY, 0);

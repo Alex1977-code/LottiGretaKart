@@ -408,13 +408,31 @@ export class Racer {
       drift: d.on ? d.dir : 0, sparkLevel: d.level, offroad: this.offroad,
     });
     // Fahrer
+    // Umschauen, wenn jemand dicht dahinter ist (wie im Vorbild), ab und zu prüfen
+    this.lookT = Math.max(0, (this.lookT ?? 0) - dt);
+    this.gloatT = Math.max(0, (this.gloatT ?? 0) - dt);
+    this.lookCheck = (this.lookCheck ?? Math.random() * 3) - dt;
+    if (this.lookCheck <= 0) {
+      this.lookCheck = 2.5 + Math.random() * 3;
+      const b = this.race.state === 'race' && !this.finished ? this.race.racerBehind?.(this) : null;
+      if (b && this.progress - b.progress < 7 && this.progress - b.progress > 1.5 && Math.abs(this.steer) < 0.4) {
+        this.lookT = 0.9;
+        const dx = b.pos.x - this.pos.x, dz = b.pos.z - this.pos.z;
+        // rechts = (sin yaw, cos yaw); Kopfdrehung + = nach links
+        this.lookSide = (dx * Math.sin(this.yaw) + dz * Math.cos(this.yaw)) > 0 ? -1 : 1;
+      }
+    }
     let mood = 'drive';
     if (this.spinT > 0 || this.tumbleT > 0 || this.squishT > 1.2) mood = 'hit';
     else if (this.finished) mood = this.place <= 3 ? 'cheer' : 'sad';
     else if (this.throwT > 0) mood = 'throw';
+    else if (this.air && this.trick.done) mood = 'trick';
+    else if (this.gloatT > 0) mood = 'cheer';
     else if (this.boostT > 0 || this.starT > 0) mood = 'boost';
+    else if (this.lookT > 0) mood = 'look';
     this.driver.update(dt, t, {
-      speed: Math.abs(this.speed), steer: this.steer, mood, phase: 1 - this.throwT / 0.45,
+      drift: d.on ? d.dir : 0, look: this.lookSide ?? 1, air: this.air,
+      speed: Math.abs(this.speed), steer: this.steer, mood, phase: mood === 'trick' ? Math.min(1, this.trick.t / 0.45) : mood === 'look' ? 1 - this.lookT / 0.9 : 1 - this.throwT / 0.45,
       power: this.starT > 0 ? 'stern' : this.giantT > 0 ? 'riese' : 'none', vy: this.vy, grounded: !this.air,
     });
     // Funkelstern-Schein

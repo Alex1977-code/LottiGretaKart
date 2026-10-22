@@ -17,7 +17,9 @@ function skyColor(stops, t, o) {
 }
 
 export class Sky {
-  constructor(scene, theme, { quality = 1, sunDisc = null } = {}) {
+  constructor(scene, theme, { quality = 1, sunDisc = null, envLight = false } = {}) {
+    // mit Umgebungslicht etwas weniger Himmelslicht, sonst wird alles zu hell
+    this.hemiK = envLight ? 0.72 : 1;
     this.scene = scene;
     this.theme = theme;
     this.group = new THREE.Group();
@@ -29,7 +31,7 @@ export class Sky {
     this.buildDome();
     if (theme.clouds || sunDisc) this.buildClouds();
     // Licht
-    this.hemi = new THREE.HemisphereLight(theme.hemi.sky, theme.hemi.ground, theme.hemi.intensity);
+    this.hemi = new THREE.HemisphereLight(theme.hemi.sky, theme.hemi.ground, theme.hemi.intensity * this.hemiK);
     scene.add(this.hemi);
     this.sun = new THREE.DirectionalLight(theme.sun.color, theme.sun.intensity);
     this.sunDir = new THREE.Vector3(...theme.sun.dir).normalize();
@@ -124,7 +126,7 @@ export class Sky {
     this.scene.fog.far = mixNum((t) => t.fog.far);
     this.hemi.color.copy(mixHex((t) => t.hemi.sky));
     this.hemi.groundColor.copy(mixHex((t) => t.hemi.ground));
-    this.hemi.intensity = mixNum((t) => t.hemi.intensity);
+    this.hemi.intensity = mixNum((t) => t.hemi.intensity) * this.hemiK;
     this.sun.color.copy(mixHex((t) => t.sun.color));
     this.sun.intensity = mixNum((t) => t.sun.intensity);
     const disc = mixNum((t) => (t.sunDisc ? 1 : 0));
