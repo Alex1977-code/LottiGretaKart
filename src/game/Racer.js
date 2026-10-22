@@ -138,6 +138,7 @@ export class Racer {
     const disabled = this.disabled;
     const throttle = disabled ? 0 : clamp(input.throttle ?? 0, 0, 1);
     const brake = disabled ? 0 : clamp(input.brake ?? 0, 0, 1);
+    this.trying = (input.throttle ?? 0) > 0 || (input.brake ?? 0) > 0;
 
     if (!this.air) {
       if (this.boostT > 0) this.speed = damp(this.speed, top, 6, dt);
@@ -278,7 +279,12 @@ export class Racer {
     }
     if (i > N * 0.4 && i < N * 0.6) this.passedHalf = true;
     this.lastI = i;
-    this.progress = (this.lap - 1) * this.race.track.length + loc.s;
+    // s passend zum Index (an der Ziellinie kann s schon/noch auf der anderen Seite liegen)
+    const L = this.race.track.length;
+    let s = loc.s;
+    if (i < N * 0.25 && s > L * 0.5) s -= L;
+    else if (i > N * 0.75 && s < L * 0.5) s += L;
+    this.progress = (this.lap - 1) * L + s;
   }
 
   // ------------------------------------------------------------------ Darstellung

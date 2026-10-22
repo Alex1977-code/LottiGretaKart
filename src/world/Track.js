@@ -174,7 +174,7 @@ export class Track {
   buildTerrain() {
     const th = this.theme, b = this.bounds;
     const pad = this.def.terrainPad ?? 260;
-    const cell = 3;
+    const cell = this.cell ?? 3;
     const x0 = Math.floor((b.minX - pad) / cell) * cell, x1 = Math.ceil((b.maxX + pad) / cell) * cell;
     const z0 = Math.floor((b.minZ - pad) / cell) * cell, z1 = Math.ceil((b.maxZ + pad) / cell) * cell;
     const nx = Math.round((x1 - x0) / cell), nz = Math.round((z1 - z0) / cell);

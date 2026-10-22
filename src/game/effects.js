@@ -149,7 +149,7 @@ export class Effects {
 
   /** Explosion (Kickbombe, Zauberkugel): Blitz, Feuerball, Rauch. */
   explosion(pos, radius = 5) {
-    const flash = rgb(0xfff4c0), fire = rgb(0xff8a2a), smoke = rgb(0x6a6478);
+    const flash = rgb(0xfff4c0), fire = rgb(0xff8a2a), smoke = rgb(0xc8c0d4);
     this.glow.spawn({ x: pos.x, y: pos.y + 1, z: pos.z, vx: 0, vy: 0, vz: 0, life: 0.3, size: radius * 1.2, size1: radius * 3, ...flash });
     for (let i = 0; i < 26; i++) {
       const a = Math.random() * Math.PI * 2, s = R(2, radius * 1.6);
@@ -157,7 +157,7 @@ export class Effects {
     }
     for (let i = 0; i < 16; i++) {
       const a = Math.random() * Math.PI * 2, s = R(0.5, radius * 0.6);
-      this.soft.spawn({ x: pos.x + Math.cos(a) * s * 0.4, y: pos.y + R(0.5, 2), z: pos.z + Math.sin(a) * s * 0.4, vx: Math.cos(a) * s, vy: R(1, 3), vz: Math.sin(a) * s, life: R(1, 1.8), size: R(1.5, 2.5), size1: R(3.5, 5), drag: 1.8, a: 0.6, ...smoke });
+      this.soft.spawn({ x: pos.x + Math.cos(a) * s * 0.4, y: pos.y + R(0.3, 1.2), z: pos.z + Math.sin(a) * s * 0.4, vx: Math.cos(a) * s, vy: R(0.5, 2), vz: Math.sin(a) * s, life: R(0.8, 1.4), size: R(1.0, 1.8), size1: R(2.2, 3.2), drag: 2.2, a: 0.45, ...smoke });
     }
   }
 

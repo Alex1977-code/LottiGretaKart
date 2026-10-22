@@ -173,7 +173,8 @@ kbd { display: inline-block; background: #fff; border: 2px solid var(--ink); bor
 .t-brake { right: calc(max(24px, env(safe-area-inset-right)) + 140px); bottom: 14px; width: 82px; height: 82px; background: var(--red); font-size: 13px; }
 .t-gas { right: max(24px, env(safe-area-inset-right)); bottom: 160px; width: 96px; height: 96px; background: var(--green); display: none; }
 #touch.manual-gas .t-gas { display: flex; }
-#touch.visible ~ * .hud-br { bottom: 150px; }
+body.touch-on .hud-br { top: 8px; bottom: auto; right: max(14px, env(safe-area-inset-right)); align-items: flex-start; }
+body.touch-on .hud-place b { font-size: 64px; }
 
 /* ---------------------------------------------------------------- Sonstiges */
 #rotate-hint { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; background: #2b8de8; color: #fff; text-align: center; z-index: 10; padding: 24px; gap: 18px; font-weight: 800; }
@@ -185,14 +186,24 @@ kbd { display: inline-block; background: #fff; border: 2px solid var(--ink); bor
 #err-box.visible { display: block; }
 
 @media (max-height: 520px) {
-  .logo { font-size: 40px; }
+  .logo { font-size: 30px; }
   .panel { padding: 12px 18px; border-radius: 22px; }
   h2 { font-size: 22px; }
   button { font-size: 16px; padding: 7px 14px; }
   button.big { font-size: 20px; padding: 9px 18px; }
-  .grid { gap: 8px; grid-template-columns: repeat(8, 1fr); }
-  .card img { max-width: 80px; }
-  .card span { font-size: 13px; }
+  .grid { gap: 6px; grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  .grid.tracks, .grid.cups { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+  .card { padding: 5px; border-radius: 16px; }
+  .card img { width: 100%; max-width: 76px; }
+  .card.track img { max-width: 160px; }
+  .card span { font-size: 12px; line-height: 1.1; text-align: center; hyphens: auto; overflow-wrap: break-word; }
+  .card small { font-size: 11px; }
+  .trophy { font-size: 40px; }
+  .panel.title .row.col { flex-direction: row; flex-wrap: wrap; }
+  .panel.title { max-width: 700px; }
+  .logo .kart { font-size: 1.1em; }
+  .sub { margin: 2px 0 6px; font-size: 13px; }
+  .row { margin: 6px 0; }
   .info { min-height: 0; }
   .stat { font-size: 11px; }
   .hud-place b { font-size: 70px; }
@@ -202,4 +213,21 @@ kbd { display: inline-block; background: #fff; border: 2px solid var(--ink); bor
   .countdown { font-size: 100px; }
   table { font-size: 14px; }
   td img { width: 32px; height: 32px; }
+}
+
+/* Ergebnisliste kompakt (passt auch quer aufs Handy) */
+.panel.results { padding: 14px 22px; }
+.panel.results h2 { margin: 0 0 4px; }
+.panel.results .record { margin: 0 0 6px; }
+.results table td { padding: 1px 8px; }
+.results table td img { width: 38px; height: 38px; }
+.results .row { margin: 8px 0 0; }
+@media (max-height: 520px) {
+  .results table { font-size: 13px; }
+  .results table td img { width: 26px; height: 26px; }
+  .results td.pl, .results td.tot { font-size: 15px; }
+  .podium .pod img { width: 60px; height: 60px; }
+  .pod.p1 .step { height: 60px; } .pod.p2 .step { height: 44px; } .pod.p3 .step { height: 32px; }
+  .pod .step { font-size: 22px; }
+  .standings table.compact { display: none; }
 }

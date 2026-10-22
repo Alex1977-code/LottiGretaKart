@@ -27,7 +27,9 @@ export function aiInput(racer, race, dt) {
   if (ai.laneT <= 0) { ai.lane = clamp(ai.lane + (ai.rnd() - 0.5) * 0.7, -0.7, 0.7); ai.laneT = 2 + ai.rnd() * 4; }
   // Ausweichen der Bitcoins/Kisten: nicht nötig – Kisten liegen über die ganze Breite
   const speed = Math.abs(racer.speed);
-  const look = 7 + speed * 0.55;
+  // neben der Fahrbahn (oder an der Bande): kurz vorausschauen und zur Mitte zurück
+  const offTrack = Math.abs(racer.loc.lat) > track.hw[i] + 0.5;
+  const look = offTrack ? 4 + speed * 0.25 : 7 + speed * 0.55;
   const k = Math.round(look / track.ds);
   const j = track.wrap(i + k);
   // Kurve voraus: innen fahren (geschickte Fahrer stärker)
@@ -35,7 +37,25 @@ export function aiInput(racer, race, dt) {
   for (let q = 4; q <= 26; q += 4) curv += track.curv[track.wrap(i + q)];
   curv /= 6;
   const inside = clamp(Math.sign(curv) * Math.min(1, Math.abs(curv) * 22), -0.75, 0.75) * (0.4 + 0.5 * ai.skill);
-  const laneF = clamp(ai.lane * (1 - Math.abs(inside)) + inside, -0.78, 0.78);
+  let laneF = offTrack ? clamp(racer.loc.lat / track.hw[i], -0.5, 0.5) : clamp(ai.lane * (1 - Math.abs(inside)) + inside, -0.78, 0.78);
+  // Stampfsteine umfahren: freie Spur suchen, die der gewünschten am nächsten liegt
+  const stones = (race.hazards?.list ?? []).filter((h) => h.kind === 'stampfstein' && h.p);
+  if (stones.length) {
+    const hwHere = track.hw[i];
+    const blocked = (lat) => stones.some((h) => {
+      const ahead = track.wrap(h.p.i - i) * track.ds;
+      return ahead > -2 && ahead < 28 && Math.abs(lat - h.lat) < h.size * 0.5 + 1.5;
+    });
+    if (blocked(laneF * hwHere)) {
+      let best = laneF, bd = Infinity;
+      for (let f = -0.85; f <= 0.851; f += 0.085) {
+        if (blocked(f * hwHere)) continue;
+        const d = Math.abs(f - laneF);
+        if (d < bd) { bd = d; best = f; }
+      }
+      laneF = best;
+    }
+  }
   const tp = track.pointAt(j / N, laneF * track.hw[j]);
   const want = Math.atan2(-(tp.z - racer.pos.z), tp.x - racer.pos.x);
   let diff = wrapA(want - racer.yaw);
@@ -59,9 +79,12 @@ export function aiInput(racer, race, dt) {
   }
   if (!ai.drifting && (d.on || d.hop)) inp.drift = false;
 
-  // Feststecken: kurz rückwärts mit Gegenlenkung
-  if (race.state === 'race' && speed < 1.5 && !racer.disabled) ai.stuck += dt; else ai.stuck = Math.max(0, ai.stuck - dt);
-  if (ai.stuck > 1.2) { ai.reverse = 0.9; ai.stuck = 0; }
+  // Feststecken (kaum Fortschritt, z. B. an der Bande): kurz rückwärts mit Gegenlenkung
+  const running = race.state === 'race' || race.state === 'finish' || race.state === 'demo';
+  if (ai.progRef === undefined || racer.progress > ai.progRef + 3 || !running || racer.disabled) { ai.progRef = racer.progress; ai.stuck = 0; }
+  else ai.stuck += dt;
+  if (ai.stuck > 1.6 && ai.reverse <= 0) { ai.reverse = 1.0; ai.stuck = 0; ai.drifting = false; ai.progRef = racer.progress; }
+  if (speed < 6 && !racer.drift.hop) ai.drifting = false;
   if (ai.reverse > 0) {
     ai.reverse -= dt;
     inp.throttle = 0; inp.brake = 1; inp.steer = -Math.sign(diff); inp.drift = false;

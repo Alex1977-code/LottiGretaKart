@@ -67,13 +67,16 @@ export class Race {
     this.theme = getTheme(this.def.theme);
     this.sky = new Sky(this.scene, this.theme, { quality: app.quality ?? 1 });
     this.track = new Track(this.def, this.theme);
+    this.track.cell = (app.quality ?? 2) >= 2 ? 3 : 4.5;
     this.scene.add(this.track.build());
     this.effects = new Effects(this.scene);
-    this.decor = new Decor(this, this.track, this.theme, this.def.seed ?? 3);
+    this.decor = new Decor(this, this.track, this.theme, this.def.seed ?? 3, app.quality ?? 2);
     this.def.scenery?.(this.decor, this);
     this.decor.build();
+    this.trial = !!o.trial;
     this.items = new Items(this);
-    this.items.build(this.def);
+    // Zeitfahren: keine Kisten, dafür drei Turbo-Beeren
+    this.items.build(this.trial ? { ...this.def, items: [] } : this.def);
     this.hazards = new Hazards(this);
     this.hazards.build(this.def.hazards ?? []);
     // Ampel und Start-Tor
@@ -97,6 +100,7 @@ export class Race {
       if (isPlayer) this.player = r;
     });
     this.grid();
+    if (this.trial && this.player) this.player.item = { id: 'beere3', charges: 3 };
     this.camState = { pos: new THREE.Vector3(), look: new THREE.Vector3(), yaw: 0, fov: 70 };
     this.introSetup();
     if (this.hud && !this.demo) { this.hud.setupMap(this.track); }
@@ -240,6 +244,7 @@ export class Race {
       r.update(dt, inp);
     }
     if (running) {
+      this.rescue(dt);
       this.collide();
       this.items.update(dt, t);
     } else this.items.update(0, t);
@@ -285,6 +290,37 @@ export class Race {
     }
     this.audio.stopMotor();
     this.onDone?.(this.finishOrder.map((r, i) => ({ id: r.id, name: r.name, place: i + 1, time: r.finishTime, isPlayer: r.isPlayer, best: Math.min(...r.lapTimes, Infinity) })));
+  }
+
+  /**
+   * Rettung: kommt jemand 6 s lang nicht voran (festgefahren, eingeklemmt), setzt ihn der Waldkobold mit
+   * kurzem Aufblitzen ein Stück weiter auf die Fahrbahnmitte zurück.
+   */
+  rescue(dt) {
+    if (this.state !== 'race' && this.state !== 'finish' && this.state !== 'demo') return;
+    for (const r of this.racers) {
+      if (r.finished && !r.isPlayer) continue;
+      const rs = r.rescueState ?? (r.rescueState = { best: r.progress, t: 0 });
+      if (r.progress > rs.best + 4 || (r.isPlayer && !r.trying)) { rs.best = Math.max(rs.best, r.progress); rs.t = 0; continue; }
+      rs.t += dt;
+      if (rs.t > (r.isPlayer ? 6 : 4)) {
+        const tr = this.track;
+        if ((this.rescueLog ??= []).length < 20) this.rescueLog.push(`${r.id}@${r.loc.i}/${r.loc.lat.toFixed(1)} sp=${r.speed.toFixed(1)} yaw=${r.yaw.toFixed(2)} y=${r.pos.y.toFixed(1)} air=${r.air} spin=${r.spinT.toFixed(1)} sq=${r.squishT.toFixed(1)}`);
+        const i = tr.wrap(r.loc.i + 6);
+        const q = tr.pointAt(i / tr.N, 0);
+        this.effects.sparkle(r.pos, 0xffffff, 16, 3);
+        const prevI = r.lastI;
+        r.placeAt(q.x, q.z, q.yaw);
+        r.lastI = prevI; // Rundenzählung sieht das Überqueren der Ziellinie im nächsten Schritt
+        r.cancelDrift();
+        r.invulnT = 2;
+        if (r.ai) { r.ai.reverse = 0; r.ai.stuck = 0; r.ai.drifting = false; }
+        this.effects.sparkle(r.pos, 0xfff2a0, 16, 3);
+        this.rescues = (this.rescues ?? 0) + 1;
+        if (r.isPlayer) { this.hud?.message('Hopp – zurück auf die Strecke!', 1.6); this.audio.sfx('oneup'); }
+        rs.best = r.progress; rs.t = 0;
+      }
+    }
   }
 
   rank() {

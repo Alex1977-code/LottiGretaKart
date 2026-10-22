@@ -112,10 +112,13 @@ export class Hazards {
           h.cool -= dt;
           if (h.state === 'wait') {
             // Kart in Reichweite (vor dem Stein, auf gleicher Höhe der Strecke)?
+            // nur Karts, die auf ihn zufahren (vor dem Stein, höchstens 14 m)
             let near = false;
+            const tx = track.tx[p.i], tz = track.tz[p.i];
             for (const r of race.racers) {
               const dx = r.pos.x - p.x, dz = r.pos.z - p.z;
-              if (dx * dx + dz * dz < 9 * 9) { near = true; break; }
+              const along = dx * tx + dz * tz;
+              if (along < -3 && along > -14 && Math.abs(-dx * tz + dz * tx) < h.size * 1.5) { near = true; break; }
             }
             if (near && h.cool <= 0) { h.state = 'fall'; h.vy = 0; }
           } else if (h.state === 'fall') {
@@ -137,19 +140,24 @@ export class Hazards {
             if (h.st <= 0) h.state = 'rise';
           } else if (h.state === 'rise') {
             h.y += 2.2 * dt;
-            if (h.y >= h.hover) { h.y = h.hover; h.state = 'wait'; h.cool = 1.2; }
+            if (h.y >= h.hover) { h.y = h.hover; h.state = 'wait'; h.cool = 2.2; }
           }
           h.holder.position.set(p.x, p.y + h.y, p.z);
           h.holder.rotation.y = p.yaw + Math.PI;
           h.model.update(dt, h.state);
           // auf dem Boden ist er eine Wand: Karts prallen ab
           if (h.y < 1.2) {
+            const tx = track.tx[p.i], tz = track.tz[p.i];
             for (const r of race.racers) {
               const dx = r.pos.x - p.x, dz = r.pos.z - p.z, half = h.size * 0.5 + r.radius * 0.7;
-              if (Math.abs(dx) < half && Math.abs(dz) < half) {
-                const l = Math.hypot(dx, dz) || 1;
-                r.pos.x = p.x + (dx / l) * half * 1.05; r.pos.z = p.z + (dz / l) * half * 1.05;
-                r.speed *= 0.5;
+              const along = dx * tx + dz * tz, side = -dx * tz + dz * tx;
+              if (Math.abs(along) < half && Math.abs(side) < half) {
+                // aus dem Stein heraus: zur näheren Seite (vorn/hinten bzw. links/rechts)
+                const pa = half - Math.abs(along), ps = half - Math.abs(side);
+                // seitlich hinaus, wenn das kürzer ist; sonst nach hinten zurückprallen (einmaliger Stoß, keine Falle)
+                if (ps < pa * 1.5) { const k = (Math.sign(side) || 1) * ps * 1.02; r.pos.x += -tz * k; r.pos.z += tx * k; }
+                else { const k = (Math.sign(along) || 1) * pa * 1.02; r.pos.x += tx * k; r.pos.z += tz * k; }
+                if (r.bumpCooldown <= 0) { r.speed *= 0.35; r.vlat += (Math.sign(side) || 1) * 4; r.bumpCooldown = 0.5; if (r.isPlayer) race.audio.sfx('land'); }
               }
             }
           }

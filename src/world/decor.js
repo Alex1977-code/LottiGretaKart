@@ -67,8 +67,10 @@ const block = () => g('block', () => new Build().box(1, 1, 1, 0xffffff, { p: [0,
 const KINDS = { roundTree, pineTree, bush, flower, mushroom, rock, crystal, stalactite, hill, building, block };
 
 export class Decor {
-  constructor(race, track, theme, seed = 1) {
+  constructor(race, track, theme, seed = 1, quality = 2) {
     this.race = race;
+    this.quality = quality;
+    this.density = quality >= 2 ? 1 : 0.55;   // Handy: weniger Kulisse
     this.track = track;
     this.theme = theme;
     this.group = new THREE.Group();
@@ -96,6 +98,7 @@ export class Decor {
 
   /** Viele Objekte zufällig im Band dist0..dist1 neben der Strecke verstreuen. */
   scatter(kind, n, { dist0 = 3, dist1 = 40, s0 = 0.8, s1 = 1.3, colors = [0xffffff], size = 2, sink = 0, u0 = 0, u1 = 1 } = {}) {
+    n = Math.round(n * this.density);
     let placed = 0, tries = 0;
     const tr = this.track;
     while (placed < n && tries < n * 12) {
@@ -354,7 +357,7 @@ export class Decor {
     for (const [kind, list] of this.batches) {
       const im = new THREE.InstancedMesh(KINDS[kind](), vcol(kind === 'crystal' ? 0.2 : 0.55, kind === 'crystal' ? { emissive: 0x2a4a6a } : {}, kind === 'crystal' ? 'crystal' : ''), list.length);
       list.forEach((e, i) => { im.setMatrixAt(i, e.m); im.setColorAt(i, e.c); });
-      im.castShadow = kind !== 'hill' && kind !== 'flower' && kind !== 'building';
+      im.castShadow = this.quality >= 2 ? !['hill', 'flower', 'building', 'stalactite'].includes(kind) : ['roundTree', 'pineTree', 'mushroom'].includes(kind);
       im.receiveShadow = true;
       im.computeBoundingSphere();
       im.name = `kulisse:${kind}`;

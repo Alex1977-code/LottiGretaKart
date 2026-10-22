@@ -63,6 +63,7 @@ ctx.startRace = (o) => {
   ctx.paused = false;
   ctx.hud.show(!o.demo);
   ctx.touch.show(!o.demo && isTouch());
+  document.body.classList.toggle('touch-on', !o.demo && isTouch());
   ctx.touch.onStartTap = () => race.startTap();
   return race;
 };
