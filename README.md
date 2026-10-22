@@ -15,24 +15,41 @@ Querformat), installierbar als PWA. Alle Grafiken und Töne entstehen per Code �
 | **Panzerkröte** | ausgewogen |
 | **Zauberkröte** | beste Lenkung |
 | **Rammbock-Bulle** | schwer, schiebt alle weg |
+| **Krallen-Pilzling**, **Kickbombe**, **Wühler**, **Waldkobold** | neu für die 12er-Felder |
 | **Baron Brummbär** im roten Roadster | der Schwerste und Schnellste |
 
 Die Figuren sind die Original-3D-Modelle aus LottiGretaWorld (`src/lgw/`, unverändert übernommen bis auf eine
 neue Sitzpose `kart` für die Heldinnen in `src/lgw/three/avatars/hero.js`).
 
-## Strecken und Cups
+## Die Insel (wie in Mario Kart World)
 
-| Strecke | Thema | Besonderheit |
+Alle Strecken liegen auf **einer zusammenhängenden Insel** – der Grünen Blockinsel – und sind durch Landstraßen
+verbunden. Man kann von Strecke zu Strecke fahren, über den See (auf dem Wasser), durch den Höhlenberg und ins
+Zirkuszelt. Himmel, Licht und Nebel blenden beim Fahren je Region über (Sonne über der Wiese, goldener Herbst,
+dunkle Höhle, Zirkus-Scheinwerfer, Abendrot über der Stadt).
+
+| Strecke | Region | Besonderheit |
 | --- | --- | --- |
-| Kraxelwiesen-Ring | Wiese der Grünen Blockinsel | Pilzlinge watscheln über die Fahrbahn, Schanze |
-| Herbstwald-Runde | Laubwald | Krabbelkäfer, Hummel, zwei Schanzen |
-| Laternengrotte | Höhle | Stampfsteine krachen von der Decke |
-| Kippfeld-Manege | Zirkuszelt | Panzerkröten, stürmender Rammbock-Bulle, Trampoline |
-| Brummbärs Abendautobahn | Autobahn im Abendrot | Bombenkanonen schießen Kickbomben (roter Ring = Einschlag) |
+| Kraxelwiesen-Ring | Wiese in der Inselmitte | Pilzlinge watscheln über die Fahrbahn, Schanze |
+| Herbstwald-Runde | Laubwald im Norden | Krabbelkäfer, Hummel, zwei Schanzen |
+| Laternengrotte | im Höhlenberg im Westen | Stampfsteine krachen von der Decke |
+| Kippfeld-Manege | im Zirkuszelt im Südwesten | Panzerkröten, stürmender Rammbock-Bulle, Trampoline |
+| Brummbärs Abendautobahn | Stadt im Osten | Bombenkanonen schießen Kickbomben (roter Ring = Einschlag) |
 
-**Beeren-Cup** (4 Rennen) und **Brummbär-Cup** (alle 5 Strecken). Punkte 15-12-10-8-6-4-2-1, am Ende
-Siegerehrung mit Pokal. Dazu **Einzelrennen** und **Zeitfahren** (mit drei Turbo-Beeren, Bestzeiten werden
-gespeichert). Klassen: Gemütlich (50 ccm), Flott (100 ccm), Rasant (150 ccm).
+**Modi**
+- **Grand Prix** (Beeren-Cup, Brummbär-Cup): das erste Rennen sind Runden, ab dem zweiten startet man an der
+  vorigen Strecke und fährt über die Verbindungsstraße zur nächsten (Anfahrt + Runden). Punkte für 12 Fahrer,
+  am Ende Siegerehrung mit Pokal.
+- **K.-o.-Tour** (Große Inseltour, Kleine Runde): eine Rallye quer über die Insel mit 12 Fahrern; an jedem
+  Checkpoint scheiden die Letzten aus.
+- **Einzelrennen** und **Zeitfahren** (mit drei Turbo-Beeren, Bestzeiten werden gespeichert).
+- **Freie Fahrt**: die ganze Insel erkunden und 30 versteckte Sternmünzen finden (werden gespeichert).
+
+Klassen: Gemütlich (50 ccm), Flott (100 ccm), Rasant (150 ccm).
+
+**Fahrtechniken**: Driften mit Mini-Turbo, Startturbo, Trick-Turbo auf Schanzen, **Aufladesprung** (Drift-Taste
+geradeaus halten und loslassen), **Grind-Schienen** (draufspringen und entlanggleiten – eine führt quer über den
+See), **auf dem Wasser fahren**.
 
 ## Gegenstände (aus den Funkel-Kisten)
 
@@ -52,7 +69,7 @@ Wer vorn liegt, bekommt eher Verteidigung, wer hinten liegt, eher starke Gegenst
 | Lenken | ← → / A D | linker Stick | Daumen links nach links/rechts ziehen |
 | Gas | ↑ / W | A | automatisch (in den Einstellungen abschaltbar) |
 | Bremse / rückwärts | ↓ / S | B | Knopf **BREMSE** |
-| Hüpfer & Driften | Leertaste / Shift | R | Knopf **DRIFT** halten |
+| Hüpfer & Driften | Leertaste / Shift (geradeaus halten = Aufladesprung) | R | Knopf **DRIFT** halten |
 | Gegenstand | X / E / Strg | L | Knopf **★** |
 | Pause | Esc / P | Start | – (pausiert automatisch, wenn die App in den Hintergrund geht) |
 | Ton | M | | Knopf im Menü |
@@ -67,8 +84,8 @@ npm test           # Build + Headless-Renntest auf allen Strecken (Chromium), Sc
 node tools/check-tracks.mjs   # Streckengeometrie prüfen (Banden dürfen sich nicht schneiden)
 ```
 
-URL-Parameter für Tests: `?race=<strecke>&racer=<id>&cc=50|100|150&laps=n`, `?demo=1` (nur Computer),
-`?quality=0|1|2`.
+URL-Parameter für Tests: `?race=<strecke>&racer=<id>&cc=50|100|150&laps=n`, `?mode=gp&from=<strecke>` (mit Anfahrt),
+`?mode=ko&tour=insel|kurz`, `?mode=free`, `?quality=0|1|2`. `node tools/draw-world.mjs` zeichnet die Inselkarte.
 
 ### Aufbau
 
@@ -78,14 +95,16 @@ src/
   game/               Race (Ablauf, Kamera, Wertung), Racer (Kart-Physik, Drift, Treffer), ai.js (Computer-Fahrer),
                       items.js (Kisten, Bitcoins, Geschosse), hazards.js (Gegner auf der Strecke), drivers.js
                       (Figuren im Kart), kartModel.js, effects.js (Partikel), audio.js (Motor, Musik), Ceremony.js
-  world/              Track (Mittellinie, Fahrbahn, Gelände, Banden), Sky, decor.js (Kulisse), themes.js
+  world/              worldDef.js (Inselplan: Strecken, Verbindungsstraßen, See, Berge, Regionen, Schienen),
+                      World (Höhenfeld, Oberflächen, Kollisionen), WorldView (Darstellung), Track, Sky, decor.js
+  game/RacePath.js    Rennpfad durch die Welt (Runden, Anfahrt, Rallye)
   tracks/             Streckendefinitionen (Kontrollpunkte, Kisten, Turbo-Felder, Schanzen, Gefahren, Kulisse)
   ui/                 Menüs, HUD mit Minikarte, Touch-Steuerung, Eingabe, Symbole aus den 3D-Modellen
   lgw/                übernommene Module aus LottiGretaWorld (Figuren, Modelle, Musik und Effekte)
 ```
 
-Eine neue Strecke ist eine Datei in `src/tracks/` (geschlossener Kurs aus Kontrollpunkten `[x, z, halbe Breite]`)
-plus ein Eintrag in `src/tracks/index.js`.
+Eine neue Strecke ist eine Datei in `src/tracks/` (geschlossener Kurs aus Kontrollpunkten `[x, z, halbe Breite]`),
+ein Platz auf der Insel und mindestens eine Verbindungsstraße in `src/world/worldDef.js`.
 
 ## Veröffentlichen
 
