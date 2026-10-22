@@ -6,20 +6,21 @@
 //             Bremse; Gas automatisch (abschaltbar).
 
 const KEYS = new Set();
-const PRESSED = new Set(); // Flanken seit dem letzten poll()
+const PRESSED = new Set(); // Flanken seit dem letzten readMeta()
+const LATCH = new Set();   // Flanken seit dem letzten readDrive() – kurze Tipper gehen nicht verloren
 
 window.addEventListener('keydown', (e) => {
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Tab', 'Enter'].includes(e.key)) e.preventDefault();
-  if (!KEYS.has(e.code)) PRESSED.add(e.code);
+  if (!KEYS.has(e.code)) { PRESSED.add(e.code); LATCH.add(e.code); }
   KEYS.add(e.code);
 });
 window.addEventListener('keyup', (e) => KEYS.delete(e.code));
 window.addEventListener('blur', () => KEYS.clear());
 
-const any = (...codes) => codes.some((c) => KEYS.has(c));
+const any = (...codes) => codes.some((c) => KEYS.has(c) || LATCH.has(c));
 const tapped = (...codes) => codes.some((c) => PRESSED.has(c));
 
-export const touch = { active: false, steer: 0, drift: false, item: false, brake: false, gas: false, autoGas: true };
+export const touch = { active: false, steer: 0, drift: false, item: false, brake: false, gas: false, autoGas: true, itemTap: false, driftTap: false };
 let lastPadButtons = [];
 let usingTouch = false;
 window.addEventListener('touchstart', () => { usingTouch = true; }, { passive: true });
@@ -55,10 +56,12 @@ export function readDrive() {
     if (touch.steer !== 0) inp.steer = touch.steer;
     if (touch.autoGas || touch.gas) inp.throttle = Math.max(inp.throttle, touch.brake ? 0 : 1);
     if (touch.brake) inp.brake = 1;
-    if (touch.drift) inp.drift = true;
-    if (touch.item) inp.item = true;
+    if (touch.drift || touch.driftTap) inp.drift = true;
+    if (touch.item || touch.itemTap) inp.item = true;
+    touch.itemTap = touch.driftTap = false;
   }
   inp.steer = Math.max(-1, Math.min(1, inp.steer));
+  LATCH.clear();
   return inp;
 }
 

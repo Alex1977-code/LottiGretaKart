@@ -21,7 +21,7 @@ const { renderer, canvas } = getRenderer();
 canvas.id = 'gl3d';
 app.prepend(canvas);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 
 const quality = params.has('quality') ? Number(params.get('quality')) : (isTouch() ? 1 : 2);
 const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.1, 1400);

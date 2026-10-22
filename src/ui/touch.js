@@ -50,7 +50,11 @@ export class TouchControls {
     zone.addEventListener('touchcancel', endSteer);
     for (const b of root.querySelectorAll('.t-btn')) {
       const k = b.dataset.k;
-      const on = (e) => { e.preventDefault(); touch.active = true; touch[k] = true; b.classList.add('down'); this.onStartTap?.(); };
+      const on = (e) => {
+        e.preventDefault(); touch.active = true; touch[k] = true; b.classList.add('down'); this.onStartTap?.();
+        if (k === 'item') touch.itemTap = true;
+        if (k === 'drift') touch.driftTap = true;
+      };
       const off = (e) => { e.preventDefault(); touch[k] = false; b.classList.remove('down'); };
       b.addEventListener('touchstart', on, { passive: false });
       b.addEventListener('touchend', off, { passive: false });
