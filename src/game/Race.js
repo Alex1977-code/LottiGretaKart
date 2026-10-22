@@ -393,7 +393,30 @@ export class Race {
       look.set(g.x, g.y + 1, g.z);
       cs.pos.copy(pos); cs.look.copy(look);
       cs.yaw = target.yaw;
-    } else if (this.state === 'finish' || this.state === 'done' || this.state === 'demo' && !this.player) {
+    } else if (this.state === 'demo' && !this.player) {
+      // Menü-Hintergrund: wechselnde Kamerafahrten, bevorzugt Lotti und Greta
+      this.demoT = (this.demoT ?? 0) - dt;
+      if (this.demoT <= 0 || !this.demoTarget) {
+        const pick = this.rnd() < 0.6 ? this.racers.filter((r) => r.id === 'lotti' || r.id === 'greta') : this.racers;
+        this.demoTarget = pick[Math.floor(this.rnd() * pick.length)] ?? this.racers[0];
+        this.demoT = 6 + this.rnd() * 3;
+        this.demoMode = Math.floor(this.rnd() * 3);
+        this.demoSide = this.rnd() < 0.5 ? -1 : 1;
+        cs.snap = true;
+      }
+      const r = this.demoTarget, c = Math.cos(r.yaw), s = -Math.sin(r.yaw);
+      if (this.demoMode === 0) { // schräg von vorn
+        pos.set(r.pos.x + c * 4.2 - s * 2.4 * this.demoSide, r.pos.y + 1.3, r.pos.z + s * 4.2 + c * 2.4 * this.demoSide);
+      } else if (this.demoMode === 1) { // seitlich mitfahrend
+        pos.set(r.pos.x - s * 4.5 * this.demoSide - c * 0.5, r.pos.y + 1.6, r.pos.z + c * 4.5 * this.demoSide - s * 0.5);
+      } else { // von hinten oben
+        pos.set(r.pos.x - c * 6, r.pos.y + 3.2, r.pos.z - s * 6);
+      }
+      look.set(r.pos.x + c * 0.5, r.pos.y + 0.7, r.pos.z + s * 0.5);
+      if (cs.snap) { cs.pos.copy(pos); cs.look.copy(look); cs.snap = false; }
+      cs.pos.lerp(pos, 1 - Math.exp(-6 * dt)); cs.look.lerp(look, 1 - Math.exp(-10 * dt));
+      fov = 55;
+    } else if (this.state === 'finish' || this.state === 'done' || this.state === 'demo') {
       // Umkreisen der Spielerin (bzw. der Spitze in der Demo)
       const a = t * 0.35;
       const R = this.state === 'demo' ? 9 : 6.5;

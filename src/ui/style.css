@@ -229,5 +229,11 @@ body.touch-on .hud-place b { font-size: 64px; }
   .podium .pod img { width: 60px; height: 60px; }
   .pod.p1 .step { height: 60px; } .pod.p2 .step { height: 44px; } .pod.p3 .step { height: 32px; }
   .pod .step { font-size: 22px; }
-  .standings table.compact { display: none; }
 }
+
+/* Gesamtwertung neben der 3D-Siegerehrung */
+.menus.results:has(.standings) { justify-content: flex-end; align-items: center; }
+.panel.standings.side { max-width: 380px; padding: 14px 18px; background: rgba(255, 248, 238, 0.9); }
+.panel.standings.side .podium { display: none; }
+.panel.standings.side table { font-size: 15px; }
+.panel.standings.side td img { width: 30px; height: 30px; }

@@ -4,6 +4,7 @@
 import { RACERS, RACER_BY_ID } from '../game/racers.js';
 import { TRACKS, TRACK_BY_ID, CUPS } from '../tracks/index.js';
 import { CC } from '../game/Race.js';
+import { Ceremony } from '../game/Ceremony.js';
 import { Track } from '../world/Track.js';
 import { getTheme } from '../world/themes.js';
 import { racerIcon, preloadIcons } from './icons.js';
@@ -364,10 +365,11 @@ export class Menus {
     const cupKey = `${g.cup.id}:${this.settings.cc}`;
     if (myPlace <= 3 && (!this.cups[cupKey] || myPlace < this.cups[cupKey])) { this.cups[cupKey] = myPlace; save(CUP_KEY, this.cups); }
     const trophy = myPlace === 1 ? 'Gold-Pokal' : myPlace === 2 ? 'Silber-Pokal' : myPlace === 3 ? 'Bronze-Pokal' : null;
+    this.ctx.setScene(new Ceremony(this.ctx, order.slice(0, 3).map((id) => RACER_BY_ID[id])));
     const podium = order.slice(0, 3).map((id, i) => `<div class="pod p${i + 1}"><img src="${racerIcon(r, RACER_BY_ID[id])}" alt="" /><span>${RACER_BY_ID[id].name}</span><b>${g.points[id]}</b><div class="step">${i + 1}</div></div>`);
     const rows = order.map((id, i) => `<tr class="${id === this.settings.racer ? 'me' : ''}"><td class="pl">${i + 1}.</td><td><img src="${racerIcon(r, RACER_BY_ID[id])}" alt="" /></td><td>${RACER_BY_ID[id].name}</td><td class="tot">${g.points[id]}</td></tr>`).join('');
     this.show('standings', `
-      <div class="panel standings">
+      <div class="panel standings side">
         <h2>${g.cup.name} – Gesamtwertung</h2>
         ${trophy ? `<p class="record big">🏆 ${trophy} für ${RACER_BY_ID[this.settings.racer].name}!</p>` : `<p>Platz ${myPlace} – beim nächsten Mal klappt's!</p>`}
         <div class="podium">${podium[1]}${podium[0]}${podium[2]}</div>

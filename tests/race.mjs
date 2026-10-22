@@ -37,24 +37,17 @@ for (const id of TRACKS) {
   const res = await page.evaluate(async () => {
     const k = window.__kart; k.paused = true;
     const r = k.race, p = r.player;
-    const ai = await import(new URL('src/game/ai.js', location.href).href).catch(() => null);
+    const ai = k.ai;
     let used = 0, items = 0, maxSpeed = 0, drifts = 0, boosts = 0;
     const origUse = r.items.use.bind(r.items);
     r.items.use = (x) => { if (x.item) used++; return origUse(x); };
     const origGive = r.items.giveItem.bind(r.items);
     r.items.giveItem = (x) => { items++; return origGive(x); };
-    // Fahrhilfe: dieselbe KI wie die Gegner, falls das Modul im Build nicht einzeln ladbar ist → einfache Spurführung
-    const steerTo = () => {
-      const tr = r.track, i = p.loc.i, j = tr.wrap(i + Math.round((7 + Math.abs(p.speed) * 0.55) / tr.ds));
-      const q = tr.pointAt(j / tr.N, 0);
-      const want = Math.atan2(-(q.z - p.pos.z), q.x - p.pos.x);
-      let d = want - p.yaw; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
-      return { steer: Math.max(-1, Math.min(1, d * 2.4)), throttle: 1, item: !!p.item && Math.random() < 0.05 };
-    };
-    if (ai) ai.initAI(p, 0.8, Math.random);
+    // Die Spielerin fährt mit derselben KI wie die Gegner (Eingaben über window.__testInput)
+    ai.initAI(p, 0.8, Math.random);
     let steps = 0;
     while (r.state !== 'done' && steps < 60 * 240) {
-      window.__testInput = ai ? ai.aiInput(p, r, 1 / 60) : steerTo();
+      window.__testInput = ai.aiInput(p, r, 1 / 60);
       k.step(1, 1 / 60, false);
       steps++;
       maxSpeed = Math.max(maxSpeed, p.speed);

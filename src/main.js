@@ -10,6 +10,7 @@ import { Menus } from './ui/menus.js';
 import { TouchControls } from './ui/touch.js';
 import { readMeta, isTouch } from './ui/input.js';
 import { Race } from './game/Race.js';
+import { aiInput, initAI } from './game/ai.js';
 import { RACERS, RACER_BY_ID } from './game/racers.js';
 import { TRACK_BY_ID } from './tracks/index.js';
 import { registerSW } from './pwa.js';
@@ -34,6 +35,7 @@ const ctx = {
   paused: false,
 };
 window.__kart = ctx; // Tests/Fehlersuche
+ctx.ai = { aiInput, initAI }; // Tests: Spielerin von der KI fahren lassen
 // Tests: Rennen deterministisch um n Schritte vorspulen (ohne Bildaufbau dazwischen)
 ctx.step = (n = 60, dt = 1 / 60, draw = true) => { for (let i = 0; i < n; i++) ctx.race?.update(dt); if (draw) ctx.race?.render(renderer); };
 
@@ -67,6 +69,15 @@ ctx.startRace = (o) => {
   ctx.touch.onStartTap = () => race.startTap();
   return race;
 };
+/** Beliebige Szene mit update/render/dispose (Siegerehrung) statt eines Rennens zeigen. */
+ctx.setScene = (scene) => {
+  ctx.endRace();
+  ctx.race = scene;
+  ctx.paused = false;
+  ctx.hud.show(false);
+  ctx.touch.show(false);
+  document.body.classList.remove('touch-on');
+};
 ctx.endRace = () => {
   if (!ctx.race) return;
   ctx.race.dispose();
@@ -77,6 +88,10 @@ ctx.endRace = () => {
 
 const menus = new Menus(ctx);
 ctx.menus = menus;
+// App im Hintergrund (Tab gewechselt, Handy gesperrt): Rennen anhalten
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && ctx.race && !ctx.race.demo && !ctx.paused && ctx.race.state !== 'done') menus.pause();
+});
 
 // Direktstart über die URL
 if (params.has('race')) {
