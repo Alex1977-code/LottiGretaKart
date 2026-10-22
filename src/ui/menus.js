@@ -11,10 +11,11 @@ import { getTheme } from '../world/themes.js';
 import { racerIcon, preloadIcons } from './icons.js';
 import { logoHTML } from './logo.js';
 import { fmtTime } from './hud.js';
-import { touch, isTouch } from './input.js';
+import { touch, isTouch, readJoin, deviceLabel, rumble } from './input.js';
 
 const POINTS = [15, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
 const STAT_NAMES = { speed: 'Tempo', accel: 'Beschleunigung', weight: 'Gewicht', handling: 'Lenkung', offroad: 'Gelände' };
+const PCOL = ['#e60012', '#1e6cff', '#22b03c', '#ffb800'];
 const MODE_NAMES = { gp: 'Grand Prix', ko: 'K.-o.-Tour', single: 'Einzelrennen', free: 'Freie Fahrt', trial: 'Zeitfahren' };
 const SAVE_KEY = 'lgkart.settings.v1';
 const BEST_KEY = 'lgkart.best.v1';
@@ -46,7 +47,7 @@ export class Menus {
   /** Kopfzeile (schräger Reiter) und Tasten-Hinweise. */
   head(title, sub = '') { return `<header class="mhead"><b><span>${title}</span></b>${sub ? `<small class="chip">${sub}</small>` : ''}</header>`; }
   hints(back = true) { return `<footer class="mhints"><span><i class="a">A</i>Enter · Auswählen</span>${back ? '<span><i>B</i>Esc · Zurück</span>' : ''}</footer>`; }
-  get modeSub() { return `${MODE_NAMES[this.mode] ?? ''} · ${CC[this.settings.cc].label}`; }
+  get modeSub() { return `${MODE_NAMES[this.mode] ?? ''}${this.multi ? ` · ${this.party.length} Spieler` : ''} · ${CC[this.settings.cc].label}`; }
 
   // ------------------------------------------------------------------ Grundlagen
   hideAll() { this.el.innerHTML = ''; this.el.className = 'menus'; this.screen = null; }
@@ -80,6 +81,7 @@ export class Menus {
       return;
     }
     if (!this.screen) return;
+    if (this.screen === 'lobby') { this.lobbyInput(meta); return; }
     const items = [...this.el.querySelectorAll('button:not([disabled])')];
     if (!items.length) return;
     const i = items.indexOf(document.activeElement);
@@ -120,16 +122,23 @@ export class Menus {
             ${item('single', '🏁', '#1e6cff', 'Einzelrennen', `${TRACKS.length} Strecken zur Wahl`)}
             ${item('free', '🗺️', '#22b03c', 'Freie Fahrt', 'Insel erkunden, Sternmünzen sammeln')}
             ${item('trial', '⏱️', '#9b4dff', 'Zeitfahren', 'Allein gegen die Uhr')}
+            ${item('multi', '👥', '#ff5ab4', 'Mehrspieler', '2–4 Spieler · ein Bildschirm · auch offline')}
           </nav>
           <div class="mtools">
             <button class="small" data-act="settings">⚙️ Einstellungen</button>
             <button class="small" data-act="help">❓ Steuerung</button>
+            <button class="small" data-act="tv">📺 Auf den TV</button>
             <button class="small btn-mute" data-act="mute">${this.ctx.audio.muted ? '🔇' : '🔊'}</button>
           </div>
+          <p class="mtip offline-chip">${navigator.serviceWorker?.controller ? '✈️ Offline bereit – läuft auch im Flugmodus' : ''}</p>
           <p class="mtip ios-tip">📲 Vollbild: Teilen → „Zum Home-Bildschirm“</p>
         </div>
       </div>${this.hints(false)}`);
-    this.on('[data-mode]', (b) => { this.mode = b.dataset.mode; this.showRacers(); });
+    this.on('[data-mode]', (b) => {
+      if (b.dataset.mode === 'multi') { this.showLobby(); return; }
+      this.party = null; this.mode = b.dataset.mode; this.showRacers();
+    });
+    this.on('[data-act="tv"]', () => this.showTV());
     this.on('[data-act="settings"]', () => this.showSettings());
     this.on('[data-act="help"]', () => this.showHelp());
     this.on('[data-act="mute"]', () => this.toggleMute());
@@ -154,8 +163,10 @@ export class Menus {
               <h3>Handy (quer)</h3>
               <p>Linke Hälfte: Daumen nach links/rechts ziehen = lenken (wenig ziehen = fein lenken). Gas gibt das Kart von selbst.</p>
               <p>Rechts: <b>DRIFT</b> halten, <b>★</b> Gegenstand, <b>BREMSE</b>.</p>
-              <h3>Gamepad</h3>
-              <p>Stick lenken, A Gas, B Bremse, R Driften, L Gegenstand.</p>
+              <h3>Controller (Xbox, PlayStation, Switch)</h3>
+              <p>Stick/Steuerkreuz lenken, A oder RT Gas, B Bremse, R Driften, L/LT Gegenstand, Start Pause. Menüs gehen auch mit dem Controller. Bei Treffern vibriert er.</p>
+              <h3>Mehrspieler (2–4)</h3>
+              <p>Jeder mit eigenem Controller – oder Tastatur teilen: links <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>, Driften <kbd>Leertaste</kbd>, Gegenstand <kbd>Q</kbd>; rechts Pfeiltasten, Driften <kbd>Shift</kbd>/<kbd>L</kbd>, Gegenstand <kbd>Enter</kbd>/<kbd>K</kbd>.</p>
             </div>
           </div>
           <h3>Gegenstände aus den Funkel-Kisten</h3>
@@ -247,6 +258,131 @@ export class Menus {
     this.el.querySelector(`.card[data-id="${this.settings.racer}"]`)?.focus({ preventScroll: true });
   }
 
+  // ------------------------------------------------------------------ Mehrspieler
+  /** Spieler im geteilten Bildschirm (null = Einzelspieler). */
+  get multi() { return this.party && this.party.length > 1; }
+  partyPlayers() { return this.multi ? this.party.map((p) => ({ id: p.racer, src: p.src })) : undefined; }
+
+  showLobby() {
+    this.ensureDemo();
+    this.party = this.party?.length ? this.party.map((p) => ({ ...p, ready: false })) : [];
+    this.renderLobby();
+  }
+
+  renderLobby() {
+    const r = this.ctx.renderer;
+    const slots = [0, 1, 2, 3].map((i) => {
+      const p = this.party[i];
+      if (!p) {
+        return `<div class="pslot empty"><div class="ptag" style="--pc:${PCOL[i]}">P${i + 1}</div>
+          <p>Zum Mitspielen drücken:</p>
+          <p><b>A</b> am Controller<br/><b>Leertaste</b> (Tastatur links)<br/><b>Enter</b> (Tastatur rechts)</p></div>`;
+      }
+      const d = RACER_BY_ID[p.racer];
+      return `<div class="pslot ${p.ready ? 'ready' : ''}" style="--pc:${PCOL[i]}">
+        <div class="ptag">P${i + 1}</div>
+        <img src="${racerIcon(r, d)}" alt="" />
+        <b style="color:${d.color}">◀ ${d.name} ▶</b>
+        <small>${deviceLabel(p.src)}</small>
+        <span class="pstate">${p.ready ? '✔ Bereit!' : 'A / Leertaste / Enter = bereit'}</span>
+      </div>`;
+    }).join('');
+    const n = this.party.length, allReady = n >= 2 && this.party.every((p) => p.ready);
+    this.show('lobby', `
+      <div class="mscreen">
+        ${this.head('Mehrspieler', '2–4 Spieler · geteilter Bildschirm')}
+        <div class="mbody"><div class="lobby">${slots}</div>
+          <p class="lobby-tip">${n < 2 ? 'Mindestens zwei Spieler: Controller per Bluetooth verbinden oder die Tastatur teilen (links WASD, rechts Pfeile).' : allReady ? 'Alle bereit – los geht\'s!' : 'Figur mit ◀ ▶ wählen, dann bestätigen.'}</p>
+          <div class="row"><button data-back>Zurück</button><button class="go" data-next ${allReady ? 'data-focus' : 'disabled'}>Weiter</button></div>
+        </div>
+      </div>${this.hints()}`, this.screen === 'lobby' ? 'full still' : 'full');
+    this.on('[data-back]', () => { this.party = null; this.showTitle(); });
+    this.on('[data-next]', () => this.showMpModes());
+  }
+
+  lobbyInput(meta) {
+    const ev = readJoin();
+    let changed = false;
+    const taken = (id, except) => this.party.some((p) => p !== except && p.racer === id);
+    const cycle = (p, d) => {
+      let k = RACERS.findIndex((x) => x.id === p.racer);
+      for (let n = 0; n < RACERS.length; n++) { k = (k + d + RACERS.length) % RACERS.length; if (!taken(RACERS[k].id, p)) break; }
+      p.racer = RACERS[k].id;
+    };
+    for (const { src, act } of ev) {
+      const p = this.party.find((x) => x.src === src);
+      if (!p) {
+        if (act === 'confirm' && this.party.length < 4) {
+          const free = RACERS.find((x) => !taken(x.id));
+          this.party.push({ src, racer: free.id, ready: false });
+          this.ctx.audio.sfx('oneup'); rumble(src, 0.4, 0.4, 150); changed = true;
+        }
+        continue;
+      }
+      if (act === 'left' && !p.ready) { cycle(p, -1); this.ctx.audio.sfx('select'); changed = true; }
+      if (act === 'right' && !p.ready) { cycle(p, 1); this.ctx.audio.sfx('select'); changed = true; }
+      if (act === 'confirm') {
+        if (!p.ready) { p.ready = true; this.ctx.audio.sfx('checkpoint'); changed = true; }
+        else if (this.party.length >= 2 && this.party.every((x) => x.ready)) { this.showMpModes(); return; }
+      }
+      if (act === 'back') {
+        if (p.ready) p.ready = false; else this.party.splice(this.party.indexOf(p), 1);
+        this.ctx.audio.sfx('pause'); changed = true;
+      }
+    }
+    if (meta.back && !this.party.length) { this.party = null; this.showTitle(); return; }
+    if (changed) this.renderLobby();
+  }
+
+  showMpModes() {
+    const card = (mode, ic, name, sub) => `<button class="card cup" data-mm="${mode}"><div class="trophy won">${ic}</div><span>${name}</span><small>${sub}</small></button>`;
+    this.show('mpmodes', `
+      <div class="mscreen">
+        ${this.head('Was wollt ihr fahren?', `${this.party.length} Spieler · ${CC[this.settings.cc].label}`)}
+        <div class="mbody"><div class="grid cups">
+          ${card('gp', '🏆', 'Grand Prix', 'Cup mit 4 Rennen und Punkten')}
+          ${card('single', '🏁', 'Rennen', 'eine Strecke frei wählen')}
+          ${card('ko', '💥', 'K.-o.-Tour', 'Rallye – die Letzten fliegen raus')}
+          ${card('free', '🗺️', 'Freie Fahrt', 'gemeinsam die Insel erkunden')}
+        </div>
+        <div class="row"><button data-back>Zurück</button></div></div>
+      </div>${this.hints()}`, 'full');
+    this.on('[data-mm]', (b) => { this.mode = b.dataset.mm; this.afterRacer(); });
+    this.on('[data-back]', () => this.showLobby());
+  }
+
+  /** Auf den Fernseher bringen: Anleitung je Gerät, Vollbild. */
+  showTV() {
+    const url = 'alex1977-code.github.io/LottiGretaKart';
+    this.show('tv', `
+      <div class="mscreen">
+        ${this.head('Auf den Fernseher', 'großes Bild · Controller · Mehrspieler')}
+        <div class="mbody"><div class="glass help">
+          <div class="cols">
+            <div>
+              <h3>📱 iPhone / iPad</h3>
+              <p>Apple TV oder AirPlay-Fernseher: <b>Kontrollzentrum → Bildschirmsynchronisierung</b>. Gerät quer halten.</p>
+              <h3>🤖 Android</h3>
+              <p>Chromecast / Smart-TV: <b>Schnelleinstellungen → Bildschirm übertragen</b> (auch „Smart View“).</p>
+              <h3>💻 Laptop / PC</h3>
+              <p><b>HDMI-Kabel</b> zum Fernseher – oder in Chrome: <b>Menü → Streamen → Tab</b>.</p>
+            </div>
+            <div>
+              <h3>📺 Smart-TV, Fire TV, Konsole mit Browser</h3>
+              <p>Direkt öffnen: <b>${url}</b> und Controller verbinden.</p>
+              <h3>🎮 Controller</h3>
+              <p>Xbox-, PlayStation- oder Switch-Controller per <b>Bluetooth</b> mit dem Gerät koppeln, auf dem das Spiel läuft. Bis zu vier Spieler.</p>
+              <h3>✈️ Im Flugzeug</h3>
+              <p>Spiel vorher einmal online öffnen – danach läuft es ohne Internet. Mehrspieler auf einem iPad/Laptop mit Controllern oder geteilter Tastatur.</p>
+            </div>
+          </div>
+          <div class="row"><button data-full>⛶ Vollbild</button><button class="go" data-back data-focus>Fertig</button></div>
+        </div></div>
+      </div>${this.hints()}`, 'full');
+    this.on('[data-full]', () => { try { (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen({ navigationUI: 'hide' }))?.catch?.(() => {}); } catch (_) { /* egal */ } });
+    this.on('[data-back]', () => this.showTitle());
+  }
+
   afterRacer() {
     if (this.mode === 'gp') this.showCups();
     else if (this.mode === 'ko') this.showTours();
@@ -267,7 +403,7 @@ export class Menus {
         <div class="row"><button data-back>Zurück</button></div></div>
       </div>${this.hints()}`, 'full');
     this.on('[data-tour]', (b) => this.startKO(KO_TOURS.find((t) => t.id === b.dataset.tour)));
-    this.on('[data-back]', () => this.showRacers());
+    this.on('[data-back]', () => (this.multi ? this.showMpModes() : this.showRacers()));
   }
 
   startKO(tour) {
@@ -275,9 +411,9 @@ export class Menus {
     this.lastKO = tour;
     this.hideAll();
     this.ctx.startRace({
-      mode: 'ko', tour, courseId: tour.stops[tour.stops.length - 1], roster: this.roster(s.racer, null, 12), playerId: s.racer, cc: s.cc, assist: s.assist,
+      mode: 'ko', tour, courseId: tour.stops[tour.stops.length - 1], roster: this.roster(s.racer, null, 12), playerId: this.leadId, players: this.partyPlayers(), cc: s.cc, assist: s.assist,
       onDone: (res) => this.showResults(res, { title: tour.name, ko: true }),
-      onEvent: (e, v) => this.onRaceEvent(e, v),
+      onEvent: (e, v, r) => this.onRaceEvent(e, v, r),
     });
     this.ctx.hud.message(tour.name, 2.6, 'intro');
   }
@@ -285,10 +421,11 @@ export class Menus {
   startFree() {
     const s = this.settings;
     this.hideAll();
-    const others = RACERS.filter((r) => r.id !== s.racer).sort(() => Math.random() - 0.5).slice(0, 7);
+    const ids = this.humanIds;
+    const others = RACERS.filter((r) => !ids.includes(r.id)).sort(() => Math.random() - 0.5).slice(0, 8 - ids.length);
     this.ctx.startRace({
-      mode: 'free', roster: [RACER_BY_ID[s.racer], ...others], playerId: s.racer, cc: s.cc, assist: false,
-      onEvent: (e, v) => this.onRaceEvent(e, v),
+      mode: 'free', roster: [...ids.map((id) => RACER_BY_ID[id]), ...others], playerId: this.leadId, players: this.partyPlayers(), cc: s.cc, assist: false,
+      onEvent: (e, v, r) => this.onRaceEvent(e, v, r),
     });
   }
 
@@ -330,7 +467,7 @@ export class Menus {
         <div class="row"><button data-back>Zurück</button></div></div>
       </div>${this.hints()}`, 'full');
     this.on('[data-cup]', (b) => this.startGP(CUPS.find((c) => c.id === b.dataset.cup)));
-    this.on('[data-back]', () => this.showRacers());
+    this.on('[data-back]', () => (this.multi ? this.showMpModes() : this.showRacers()));
   }
 
   showTracks() {
@@ -348,14 +485,20 @@ export class Menus {
         <div class="row"><button data-back>Zurück</button></div></div>
       </div>${this.hints()}`, 'full');
     this.on('[data-track]', (b) => this.startSingle(TRACK_BY_ID[b.dataset.track]));
-    this.on('[data-back]', () => this.showRacers());
+    this.on('[data-back]', () => (this.multi ? this.showMpModes() : this.showRacers()));
   }
 
   // ------------------------------------------------------------------ Rennen
+  /** Figuren der Menschen (Einzelspieler: die gewählte Figur). */
+  get humanIds() { return this.multi ? this.party.map((p) => p.racer) : [this.settings.racer]; }
+  get leadId() { return this.humanIds[0]; }
+
   roster(playerId, order = null, n = 12) {
     if (order) return order.map((id) => RACER_BY_ID[id]);
-    const others = RACERS.filter((r) => r.id !== playerId).sort(() => Math.random() - 0.5).slice(0, n - 1);
-    others.splice(Math.min(others.length, Math.round(n * 0.7)), 0, RACER_BY_ID[playerId]); // Spielerin startet weiter hinten
+    const ids = this.humanIds;
+    const others = RACERS.filter((r) => !ids.includes(r.id)).sort(() => Math.random() - 0.5).slice(0, n - ids.length);
+    // Menschen starten weiter hinten
+    ids.forEach((id, k) => others.splice(Math.min(others.length, Math.round(n * 0.62) + k), 0, RACER_BY_ID[id]));
     return others;
   }
 
@@ -365,9 +508,9 @@ export class Menus {
     const roster = trial ? [RACER_BY_ID[s.racer]] : this.roster(s.racer);
     this.hideAll();
     this.ctx.startRace({
-      mode: trial ? 'trial' : 'race', courseId: trackDef.id, roster, playerId: s.racer, cc: s.cc, laps: s.laps, assist: s.assist,
+      mode: trial ? 'trial' : 'race', courseId: trackDef.id, roster, playerId: this.leadId, players: trial ? undefined : this.partyPlayers(), cc: s.cc, laps: s.laps, assist: s.assist,
       onDone: (res) => this.showResults(res, { trackDef, single: true }),
-      onEvent: (e, v) => this.onRaceEvent(e, v),
+      onEvent: (e, v, r) => this.onRaceEvent(e, v, r),
     });
   }
 
@@ -383,20 +526,24 @@ export class Menus {
     this.hideAll();
     const from = g.index > 0 ? g.cup.tracks[g.index - 1] : null;
     const race = this.ctx.startRace({
-      mode: 'gp', courseId: trackDef.id, fromId: from, roster: this.roster(s.racer, g.order), playerId: s.racer, cc: s.cc,
+      mode: 'gp', courseId: trackDef.id, fromId: from, roster: this.roster(s.racer, g.order), playerId: this.leadId, players: this.partyPlayers(), cc: s.cc,
       laps: from ? Math.max(1, s.laps - 1) : s.laps, assist: s.assist,
       onDone: (res) => this.showResults(res, { trackDef, gp: true }),
-      onEvent: (e, v) => this.onRaceEvent(e, v),
+      onEvent: (e, v, r) => this.onRaceEvent(e, v, r),
     });
     this.ctx.hud.message(`${g.cup.name} · Rennen ${g.index + 1}/${g.cup.tracks.length}${from ? ' · mit Anfahrt' : ''}`, 2.6, 'intro');
     return race;
   }
 
-  onRaceEvent(e, v) {
+  onRaceEvent(e, v, r = null) {
     if (e === 'starcoin') {
       this.ctx.collected.add(v);
       try { localStorage.setItem(STAR_KEY, JSON.stringify([...this.ctx.collected])); } catch (_) { /* egal */ }
       return;
+    }
+    if (this.ctx.race?.split) {
+      if (e === 'out') this.ctx.race.hudOf(r)?.message(`Ausgeschieden – Platz ${v}`, 4);
+      return;   // Zieleinlauf zeigt das Rennen selbst in der jeweiligen Bildhälfte
     }
     if (e === 'out') { this.ctx.hud.message(`Ausgeschieden – Platz ${v}`, 4); return; }
     if (e === 'finish') {
@@ -410,16 +557,18 @@ export class Menus {
     const me = res.find((x) => x.isPlayer);
     // Bestzeit
     let record = false;
-    if (me && me.place && trackDef && !me.out) {
+    if (me && me.place && trackDef && !me.out && !this.multi) {
       const b = this.best[trackDef.id];
       if (!b || me.time < b.time) { this.best[trackDef.id] = { time: me.time, racer: me.id }; save(BEST_KEY, this.best); record = true; }
     }
+    const tag = (x) => (this.multi && x.isPlayer ? ` <em class="ptag" style="--pc:${PCOL[x.pi ?? 0]}">P${(x.pi ?? 0) + 1}</em>` : '');
+    if (this.multi) record = false;
     let rows;
     if (gp) {
       res.forEach((x, i) => { this.gp.points[x.id] += POINTS[i] ?? 0; });
-      rows = res.map((x, i) => `<tr class="${x.isPlayer ? 'me' : ''}"><td class="pl">${i + 1}.</td><td><img src="${racerIcon(r, RACER_BY_ID[x.id])}" alt="" /></td><td>${x.name}</td><td>${fmtTime(x.time)}</td><td class="pts">+${POINTS[i] ?? 0}</td><td class="tot">${this.gp.points[x.id]}</td></tr>`).join('');
+      rows = res.map((x, i) => `<tr class="${x.isPlayer ? 'me' : ''}"><td class="pl">${i + 1}.</td><td><img src="${racerIcon(r, RACER_BY_ID[x.id])}" alt="" /></td><td>${x.name}${tag(x)}</td><td>${fmtTime(x.time)}</td><td class="pts">+${POINTS[i] ?? 0}</td><td class="tot">${this.gp.points[x.id]}</td></tr>`).join('');
     } else {
-      rows = res.map((x, i) => `<tr class="${x.isPlayer ? 'me' : ''}"><td class="pl">${i + 1}.</td><td><img src="${racerIcon(r, RACER_BY_ID[x.id])}" alt="" /></td><td>${x.name}</td><td>${x.out ? 'ausgeschieden' : fmtTime(x.time)}</td><td>${!ko && isFinite(x.best) ? `Runde ${fmtTime(x.best)}` : ''}</td></tr>`).join('');
+      rows = res.map((x, i) => `<tr class="${x.isPlayer ? 'me' : ''}"><td class="pl">${i + 1}.</td><td><img src="${racerIcon(r, RACER_BY_ID[x.id])}" alt="" /></td><td>${x.name}${tag(x)}</td><td>${x.out ? 'ausgeschieden' : fmtTime(x.time)}</td><td>${!ko && isFinite(x.best) ? `Runde ${fmtTime(x.best)}` : ''}</td></tr>`).join('');
     }
     const last = gp && this.gp.index >= this.gp.cup.tracks.length - 1;
     this.show('results', `
@@ -451,17 +600,19 @@ export class Menus {
   showStandings() {
     const r = this.ctx.renderer, g = this.gp;
     const order = Object.keys(g.points).sort((a, b) => g.points[b] - g.points[a]);
-    const myPlace = order.indexOf(this.settings.racer) + 1;
+    const ids = this.humanIds;
+    const best = ids.reduce((a, id) => (order.indexOf(id) < order.indexOf(a) ? id : a), ids[0]);
+    const myPlace = order.indexOf(best) + 1;
     const cupKey = `${g.cup.id}:${this.settings.cc}`;
     if (myPlace <= 3 && (!this.cups[cupKey] || myPlace < this.cups[cupKey])) { this.cups[cupKey] = myPlace; save(CUP_KEY, this.cups); }
     const trophy = myPlace === 1 ? 'Gold-Pokal' : myPlace === 2 ? 'Silber-Pokal' : myPlace === 3 ? 'Bronze-Pokal' : null;
     this.ctx.setScene(new Ceremony(this.ctx, order.slice(0, 3).map((id) => RACER_BY_ID[id])));
-    const rows = order.map((id, i) => `<tr class="${id === this.settings.racer ? 'me' : ''}"><td class="pl">${i + 1}.</td><td><img src="${racerIcon(r, RACER_BY_ID[id])}" alt="" /></td><td>${RACER_BY_ID[id].name}</td><td class="tot">${g.points[id]}</td></tr>`).join('');
+    const rows = order.map((id, i) => `<tr class="${ids.includes(id) ? 'me' : ''}"><td class="pl">${i + 1}.</td><td><img src="${racerIcon(r, RACER_BY_ID[id])}" alt="" /></td><td>${RACER_BY_ID[id].name}</td><td class="tot">${g.points[id]}</td></tr>`).join('');
     this.show('standings', `
       <div class="mscreen standings">
         <div class="glass">
           <h2>${g.cup.name} – Gesamtwertung</h2>
-          ${trophy ? `<p class="record big">🏆 ${trophy} für ${RACER_BY_ID[this.settings.racer].name}!</p>` : `<p style="text-align:center;font-weight:800">Platz ${myPlace} – beim nächsten Mal klappt's!</p>`}
+          ${trophy ? `<p class="record big">🏆 ${trophy} für ${RACER_BY_ID[best].name}!</p>` : `<p style="text-align:center;font-weight:800">Platz ${myPlace} – beim nächsten Mal klappt's!</p>`}
           <table class="compact">${rows}</table>
           <div class="row"><button class="go" data-menu data-focus>Zum Menü</button></div>
         </div>

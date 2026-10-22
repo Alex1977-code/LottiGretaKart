@@ -32,6 +32,8 @@ const CASES = [
   { id: 'gp-gipfel-wald', q: 'mode=gp&from=gipfel&race=herbstwald&laps=1&racer=bulle', rows: 12 },
   { id: 'gp-wald-burg', q: 'mode=gp&from=herbstwald&race=burg&laps=1&racer=greta', rows: 12 },
   { id: 'ko-kueste', q: 'mode=ko&tour=kueste&racer=lotti', rows: 12, ko: true },
+  { id: 'mp-2', q: 'race=strand&laps=1&players=lotti:kb1,greta:kb2', rows: 12 },
+  { id: 'mp-4-gp', q: 'mode=gp&from=autobahn&race=gipfel&laps=1&players=pflaume:pad0,bulle:pad1,kobold:kb1,baron:kb2', rows: 12 },
   { id: 'ko-kurz', q: 'mode=ko&tour=kurz&race=kraxelwiese&racer=lotti', rows: 12, ko: true },
 ].filter((c) => !only || c.id === only);
 const browser = await pw.chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
@@ -58,6 +60,8 @@ for (const c of CASES) {
     r.items.giveItem = (x) => { items++; return origGive(x); };
     // Die Spielerin fährt mit derselben KI wie die Gegner (Eingaben über window.__testInput)
     ai.initAI(p, 0.8, Math.random);
+    // weitere Menschen (geteilter Bildschirm) fahren per Autopilot
+    for (const h of r.humans ?? []) if (h !== p) { ai.initAI(h, 0.8, Math.random); h.autopilot = true; }
     let steps = 0;
     while (r.state !== 'done' && steps < 60 * 400) {
       window.__testInput = ai.aiInput(p, r, 1 / 60);

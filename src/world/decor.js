@@ -558,13 +558,16 @@ export class Decor {
   }
 
   update(dt, t, cam = null) {
-    if (cam && this.nearTiles) for (const n of this.nearTiles) n.im.visible = (n.x - cam.x) ** 2 + (n.z - cam.z) ** 2 < n.r * n.r;
+    // cam: Kamera-Mittelpunkt oder Liste davon (geteilter Bildschirm) – sichtbar, was einem davon nah ist
+    const cams = Array.isArray(cam) ? cam : cam ? [cam] : null;
+    const d2 = (x, z) => { let d = Infinity; for (const c of cams) d = Math.min(d, (x - c.x) ** 2 + (z - c.z) ** 2); return d; };
+    if (cams && this.nearTiles) for (const n of this.nearTiles) n.im.visible = d2(n.x, n.z) < n.r * n.r;
     if (this.beams) this.beams.forEach((b, i) => { b.rotation.y = (i / this.beams.length) * Math.PI * 2 + Math.sin(t * 0.4 + i) * 0.5; });
     for (const e of this.models) {
       // ferne Modelle ausblenden und nicht animieren
-      if (cam) {
-        const p = e.model.root.position, d2 = (p.x - cam.x) ** 2 + (p.z - cam.z) ** 2;
-        const vis = d2 < 230 * 230;
+      if (cams) {
+        const p = e.model.root.position;
+        const vis = d2(p.x, p.z) < 230 * 230;
         if (e.model.root.visible !== vis) e.model.root.visible = vis;
         if (!vis) continue;
       }

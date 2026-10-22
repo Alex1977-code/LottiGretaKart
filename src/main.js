@@ -10,7 +10,7 @@ import { audio } from './game/audio.js';
 import { Hud } from './ui/hud.js';
 import { Menus } from './ui/menus.js';
 import { TouchControls } from './ui/touch.js';
-import { readMeta, isTouch } from './ui/input.js';
+import { readMeta, isTouch, endFrame } from './ui/input.js';
 import { Race } from './game/Race.js';
 import { aiInput, initAI } from './game/ai.js';
 import { RACERS, RACER_BY_ID } from './game/racers.js';
@@ -91,9 +91,11 @@ ctx.startRace = (o) => {
   ctx.race = race;
   ctx.paused = false;
   const demo = o.mode === 'demo';
-  ctx.hud.show(!demo);
-  ctx.touch.show(!demo && isTouch());
-  document.body.classList.toggle('touch-on', !demo && isTouch());
+  // Touch-Knöpfe nur, wenn ein Spieler per Touch fährt (Einzelspieler am Handy)
+  const touchOn = !demo && isTouch() && race.humans.some((h) => h.src === 'auto' || h.src === 'touch');
+  ctx.hud.show(!demo && !race.split);
+  ctx.touch.show(touchOn);
+  document.body.classList.toggle('touch-on', touchOn && !race.split);
   ctx.touch.onStartTap = () => race.startTap();
   return race;
 };
@@ -158,15 +160,18 @@ async function boot() {
     const mode = params.get('mode') ?? (params.get('demo') === '1' ? 'demo' : 'race');
     const trackDef = TRACK_BY_ID[params.get('race')] ?? Object.values(TRACK_BY_ID)[0];
     const playerId = params.get('racer') ?? 'lotti';
+    // Mehrspieler zum Testen: ?players=lotti:kb1,greta:kb2
+    const players = params.get('players')?.split(',').map((x) => { const [id, src] = x.split(':'); return { id, src: src ?? 'auto' }; });
     const n = Number(params.get('n') ?? 12);
-    const roster = mode === 'trial' ? [RACER_BY_ID[playerId]] : [...RACERS].slice(0, n).sort((a, b) => (a.id === playerId ? 1 : 0) - (b.id === playerId ? 1 : 0));
-    if (!roster.some((r) => r.id === playerId) && mode !== 'demo') roster.push(RACER_BY_ID[playerId]);
+    const humanIds = players ? players.map((p) => p.id) : [playerId];
+    const roster = mode === 'trial' ? [RACER_BY_ID[playerId]] : [...RACERS].slice(0, n).sort((a, b) => (humanIds.includes(a.id) ? 1 : 0) - (humanIds.includes(b.id) ? 1 : 0));
+    for (const id of humanIds) if (!roster.some((r) => r.id === id) && mode !== 'demo') roster.push(RACER_BY_ID[id]);
     const tour = KO_TOURS.find((t) => t.id === params.get('tour')) ?? KO_TOURS[0];
     ctx.startRace({
-      mode, courseId: trackDef.id, fromId: params.get('from'), tour, roster, playerId, cc: Number(params.get('cc') ?? 100), laps: Number(params.get('laps') ?? 3),
+      mode, courseId: trackDef.id, fromId: params.get('from'), tour, roster, playerId, players, cc: Number(params.get('cc') ?? 100), laps: Number(params.get('laps') ?? 3),
       seed: 7, assist: params.get('assist') === '1',
       onDone: (res) => menus.showResults(res, { trackDef, single: mode !== 'ko', ko: mode === 'ko', title: mode === 'ko' ? tour.name : '' }),
-      onEvent: (e, v) => menus.onRaceEvent(e, v),
+      onEvent: (e, v, r) => menus.onRaceEvent(e, v, r),
     });
     menus.hideAll();
   } else {
@@ -186,6 +191,7 @@ function frame(now) {
   if (meta.mute) menus.toggleMute();
   menus.input(meta);
   if (ctx.race && !ctx.paused) ctx.race.update(dt);
+  endFrame();
   if (ctx.race) ctx.race.render(renderer);
   else menus.render(renderer, dt);
   // Bildrate schwach? Auflösung stufenweise senken

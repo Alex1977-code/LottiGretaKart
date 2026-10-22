@@ -51,7 +51,18 @@ dunkle Höhle, Zirkus-Scheinwerfer, Abendrot über der Stadt, Strand, Schnee, Bu
 - **Einzelrennen** und **Zeitfahren** (mit drei Turbo-Beeren, Bestzeiten werden gespeichert).
 - **Freie Fahrt**: die ganze Insel erkunden und 36 versteckte Sternmünzen finden (werden gespeichert).
 
+- **Mehrspieler** für 2–4 Spieler im geteilten Bildschirm (zwei Spieler oben/unten, drei oder vier in vier Feldern):
+  Beitreten in der Lobby mit A am Controller, Leertaste (Tastatur links) oder Enter (Tastatur rechts); jeder wählt
+  seine Figur. Grand Prix, Rennen, K.-o.-Tour und Freie Fahrt gehen zusammen. Läuft komplett auf einem Gerät –
+  ohne Internet, also auch im Flugzeug.
+
 Klassen: Gemütlich (50 ccm), Flott (100 ccm), Rasant (150 ccm).
+
+**Offline / Flugzeug**: Beim ersten Besuch speichert der Service Worker das ganze Spiel (inklusive Schriften); danach
+läuft es ohne Netz. Auf dem Handy am besten „Zum Home-Bildschirm“ hinzufügen.
+
+**Auf den Fernseher**: iPhone/iPad per AirPlay-Bildschirmsynchronisierung, Android per „Bildschirm übertragen“, Laptop
+per HDMI oder Chrome „Streamen“, oder den Link direkt im Browser von Smart-TV/Fire TV öffnen. Im Spiel: „📺 Auf den TV“.
 
 **Fahrtechniken**: Driften mit Mini-Turbo, Startturbo, Trick-Turbo auf Schanzen, **Aufladesprung** (Drift-Taste
 geradeaus halten und loslassen), **Grind-Schienen** (draufspringen und entlanggleiten – eine führt quer über den
@@ -70,15 +81,18 @@ Wer vorn liegt, bekommt eher Verteidigung, wer hinten liegt, eher starke Gegenst
 
 ## Steuerung
 
-| | Tastatur | Gamepad | Handy (quer) |
+| | Tastatur | Controller (Xbox, PlayStation, Switch) | Handy (quer) |
 | --- | --- | --- | --- |
 | Lenken | ← → / A D | linker Stick | Daumen links nach links/rechts ziehen |
-| Gas | ↑ / W | A | automatisch (in den Einstellungen abschaltbar) |
+| Gas | ↑ / W | A oder RT | automatisch (in den Einstellungen abschaltbar) |
 | Bremse / rückwärts | ↓ / S | B | Knopf **BREMSE** |
 | Hüpfer & Driften | Leertaste / Shift (geradeaus halten = Aufladesprung) | R | Knopf **DRIFT** halten |
-| Gegenstand | X / E / Strg | L | Knopf **★** |
+| Gegenstand | X / E / Strg | L / LT | Knopf **★** |
 | Pause | Esc / P | Start | – (pausiert automatisch, wenn die App in den Hintergrund geht) |
 | Ton | M | | Knopf im Menü |
+
+Im Mehrspieler teilen sich zwei Spieler die Tastatur: links WASD + Leertaste (Driften) + Q (Gegenstand), rechts
+Pfeiltasten + Shift rechts/L (Driften) + Enter/K (Gegenstand).
 
 ## Entwicklung
 
@@ -91,7 +105,7 @@ node tools/check-tracks.mjs   # Streckengeometrie prüfen (Banden dürfen sich n
 ```
 
 URL-Parameter für Tests: `?race=<strecke>&racer=<id>&cc=50|100|150&laps=n`, `?mode=gp&from=<strecke>` (mit Anfahrt),
-`?mode=ko&tour=insel|kurz`, `?mode=free`, `?quality=0|1|2`. `node tools/draw-world.mjs` zeichnet die Inselkarte.
+`?mode=ko&tour=insel|kurz|kueste`, `?mode=free`, `?quality=1|2|3`, Mehrspieler `?players=lotti:kb1,greta:pad0`. `node tools/draw-world.mjs` zeichnet die Inselkarte.
 
 ### Aufbau
 

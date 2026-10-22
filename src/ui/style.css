@@ -80,6 +80,17 @@ html, body {
 @keyframes wobble { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
 @keyframes blink { 50% { opacity: 0.3; } }
 
+/* ---------------------------------------------------------------- Geteilter Bildschirm (Mehrspieler) */
+.splitviews { position: absolute; inset: 0; pointer-events: none; }
+.hudview { position: absolute; overflow: hidden; box-shadow: inset 0 0 0 2px rgba(10, 20, 60, 0.9); }
+.hudview .hud { display: block; zoom: 0.72; }
+.hudview.n3 .hud, .hudview.n4 .hud { zoom: 0.58; }
+.hudview.n3 .minimap, .hudview.n4 .minimap { display: none; }
+.hudview .hud::before { position: absolute; right: 12px; top: 10px; font-family: var(--font-title); font-size: 30px; color: #fff; padding: 0 12px; border-radius: 10px; text-shadow: 0 2px 0 rgba(0,0,0,0.35); }
+.hud.p1::before { content: 'P1'; background: #e60012; } .hud.p2::before { content: 'P2'; background: #1e6cff; }
+.hud.p3::before { content: 'P3'; background: #22b03c; } .hud.p4::before { content: 'P4'; background: #ffb800; }
+.hudview .hud-item { top: 6px; }
+
 /* ---------------------------------------------------------------- Menüs
    Stil wie die aktuellen Mario-Kart-Menüs: links ein schräges, gestreiftes Band mit dicken, schrägen Menübalken,
    rechts bleibt die 3D-Insel (Demo-Rennen) sichtbar; Kopfzeile als Reiter, unten Tasten-Hinweise. */
@@ -102,6 +113,7 @@ html, body {
 .menus.dim::before, .menus.results::before { display: none; }
 @keyframes stripes { to { background-position: 400px 0, 0 0; } }
 .mscreen { position: absolute; inset: 0; display: flex; flex-direction: column; padding: max(14px, env(safe-area-inset-top)) max(22px, env(safe-area-inset-right)) 46px max(22px, env(safe-area-inset-left)); animation: slidein 0.28s cubic-bezier(.2,.9,.3,1.2); }
+.menus.still .mscreen { animation: none; }
 @keyframes slidein { from { transform: translateX(-40px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 /* Kopfzeile: schräger Reiter mit Titel und Unterzeile */
@@ -177,7 +189,9 @@ body.touch-ui .mscreen { padding-bottom: 14px; }
   display: flex; align-items: center; gap: 14px; text-align: left; padding: 7px 18px 7px 8px; width: 100%; max-width: 470px;
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.96), rgba(226, 236, 252, 0.92)); border-radius: 14px;
 }
-.menus .mitem:nth-child(2) { margin-left: 12px; } .menus .mitem:nth-child(3) { margin-left: 24px; } .menus .mitem:nth-child(4) { margin-left: 36px; } .menus .mitem:nth-child(5) { margin-left: 48px; }
+.menus .mitem:nth-child(2) { margin-left: 9px; } .menus .mitem:nth-child(3) { margin-left: 18px; } .menus .mitem:nth-child(4) { margin-left: 27px; } .menus .mitem:nth-child(5) { margin-left: 36px; } .menus .mitem:nth-child(6) { margin-left: 45px; }
+.mtools button { white-space: nowrap; }
+.mtools { flex-wrap: wrap; }
 .menus .mitem .ic { flex: none; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-style: normal;
   background: linear-gradient(180deg, var(--ic, #3d8bff), color-mix(in srgb, var(--ic, #3d8bff) 70%, #000)); box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.2); transform: skewX(10deg); }
 .menus .mitem > span { display: flex; flex-direction: column; transform: skewX(10deg); }
@@ -235,6 +249,24 @@ body.touch-ui .mscreen { padding-bottom: 14px; }
 .stat i u { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #ffb800, #ffe94a); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.12); }
 .profile .row { margin-top: auto; padding-top: 10px; }
 
+/* Mehrspieler-Lobby */
+.lobby { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.pslot { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; padding: 34px 10px 12px; min-height: 230px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(226, 236, 252, 0.93)); border: 4px solid var(--pc, #fff); border-radius: 18px;
+  box-shadow: 0 5px 0 rgba(6, 20, 70, 0.5); }
+.pslot.empty { background: rgba(255, 255, 255, 0.18); border: 3px dashed rgba(255, 255, 255, 0.7); color: #fff; font-weight: 800; font-size: 13px; justify-content: center; }
+.pslot.empty p { margin: 2px 0; } .pslot.empty b { color: var(--mk-yellow); }
+.pslot.ready { box-shadow: 0 5px 0 rgba(6, 20, 70, 0.5), 0 0 0 3px #fff, 0 0 26px var(--pc); }
+.pslot img { width: 120px; height: 120px; object-fit: contain; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.25)); }
+.pslot b { font-family: var(--font-title); font-weight: 400; font-size: 20px; }
+.pslot small { font-weight: 800; font-size: 12px; color: #45507a; }
+.pslot .pstate { font-weight: 900; font-size: 12px; color: #1c9a34; }
+.pslot:not(.ready) .pstate { color: #8a6a00; }
+.ptag { position: absolute; left: 10px; top: 6px; font-family: var(--font-title); font-size: 20px; color: #fff; background: var(--pc, #e60012); padding: 0 10px; border-radius: 8px; }
+em.ptag { position: static; font-style: normal; font-size: 13px; padding: 0 6px; margin-left: 6px; vertical-align: middle; }
+.lobby-tip { text-align: center; color: #fff; font-weight: 800; margin: 12px 0 0; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
+.menus button[disabled] { opacity: 0.45; filter: grayscale(0.6); }
+
 /* Einstellungen */
 .setlist { display: grid; grid-template-columns: auto 1fr; gap: 10px 18px; align-items: center; }
 .setlist h3 { margin: 0; font-family: var(--font-title); font-weight: 400; font-size: 20px; color: var(--ink); text-align: right; }
@@ -278,7 +310,10 @@ kbd { display: inline-block; background: #fff; border: 2px solid var(--ink); bor
   .logo3d { font-size: 30px; margin: 6px 0 8px 6px; }
   #loading .logo3d { font-size: 40px; }
   .mlist { gap: 5px; }
-  .menus .mitem { padding: 2px 12px 2px 4px; max-width: 350px; }
+  .menus .mitem { padding: 3px 10px 3px 4px; max-width: none; margin-left: 0 !important; }
+  .mside { width: min(64vw, 520px); }
+  .mlist { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+  .menus .mitem small { display: none; }
   .menus .mitem .ic { width: 28px; height: 28px; font-size: 16px; border-radius: 8px; }
   .mlist { gap: 4px; }
   .menus .mitem b { font-size: 17px; } .menus .mitem small { font-size: 10px; }
@@ -291,6 +326,10 @@ kbd { display: inline-block; background: #fff; border: 2px solid var(--ink); bor
   .menus .card span { font-size: 11px; padding: 3px 4px 4px; }
   .menus .card small { font-size: 10px; }
   .menus .card.track small { display: none; }
+  .pslot { min-height: 0; padding: 26px 6px 6px; }
+  .pslot img { width: 64px; height: 64px; }
+  .pslot b { font-size: 14px; } .pslot small, .pslot .pstate, .pslot.empty { font-size: 10px; }
+  .lobby-tip { font-size: 12px; margin-top: 6px; }
   .grid.cups { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .trophy { font-size: 36px; }
   .profile img { width: 120px; margin-top: -6px; }

@@ -367,13 +367,13 @@ export class Racer {
   // ------------------------------------------------------------------ Darstellung
   syncVisual(dt, t) {
     // weit entfernte Karts nicht zeichnen und nicht animieren (Nebel verdeckt sie ohnehin)
-    const f = this.race.focus;
-    if (f && !this.isPlayer) {
-      const far = (this.pos.x - f.x) ** 2 + (this.pos.z - f.z) ** 2 > 260 * 260;
+    if (this.race.focus && !this.isPlayer) {
+      const d2 = this.race.focusDist2(this.pos.x, this.pos.z);
+      const far = d2 > 260 * 260;
       this.root.visible = !far;
       if (far) return;
       // Schatten nur nah an der Kamera (der Schattenbereich ist ohnehin klein)
-      const near = (this.pos.x - f.x) ** 2 + (this.pos.z - f.z) ** 2 < 45 * 45;
+      const near = d2 < 45 * 45;
       if (near !== this.castsShadow) { this.castsShadow = near; this.root.traverse((o) => { if (o.isMesh) o.castShadow = near; }); }
     }
     const fx = Math.cos(this.yaw), fz = -Math.sin(this.yaw);

@@ -118,7 +118,7 @@ export class Hazards {
       const track = h.track;
       // weit weg: nicht simulieren, nicht zeichnen
       const hp = h.p ?? h.base ?? h.pos;
-      if (focus && hp && (hp.x - focus.x) ** 2 + (hp.z - focus.z) ** 2 > 260 * 260) { h.holder.visible = false; continue; }
+      if (focus && hp && race.focusDist2(hp.x, hp.z) > 260 * 260) { h.holder.visible = false; continue; }
       if (h.kind !== 'walker' && h.kind !== 'brummer') h.holder.visible = true;
       else if (!(h.down > 0)) h.holder.visible = true;
       h.t += dt;

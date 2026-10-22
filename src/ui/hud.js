@@ -115,9 +115,10 @@ export class Hud {
     void this.countEl.offsetWidth;
   }
 
-  update(dt, race) {
-    const p = race.player;
+  /** p = der Fahrer dieser Anzeige (im geteilten Bildschirm je Spieler eine Anzeige). */
+  update(dt, race, p = race.player) {
     if (!p) return;
+    this.me = p;
     // Runde / Anfahrt / Checkpoint / Sternmünzen
     let lapHtml;
     if (race.free) {
@@ -190,12 +191,14 @@ export class Hud {
       const [x, y] = this.mt.map(sc.x, sc.z);
       c.fillStyle = '#8fe060'; c.beginPath(); c.arc(x, y, 2.5, 0, Math.PI * 2); c.fill();
     }
-    // Fahrer (Spielerin zuletzt, größer)
-    const list = race.racers.filter((r) => !r.out).sort((a, b) => (a.isPlayer ? 1 : 0) - (b.isPlayer ? 1 : 0));
+    // Fahrer (eigener zuletzt und am größten, andere Menschen mittel)
+    const me = this.me ?? race.player;
+    const rank = (r) => (r === me ? 2 : r.isPlayer ? 1 : 0);
+    const list = race.racers.filter((r) => !r.out).sort((a, b) => rank(a) - rank(b));
     for (const r of list) {
       const [x, y] = this.mt.map(r.pos.x, r.pos.z);
-      const rad = r.isPlayer ? 8 : 5.5;
-      c.beginPath(); c.arc(x, y, rad + 2, 0, Math.PI * 2); c.fillStyle = r.isPlayer ? '#fff' : 'rgba(20,16,40,0.8)'; c.fill();
+      const rad = r === me ? 8 : r.isPlayer ? 6.5 : 5.5;
+      c.beginPath(); c.arc(x, y, rad + 2, 0, Math.PI * 2); c.fillStyle = r === me ? '#fff' : r.isPlayer ? '#ffd400' : 'rgba(20,16,40,0.8)'; c.fill();
       c.beginPath(); c.arc(x, y, rad, 0, Math.PI * 2); c.fillStyle = this.colors[r.id] ?? '#fff'; c.fill();
     }
   }

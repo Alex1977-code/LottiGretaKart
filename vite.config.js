@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { resolve, join, relative } from 'node:path';
 
-// Trägt eine Build-Kennung in den Service Worker ein (neuer Cache pro Deployment).
+// Trägt eine Build-Kennung und die Liste aller Dateien in den Service Worker ein: beim ersten Besuch wird alles
+// vorab gespeichert, danach läuft das Spiel komplett offline (Flugmodus).
 function swBuildStamp() {
   return {
     name: 'sw-build-stamp',
@@ -10,7 +11,11 @@ function swBuildStamp() {
       const file = resolve('dist/sw.js');
       if (!existsSync(file)) return;
       const stamp = Date.now().toString(36);
-      writeFileSync(file, readFileSync(file, 'utf8').replace('__BUILD__', stamp));
+      const files = [];
+      const walk = (d) => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else files.push(relative(resolve('dist'), p).split('\\').join('/')); } };
+      walk(resolve('dist'));
+      const list = ['./', ...files.filter((f) => f !== 'sw.js').map((f) => `./${f}`)];
+      writeFileSync(file, readFileSync(file, 'utf8').replace('__BUILD__', stamp).replace('[/*__ASSETS__*/]', JSON.stringify(list)));
     },
   };
 }
