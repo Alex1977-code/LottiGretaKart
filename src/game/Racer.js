@@ -134,6 +134,7 @@ export class Racer {
     this.surface = surface;
     const offroad = surface === 'off' && !this.air && !this.grind;
     const onWater = (surface === 'water' || surface === 'sea') && !this.air;
+    if (surface === 'lava' && !this.air) { this.speed *= Math.exp(-3 * dt); if (!this.lavaHit) { this.lavaHit = true; this.hit('tumble', null); } } else this.lavaHit = false;
     this.offroad = offroad;
     this.onWater = onWater;
 
@@ -294,7 +295,7 @@ export class Racer {
     }
 
     // --- Gegenstand
-    if (input.item && !this.prevInput.item && !disabled) this.race.items.use(this);
+    if (input.item && !this.prevInput.item && !disabled) this.race.useItem(this);
     this.prevInput.drift = !!input.drift;
     this.prevInput.item = !!input.item;
   }

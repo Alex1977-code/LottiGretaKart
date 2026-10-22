@@ -11,6 +11,9 @@
     "test": "npm run build && node tests/race.mjs"
   },
   "dependencies": {
+    "jsqr": "^1.4.0",
+    "peerjs": "^1.5.5",
+    "qrcode-generator": "^2.0.4",
     "three": "^0.186.1"
   },
   "devDependencies": {

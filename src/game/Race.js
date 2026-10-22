@@ -16,6 +16,7 @@ import { RacePath } from './RacePath.js';
 import { initAI, aiInput } from './ai.js';
 import { readDrive, touch, rumble } from '../ui/input.js';
 import { Hud } from '../ui/hud.js';
+import { hostSnapshot, applyRemote, guestState, guestApply, guestPuppets } from '../net/netrace.js';
 import { SPARK_COLORS } from './kartModel.js';
 import { getModel } from '../lgw/course/models/index.js';
 import { getTheme } from '../world/themes.js';
@@ -74,6 +75,13 @@ export class Race {
     this.onDone = o.onDone ?? null;
     this.onEvent = o.onEvent ?? null;
     this.tour = o.tour ?? null;
+    // Mehrere Handys: Gastgeber rechnet, Gäste fahren ihr eigenes Kart und zeigen die anderen nach Schnappschüssen
+    this.net = o.net ?? null;
+    this.netHost = this.net?.isHost === true;
+    this.netGuest = !!this.net && !this.netHost;
+    this.netEvents = [];
+    this.netProj = new Map();
+    this.netAcc = 0;
 
     // Rennpfad
     const w = this.world;
@@ -109,13 +117,20 @@ export class Race {
       const isPlayer = pi >= 0;
       const r = new Racer(this, def, slot, isPlayer);
       if (!isPlayer) initAI(r, clamp(this.ccDef.skill + (this.rnd() - 0.5) * 0.3, 0.1, 1), this.rnd);
-      else { r.pi = pi; r.src = players[pi].src ?? 'auto'; this.humans[pi] = r; }
+      else {
+        r.pi = pi; r.src = players[pi].src ?? 'auto'; this.humans[pi] = r;
+        if (r.src.startsWith('net:')) { r.remote = true; r.netId = r.src.slice(4); }
+      }
+      if (this.netGuest && !isPlayer) { r.puppet = true; r.ai = null; }
       r.lap = 1;
       this.racers.push(r);
     });
     this.humans = this.humans.filter(Boolean);
-    this.player = this.humans[0] ?? null;
-    this.split = this.humans.length > 1;
+    // Menschen an diesem Gerät (nur sie bekommen Bild und Anzeige); Gäste anderer Handys fahren „remote“
+    this.locals = this.humans.filter((h) => !h.remote);
+    this.locals.forEach((h, k) => { h.pi = k; });
+    this.player = this.locals[0] ?? null;
+    this.split = this.locals.length > 1;
     if (this.free) this.setupFree(); else this.grid();
     if (this.trial) for (const h of this.humans) h.item = { id: 'beere3', charges: 3 };
     // Start-Ampel neben der Startlinie
@@ -153,7 +168,7 @@ export class Race {
     this.app.hud?.show(false);
     const mk = (racer) => {
       const el = document.createElement('div');
-      el.className = `hudview n${this.humans.length}`;
+      el.className = `hudview n${this.locals.length}`;
       this.splitRoot.appendChild(el);
       const cam = new THREE.PerspectiveCamera(64, 1, 0.1, this.camera.far);
       const cs = { pos: new THREE.Vector3(), look: new THREE.Vector3(), yaw: 0, fov: 64 };
@@ -161,8 +176,8 @@ export class Race {
       if (racer) { hud = new Hud(el, this.view.renderer); hud.setupMap(this); hud.show(true); hud.el.classList.add(`p${racer.pi + 1}`); }
       return { racer, cam, cs, hud, el, shake: 0 };
     };
-    this.views = this.humans.map((h) => mk(h));
-    if (this.humans.length === 3) this.views.push(mk(null));
+    this.views = this.locals.map((h) => mk(h));
+    if (this.locals.length === 3) this.views.push(mk(null));
   }
 
   /** Ansicht eines Fahrers (Mensch) oder null. */
@@ -258,7 +273,7 @@ export class Race {
         r.cp++;
         cp.passed = (cp.passed ?? 0) + 1;
         if (r.isPlayer) { this.hudOf(r)?.message(`Checkpoint: ${cp.name}`, 1.6, 'good'); this.audio.sfx('checkpoint'); }
-        if (cp.passed >= cp.survivors && !cp.closed) this.closeCheckpoint(cp, r.cp);
+        if (cp.passed >= cp.survivors && !cp.closed && !this.netGuest) this.closeCheckpoint(cp, r.cp);
       }
     }
     if (r.progress >= tr.finishS) this.finishRacer(r);
@@ -387,7 +402,7 @@ export class Race {
   /** Touch: Tippen während des Countdowns zählt als Gasgeben für den Startturbo. */
   startTap() {
     if (this.state !== 'countdown') return;
-    for (const h of this.humans) {
+    for (const h of this.locals) {
       if ((h.src !== 'touch' && h.src !== 'auto') || h.startGas) continue;
       h.startGas = this.cdPhase === 2 ? 2 : this.cdPhase === 1 ? 1 : 0;
     }
@@ -407,13 +422,17 @@ export class Race {
 
     for (const r of this.racers) {
       if (r.out) continue;
+      if (r.remote) { if (running || this.state === 'countdown') applyRemote(this, r, dt); this.netTimers(r, dt); continue; }
+      if (r.puppet) continue;
       let inp;
       if (!running) inp = { steer: 0, throttle: 0, brake: 0 };
       else if (r.isPlayer && !r.finished && !r.autopilot) inp = this.assist ? this.steerAssist(r, readDrive(r.src)) : readDrive(r.src);   // autopilot: Tests
       else inp = aiInput(r, this, dt);
       if (r.finished && !r.isPlayer) inp.item = false;
       r.update(dt, inp);
+      r.lastInp = inp;
     }
+    if (this.netGuest) guestPuppets(this, dt);
     if (running) {
       this.rescue(dt);
       this.collide();
@@ -421,7 +440,7 @@ export class Race {
       if (this.free) this.updateFree(dt, t);
     } else this.items.update(0, t);
     this.hazards.update(running ? dt : 0, t);
-    this.rank();
+    if (!this.netGuest) this.rank();   // Gast: Plätze kommen vom Gastgeber
     this.emit(dt, t);
     for (const r of this.racers) if (!r.out) r.syncVisual(dt, t);
     this.trafficLight?.model.update(dt, this.trafficLight.state);
@@ -436,12 +455,13 @@ export class Race {
       const p = this.player;
       this.audio.setMotor(this.state !== 'intro' && !p.out, p.speed, p.phys.top, p.boostT > 0 ? 1 : 0, p.offroad);
     }
-    if (this.state === 'finish') {
+    if (this.state === 'finish' && !this.netGuest) {
       const allDone = this.racers.every((r) => r.finished);
       if (this.stateT > (this.ko && this.humans.every((h) => h.out) ? 5 : 7) || (allDone && this.stateT > 4)) { this.state = 'done'; this.complete(); }
     }
     this.updateCamera(dt, t);
     this.updateAmbience(dt);
+    this.netTick(dt);
     if (!this.demo) for (const v of this.views) if (v.hud && v.racer) v.hud.update(dt, this, v.racer);
   }
 
@@ -467,7 +487,7 @@ export class Race {
         }
       }
     }
-    for (const h of this.humans) {
+    for (const h of this.locals) {
       if (h.src === 'touch' || (h.src === 'auto' && touch.active)) continue;
       const gas = readDrive(h.src).throttle > 0;
       if (gas && !h.startGas) h.startGas = phase === 2 ? 2 : phase === 3 ? 3 : phase === 1 ? 1 : 0;
@@ -506,7 +526,7 @@ export class Race {
     const f = this.focus ?? this.camera.position;
     const ws = this.world.ambienceAt(f.x, f.z).map((x) => ({ theme: getTheme(x.theme), w: x.w, name: x.theme }));
     this.app.sky.blend(ws);
-    const dark = ws.reduce((a, x) => a + ((x.name === 'cave' || x.name === 'circus') ? x.w : x.name === 'castle' ? x.w * 0.6 : 0), 0);
+    const dark = ws.reduce((a, x) => a + ((x.name === 'cave' || x.name === 'circus') ? x.w : x.name === 'castle' ? x.w * 0.6 : x.name === 'volcano' ? x.w * 0.35 : 0), 0);
     this.playerLight.intensity = 26 * dark;
     // in Höhle und Zelt kaum Studio-Reflexionen
     if (this.app.scene.environment) this.app.scene.environmentIntensity = (this.app.envIntensity ?? 0.42) * (1 - 0.7 * Math.min(1, dark));
@@ -525,6 +545,8 @@ export class Race {
     }
     const order = [...fin, ...[...this.outOrder].reverse()];
     this.audio.stopMotor();
+    const results = order.map((r, i) => ({ id: r.id, name: r.name, place: i + 1, time: r.finishTime, isPlayer: r.isPlayer, pi: r.pi, out: !!r.out, best: Math.min(...r.lapTimes, Infinity) }));
+    if (this.netHost) this.net.raceDone(results);
     this.onDone?.(order.map((r, i) => ({ id: r.id, name: r.name, place: i + 1, time: r.finishTime, isPlayer: r.isPlayer, pi: r.pi, out: !!r.out, best: Math.min(...r.lapTimes, Infinity) })));
   }
 
@@ -534,9 +556,9 @@ export class Race {
    */
   rescue(dt) {
     for (const r of this.racers) {
-      if (r.out || (r.finished && !r.isPlayer)) continue;
+      if (r.out || r.remote || r.puppet || (r.finished && !r.isPlayer)) continue;
       const rs = r.rescueState ?? (r.rescueState = { best: r.progress, t: 0, sea: 0 });
-      rs.sea = r.surface === 'sea' ? rs.sea + dt : 0;
+      rs.sea = r.surface === 'sea' || r.surface === 'lava' ? rs.sea + dt : 0;   // Meer oder Lava: zurücksetzen
       let need = rs.sea > 0.6;
       if (!need && r.path) {
         if (r.progress > rs.best + 4 || (r.isPlayer && !r.trying)) { rs.best = Math.max(rs.best, r.progress); rs.t = 0; continue; }
@@ -720,6 +742,42 @@ export class Race {
     cam.lookAt(cs.look);
     if (Math.abs(cam.fov - cs.fov) > 0.05) { cam.fov = cs.fov; cam.updateProjectionMatrix(); }
     return target;
+  }
+
+  // ------------------------------------------------------------------ Mehrere Handys
+  /** Gegenstand benutzen (beim Gast entscheidet der Gastgeber – die Taste geht mit der Lage hinüber). */
+  useItem(r) { if (!this.netGuest) this.items.use(r); }
+
+  /** Zeitgeber eines Gast-Karts beim Gastgeber herunterzählen (die Physik rechnet der Gast). */
+  netTimers(r, dt) {
+    for (const k of ['boostT', 'starT', 'giantT', 'spinT', 'tumbleT', 'squishT', 'invulnT', 'throwT', 'bumpCooldown']) if (r[k] > 0) r[k] = Math.max(0, r[k] - dt);
+  }
+
+  /** Schnappschüsse senden (Gastgeber) bzw. eigene Lage melden (Gast). */
+  netTick(dt) {
+    if (!this.net) return;
+    this.netAcc += dt;
+    if (this.netHost && this.netAcc >= 0.05) { this.netAcc = 0; this.net.broadcast(hostSnapshot(this)); }
+    if (this.netGuest && this.netAcc >= 0.033 && this.player) { this.netAcc = 0; this.net.send(guestState(this.player, this.player.lastInp ?? {})); }
+  }
+
+  /** Gast: Schnappschuss des Gastgebers übernehmen. */
+  netSnapshot(m) { guestApply(this, m); }
+
+  /** Gastgeber: ein Gast ist weg – der Computer fährt sein Kart weiter. */
+  netDropped(r) {
+    r.remote = false; r.netState = null;
+    initAI(r, 0.6, this.rnd);
+    this.humans = this.humans.filter((h) => h !== r);
+    r.isPlayer = false;
+  }
+
+  /** Gast: Ergebnis vom Gastgeber – Rennen beenden und Ergebnisse zeigen. */
+  netDone(res) {
+    if (this.state === 'done') return;
+    this.state = 'done';
+    this.audio.stopMotor();
+    this.onDone?.(res);
   }
 
   render(renderer) {

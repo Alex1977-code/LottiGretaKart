@@ -26,7 +26,7 @@ neue Sitzpose `kart` für die Heldinnen in `src/lgw/three/avatars/hero.js`).
 
 ## Die Insel (wie in Mario Kart World)
 
-Alle acht Strecken liegen auf **einer zusammenhängenden Insel** – der Grünen Blockinsel – und sind durch Landstraßen
+Alle elf Strecken liegen auf **einer zusammenhängenden Insel** – der Grünen Blockinsel – und sind durch Landstraßen
 verbunden. Man kann von Strecke zu Strecke fahren, über den See (auf dem Wasser), durch den Höhlenberg und ins
 Zirkuszelt. Himmel, Licht und Nebel blenden beim Fahren je Region über (Sonne über der Wiese, goldener Herbst,
 dunkle Höhle, Zirkus-Scheinwerfer, Abendrot über der Stadt, Strand, Schnee, Burg im Mondlicht).
@@ -41,16 +41,26 @@ dunkle Höhle, Zirkus-Scheinwerfer, Abendrot über der Stadt, Strand, Schnee, Bu
 | Funkelstrand | Südküste | Palmen, Sonnenschirme, Lagune, Strandkrabben, Schnappblumen, zwei Dünen-Schanzen |
 | Glitzergipfel | verschneites Hochplateau im Nordosten | Serpentinen, Bohnenranken, Riesenschneebälle rollen über die Bahn |
 | Brummbär-Burg | Festung auf der Nordklippe, im Mondlicht | Burgmauern und Türme, Bombenkanonen, Pilzlingsturm, Rammbock-Bulle, Schnappblumen |
+| Sonnenschlucht | Wüste im fernen Osten | Tafelberge, Kakteen, Oase, Steppenläufer rollen über die Bahn, Skorpion-Käfer |
+| Feuerberg | Vulkan im Südwesten | Lava-Seen (hineinfahren = zurückgesetzt), Feuer-Geysire (roter Ring = Warnung), Stampfsteine |
+| Zuckerwatten-Allee | Bonbonland im Nordwesten | Schokoladen-Fahrbahn, Zuckerstangen, Lutscher, Donuts, rollende Kaugummikugeln |
 
 **Modi**
-- **Grand Prix** (Beeren-Cup, Brummbär-Cup, Muschel-Cup, Kronen-Cup): das erste Rennen sind Runden, ab dem zweiten startet man an der
+- **Grand Prix** (Beeren-, Brummbär-, Muschel-, Kronen-, Bonbon- und Wüsten-Cup): das erste Rennen sind Runden, ab dem zweiten startet man an der
   vorigen Strecke und fährt über die Verbindungsstraße zur nächsten (Anfahrt + Runden). Punkte für 12 Fahrer,
   am Ende Siegerehrung mit Pokal.
-- **K.-o.-Tour** (Große Inseltour, Kleine Runde, Küste und Gipfel): eine Rallye quer über die Insel mit 12 Fahrern; an jedem
+- **K.-o.-Tour** (Große Inseltour, Kleine Runde, Küste und Gipfel, Wilde Weltreise): eine Rallye quer über die Insel mit 12 Fahrern; an jedem
   Checkpoint scheiden die Letzten aus.
 - **Einzelrennen** und **Zeitfahren** (mit drei Turbo-Beeren, Bestzeiten werden gespeichert).
-- **Freie Fahrt**: die ganze Insel erkunden und 36 versteckte Sternmünzen finden (werden gespeichert).
+- **Freie Fahrt**: die ganze Insel erkunden und 42 versteckte Sternmünzen finden (werden gespeichert).
 
+- **Mehrere Handys** (bis zu 12 Fahrer, Rest Computer): ein Handy ist Gastgeber und rechnet das Rennen, jeder Gast
+  fährt sein eigenes Kart direkt (keine Eingabeverzögerung) und sieht die anderen nach Schnappschüssen des Gastgebers.
+  - **Übers Internet, beliebig weit weg**: Gastgeber bekommt einen vierstelligen Raumcode (auch als QR-Code/Link
+    `?join=CODE`), Gäste geben ihn unter „Beitreten“ ein (Vermittlung über den öffentlichen PeerJS-Server, danach
+    direkte WebRTC-Verbindung).
+  - **Ohne Internet** (Flugzeug, Zug): alle Handys im selben WLAN oder Hotspot; der Gastgeber zeigt einen QR-Code,
+    der Gast scannt ihn und zeigt seinen Antwort-Code, den der Gastgeber scannt – fertig, kein Server nötig.
 - **Mehrspieler** für 2–4 Spieler im geteilten Bildschirm (zwei Spieler oben/unten, drei oder vier in vier Feldern):
   Beitreten in der Lobby mit A am Controller, Leertaste (Tastatur links) oder Enter (Tastatur rechts); jeder wählt
   seine Figur. Grand Prix, Rennen, K.-o.-Tour und Freie Fahrt gehen zusammen. Läuft komplett auf einem Gerät –

@@ -26,6 +26,7 @@ export class WorldView {
     const steps = [
       ['Gelände', () => this.buildTerrain()],
       ['Wasser', () => this.buildWater()],
+      ['Lava', () => this.buildLava()],
       ['Strecken', () => this.buildRoads()],
       ['Höhlenberg und Zirkuszelt', () => this.buildStructures()],
       ['Kulisse', () => this.buildDecor()],
@@ -46,6 +47,7 @@ export class WorldView {
     const cache = new Map();
     const col = (hex) => { let v = cache.get(hex); if (!v) { v = lin(hex); cache.set(hex, v); } return v; };
     const sand = col(0xe8d39a), sandWet = col(0xc9b27a), rock = col(0x9a92a0), rockDark = col(0x7a7284), snow = col(0xf4f2f8);
+    const ash = col(0x3a3034), lavaRim = col(0xc8401a);
     const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 });
     const tmp = [0, 0, 0], acc = [0, 0, 0];
     for (let tz = 0; tz < hf.nz - 1; tz += TILE) {
@@ -70,7 +72,7 @@ export class WorldView {
             for (const r of regions) {
               const d = Math.hypot(x - r.x, z - r.z);
               let wgt = 1 - smooth(r.r * 0.8, r.r + (r.fade ?? 120), d);
-              if (r.base) wgt = Math.max(wgt, 0.2);
+              if (r.base) wgt = Math.max(wgt, 0.03);
               if (wgt <= 0) continue;
               const g = col(stripe ? r.th.grass : r.th.grass2), o = col(Math.floor((x * 0.7 + z) / 5) % 2 ? r.th.offroad : r.th.offroad2);
               const ow = Math.min(1, roadW * 1.4);
@@ -82,7 +84,9 @@ export class WorldView {
             const hh = hf.h[gi];
             if (hh < 1.4 && roadW < 0.5) { const f = smooth(1.4, 0.4, hh); for (let q = 0; q < 3; q++) tmp[q] += ((hh < 0 ? sandWet[q] : sand[q]) - tmp[q]) * f; }
             if (hh > 16) { const f = smooth(16, 32, hh); for (let q = 0; q < 3; q++) tmp[q] += ((hh > 34 ? rockDark[q] : rock[q]) - tmp[q]) * f; }
-            if (hh > 40) { const f = smooth(40, 48, hh); for (let q = 0; q < 3; q++) tmp[q] += (snow[q] - tmp[q]) * f; }
+            const volc = regions.reduce((a, r) => (r.theme === 'volcano' ? Math.max(a, 1 - smooth(r.r, r.r + 260, Math.hypot(x - r.x, z - r.z))) : a), 0);
+            if (hh > 40) { const f = smooth(40, 48, hh) * (1 - volc); for (let q = 0; q < 3; q++) tmp[q] += (snow[q] - tmp[q]) * f; }
+            if (volc > 0 && hh > 20) { const f = smooth(20, 45, hh) * volc; for (let q = 0; q < 3; q++) tmp[q] += ((hh > 52 ? lavaRim[q] : ash[q]) - tmp[q]) * f; }
             // feine Helligkeits-Flecken, damit Wiesen nicht flach wirken
             const nz2 = 0.93 + 0.07 * Math.sin(x * 0.11 + Math.sin(z * 0.07) * 2) * Math.cos(z * 0.13 - x * 0.03) + 0.05 * Math.sin(x * 0.53 + z * 0.41);
             cols[k * 3] = tmp[0] * nz2; cols[k * 3 + 1] = tmp[1] * nz2; cols[k * 3 + 2] = tmp[2] * nz2;
@@ -221,6 +225,45 @@ export class WorldView {
     }
   }
 
+  // ------------------------------------------------------------------ Lava
+  /** Glühende Lava-Seen: leuchtende Scheiben mit wanderndem Muster (Vertexfarben) und aufsteigender Glut. */
+  buildLava() {
+    this.lavaPools = [];
+    for (const l of this.world.lava) {
+      const g = new THREE.CircleGeometry(l.r, 40, 0, Math.PI * 2);
+      g.rotateX(-Math.PI / 2);
+      const P = g.attributes.position, cols = new Float32Array(P.count * 3);
+      g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+      const mat = new THREE.MeshBasicMaterial({ vertexColors: true });
+      const m = new THREE.Mesh(g, mat);
+      const y = this.world.heightAt(l.x, l.z) + 0.12;
+      m.position.set(l.x, y, l.z);
+      m.name = 'lava';
+      // Rand aus dunklem Basalt
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(l.r, 0.9, 6, 40).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x2a2226, roughness: 1, flatShading: true }));
+      rim.position.set(l.x, y + 0.1, l.z);
+      this.group.add(m, rim);
+      this.lavaPools.push({ m, l, cols, P });
+    }
+    this.lavaLight = this.world.lava.length ? 1 : 0;
+  }
+
+  updateLava(t) {
+    if (!this.lavaPools?.length) return;
+    this.lavaT = (this.lavaT ?? 0) + 1;
+    if (this.lavaT % 3) return;   // alle drei Bilder reicht
+    for (const { cols, P, l } of this.lavaPools) {
+      for (let i = 0; i < P.count; i++) {
+        const x = P.getX(i), z = P.getZ(i);
+        const n = 0.5 + 0.5 * Math.sin(x * 0.35 + t * 1.3) * Math.cos(z * 0.3 - t * 0.9) + 0.25 * Math.sin((x + z) * 0.8 + t * 2.2);
+        const edge = Math.min(1, Math.hypot(x, z) / l.r);
+        const k = Math.max(0, Math.min(1, n * 0.8 + 0.2 - edge * 0.3));
+        cols[i * 3] = 1.0; cols[i * 3 + 1] = 0.25 + 0.55 * k; cols[i * 3 + 2] = 0.02 + 0.2 * k * k;
+      }
+    }
+    for (const p of this.lavaPools) p.m.geometry.attributes.color.needsUpdate = true;
+  }
+
   // ------------------------------------------------------------------ Bauwerke
   buildStructures() {
     const w = this.world;
@@ -342,6 +385,9 @@ export class WorldView {
       else if (top === 'highway') d.add(pick < 0.5 ? 'pineTree' : 'bush', x, h, z, s, pick < 0.5 ? 0x2f6a50 : 0x4a7a4a, rnd.frac() * 6);
       else if (top === 'snow') d.add(pick < 0.7 ? 'pineTree' : pick < 0.85 ? 'snowman' : 'rock', x, h, z, s * (pick < 0.7 ? 1.2 : 1), pick < 0.7 ? [0xe8f0f6, 0xd4e4ee, 0x2f6a4a][Math.floor(rnd.frac() * 3)] : pick < 0.85 ? 0xffffff : 0x9aa4b8, rnd.frac() * 6);
       else if (top === 'beach') d.add(pick < 0.6 ? 'palm' : pick < 0.8 ? 'bush' : 'umbrella', x, h, z, s, pick < 0.6 ? green[Math.floor(rnd.frac() * green.length)] : pick < 0.8 ? 0x7ccf5a : [0xe8392d, 0x2fb8c8, 0xffc21a][Math.floor(rnd.frac() * 3)], rnd.frac() * 6);
+      else if (top === 'desert') d.add(pick < 0.45 ? 'cactus' : pick < 0.6 ? 'mesa' : 'rock', x, h, z, pick < 0.45 ? s * 1.2 : pick < 0.6 ? s * 0.9 : s * 1.4, pick < 0.45 ? 0x4f9a3a : 0xd9733a, rnd.frac() * 6);
+      else if (top === 'volcano') d.add(pick < 0.35 ? 'pineTree' : 'rock', x, h, z, s * (pick < 0.35 ? 1.1 : 1.8), pick < 0.35 ? 0x2a2420 : 0x2e2830, rnd.frac() * 6);
+      else if (top === 'candy') d.add(pick < 0.35 ? 'lollipop' : pick < 0.55 ? 'candycane' : pick < 0.7 ? 'donut' : 'gumdrop', x, h, z, s * (pick < 0.55 ? 1.3 : 1.2), pick < 0.35 ? [0xff5aa8, 0x5ab8ff, 0xffd21f, 0x8fe060][Math.floor(rnd.frac() * 4)] : pick < 0.55 ? 0xffffff : pick < 0.7 ? [0xff8ac8, 0x8a5a3a, 0xfff0f8][Math.floor(rnd.frac() * 3)] : [0xff5a5a, 0xffd21f, 0x5ad86a, 0xb47fe6][Math.floor(rnd.frac() * 4)], rnd.frac() * 6);
       else if (top === 'castle') d.add(pick < 0.7 ? 'pineTree' : 'rock', x, h, z, s * 1.2, pick < 0.7 ? [0x2a4a3a, 0x324e40][Math.floor(rnd.frac() * 2)] : 0x6a6478, rnd.frac() * 6);
       else if (pick < 0.55) d.add('roundTree', x, h, z, s * 1.1, green[Math.floor(rnd.frac() * green.length)], rnd.frac() * 6);
       else if (pick < 0.8) d.add('bush', x, h, z, s, green[Math.floor(rnd.frac() * green.length)], rnd.frac() * 6);
@@ -355,7 +401,7 @@ export class WorldView {
       const h = w.heightAt(x, z);
       if (h < 1.5 || h > 18 || !w.isFree(x, z, 1)) continue;
       const amb = w.ambienceAt(x, z);
-      if (amb.some((r) => (r.theme === 'snow' || r.theme === 'castle') && r.w > 0.4)) continue;
+      if (amb.some((r) => ['snow', 'castle', 'desert', 'volcano'].includes(r.theme) && r.w > 0.4)) continue;
       d.add('flower', x, h, z, 1 + rnd.frac() * 0.5, [0xff6fa8, 0xffffff, 0xffd21f, 0xb47fe6, 0xff8a2a][Math.floor(rnd.frac() * 5)], rnd.frac() * 6);
       k++;
     }
@@ -372,7 +418,7 @@ export class WorldView {
       if (h < 0.6 || !w.isFree(x, z, 0.5)) continue;
       const amb = w.ambienceAt(x, z);
       const top = amb.reduce((a, r) => (r.w > a.w ? r : a), amb[0]).theme;
-      const peb = top === 'cave' || top === 'castle' || top === 'highway' ? rnd.frac() < 0.6 : rnd.frac() < 0.08;
+      const peb = ['cave', 'castle', 'highway', 'volcano', 'desert'].includes(top) ? rnd.frac() < 0.6 : rnd.frac() < 0.08;
       if (peb) d.add('pebble', x, h, z, 0.8 + rnd.frac() * 1.4, [0x9a92a0, 0xb0a8b4, 0x8a8296][Math.floor(rnd.frac() * 3)], rnd.frac() * 6);
       else {
         const th = getTheme(top);
@@ -389,6 +435,7 @@ export class WorldView {
     for (const d of this.decors) d.update(dt, t, cam);
     this.structureDecor?.update(dt, t, cam);
     if (this.sparkles) this.sparkles.position.x = Math.sin(t * 0.3) * 1.5;
+    this.updateLava(t);
   }
 }
 

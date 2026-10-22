@@ -116,11 +116,53 @@ const pebble = () => g('pebble', () => new Build()
   .sphere(0.15, 0xffffff, { p: [0.3, 0.04, 0.12], s: [1.2, 0.6, 1] }, 6, 4)
   .geometry());
 
-const KINDS = { tuft, pebble, roundTree, pineTree, bush, flower, mushroom, rock, crystal, stalactite, hill, building, block, palm, umbrella, starfish, snowman };
+// Wüste: Kaktus mit zwei Armen, Tafelberg aus Gesteinsschichten
+const cactus = () => g('cactus', () => new Build()
+  .cyl(0.32, 0.36, 3.2, 0xffffff, { p: [0, 1.6, 0] }, 9)
+  .sphere(0.32, 0xffffff, { p: [0, 3.2, 0] }, 9, 6)
+  .cyl(0.2, 0.2, 0.9, 0xffffff, { p: [0.55, 1.5, 0], r: [0, 0, Math.PI / 2] }, 8)
+  .cyl(0.2, 0.22, 1.1, 0xffffff, { p: [0.95, 2.0, 0] }, 8)
+  .sphere(0.2, 0xffffff, { p: [0.95, 2.55, 0] }, 8, 5)
+  .cyl(0.18, 0.18, 0.7, 0xffffff, { p: [-0.45, 2.1, 0], r: [0, 0, Math.PI / 2] }, 8)
+  .cyl(0.18, 0.2, 0.8, 0xffffff, { p: [-0.75, 2.45, 0] }, 8)
+  .sphere(0.18, 0xffffff, { p: [-0.75, 2.85, 0] }, 8, 5)
+  .sphere(0.12, 0xff6aa8, { p: [0, 3.5, 0] }, 6, 4)
+  .geometry());
+const mesa = () => g('mesa', () => new Build()
+  .cyl(5.2, 6.4, 6, 0xffffff, { p: [0, 3, 0] }, 9)
+  .cyl(4.6, 5.2, 6, 0xf0d8c0, { p: [0, 9, 0] }, 9)
+  .cyl(4.2, 4.6, 5, 0xffffff, { p: [0, 14.5, 0] }, 9)
+  .cyl(4.4, 4.2, 0.8, 0xf8e0c8, { p: [0, 17.4, 0] }, 9)
+  .geometry());
+// Bonbonland: Lutscher (Spirale aus zwei Farben), Zuckerstange, Donut mit Streuseln, Gummibonbon
+const lollipop = () => g('lollipop', () => {
+  const b = new Build().cyl(0.08, 0.08, 3, 0xfff8f0, { p: [0, 1.5, 0] }, 6);
+  b.cyl(1.0, 1.0, 0.24, 0xffffff, { p: [0, 3.6, 0], r: [Math.PI / 2, 0, 0] }, 20);
+  for (let i = 0; i < 3; i++) b.torus(0.25 + i * 0.25, 0.07, 0xfff8f0, { p: [0, 3.6, 0.13] }, 4, 20);
+  return b.geometry();
+});
+const candycane = () => g('candycane', () => {
+  const b = new Build();
+  for (let i = 0; i < 8; i++) b.cyl(0.16, 0.16, 0.4, i % 2 ? 0xe8202a : 0xffffff, { p: [0, 0.2 + i * 0.4, 0] }, 10);
+  b.torus(0.42, 0.16, 0xe8202a, { p: [0.42, 3.2, 0] }, 8, 14, Math.PI);
+  return b.geometry();
+});
+const donut = () => g('donut', () => {
+  const b = new Build().torus(1.0, 0.48, 0xd8a060, { p: [0, 0.5, 0], r: [Math.PI / 2, 0, 0] }, 10, 22);
+  b.torus(1.0, 0.44, 0xffffff, { p: [0, 0.62, 0], r: [Math.PI / 2, 0, 0], s: [1, 1, 0.75] }, 10, 22);
+  const cols = [0xff4a4a, 0x4ab8ff, 0xffe04a, 0x7ae05a, 0xffffff];
+  for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2, r = 0.8 + (i % 3) * 0.2; b.box(0.18, 0.05, 0.05, cols[i % 5], { p: [Math.cos(a) * r, 0.98, Math.sin(a) * r], r: [0, a * 2.3, 0] }, 0.01, 1); }
+  return b.geometry();
+});
+const gumdrop = () => g('gumdrop', () => new Build()
+  .dome(0.7, 0xffffff, { p: [0, 0, 0], s: [1, 1.15, 1] }, Math.PI / 2, 14, 7)
+  .geometry());
+
+const KINDS = { cactus, mesa, lollipop, candycane, donut, gumdrop, tuft, pebble, roundTree, pineTree, bush, flower, mushroom, rock, crystal, stalactite, hill, building, block, palm, umbrella, starfish, snowman };
 // Sichtweite (m) für Kleinkram, der in der Ferne ohnehin nicht zu erkennen ist
 const NEAR_ONLY = { tuft: 110, pebble: 90, flower: 170, starfish: 90 };
 // Hindernis-Radius je Art (× Größe) in der offenen Welt
-const COLLIDE = { roundTree: 0.5, pineTree: 0.45, mushroom: 0.9, rock: 1.0, block: 0.6, crystal: 0.4, palm: 0.35, umbrella: 0.12, snowman: 0.85 };
+const COLLIDE = { cactus: 0.4, mesa: 5.6, lollipop: 0.2, candycane: 0.2, donut: 1.3, roundTree: 0.5, pineTree: 0.45, mushroom: 0.9, rock: 1.0, block: 0.6, crystal: 0.4, palm: 0.35, umbrella: 0.12, snowman: 0.85 };
 
 export class Decor {
   constructor(race, track, theme, seed = 1, quality = 2, world = null) {

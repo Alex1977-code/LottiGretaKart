@@ -267,6 +267,20 @@ em.ptag { position: static; font-style: normal; font-size: 13px; padding: 0 6px;
 .lobby-tip { text-align: center; color: #fff; font-weight: 800; margin: 12px 0 0; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
 .menus button[disabled] { opacity: 0.45; filter: grayscale(0.6); }
 
+/* Mehrere Handys */
+.netwrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 14px; align-items: start; }
+.netcode { text-align: center; font-weight: 800; }
+.netcode p { margin: 4px 0; }
+.bigcode { font-family: var(--font-title); font-size: 64px; letter-spacing: 10px; color: #1554d0; line-height: 1; }
+.qr { width: 150px; margin: 6px auto; background: #fff; border-radius: 10px; padding: 4px; }
+.qr.big { width: 220px; }
+.qr svg { width: 100%; height: auto; display: block; }
+video.scan { width: 100%; max-height: 180px; background: #0a1a40; border-radius: 12px; object-fit: cover; }
+.netcode textarea { width: 100%; height: 60px; font: 11px monospace; border-radius: 8px; border: 2px solid #c8d4ec; }
+.netcode details { margin-top: 6px; font-size: 12px; }
+input.codein { font-family: var(--font-title); font-size: 40px; width: 220px; text-align: center; letter-spacing: 8px; text-transform: uppercase; border: 3px solid #1554d0; border-radius: 12px; padding: 4px; }
+.netwrap .lobby { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
 /* Einstellungen */
 .setlist { display: grid; grid-template-columns: auto 1fr; gap: 10px 18px; align-items: center; }
 .setlist h3 { margin: 0; font-family: var(--font-title); font-weight: 400; font-size: 20px; color: var(--ink); text-align: right; }
@@ -330,6 +344,8 @@ kbd { display: inline-block; background: #fff; border: 2px solid var(--ink); bor
   .pslot img { width: 64px; height: 64px; }
   .pslot b { font-size: 14px; } .pslot small, .pslot .pstate, .pslot.empty { font-size: 10px; }
   .lobby-tip { font-size: 12px; margin-top: 6px; }
+  .bigcode { font-size: 40px; } .qr { width: 110px; } .qr.big { width: 160px; } video.scan { max-height: 120px; }
+  input.codein { font-size: 28px; width: 160px; }
   .grid.cups { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .trophy { font-size: 36px; }
   .profile img { width: 120px; margin-top: -6px; }

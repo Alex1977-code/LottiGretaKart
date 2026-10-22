@@ -24,6 +24,8 @@ export class World {
       return { id: c.def.id, def: c.def, theme, track, ox: c.ox, oz: c.oz };
     });
     this.courseById = Object.fromEntries(this.courses.map((c) => [c.id, c]));
+    // Lava-Seen der Strecken (Strecken-Koordinaten → Welt)
+    this.lava = this.courses.flatMap((c) => (c.def.lava ?? []).map(([x, z, r]) => ({ x: x + c.ox, z: z + c.oz, r })));
     this.connectors = def.connectors.map((c) => this.makeConnector(c));
     // 2. Höhenfeld mit eingeebneten Straßen
     this.buildHeightfield();
@@ -177,8 +179,9 @@ export class World {
     return out;
   }
 
-  /** Oberfläche: 'road' | 'off' (Wiese, Sand …) | 'water' (befahrbar, schwimmt) | 'sea' (offenes Meer, außerhalb). */
+  /** Oberfläche: 'road' | 'off' (Wiese, Sand …) | 'water' (befahrbar, schwimmt) | 'sea' (offenes Meer, außerhalb) | 'lava'. */
   surfaceAt(x, z) {
+    for (const l of this.lava) if ((x - l.x) ** 2 + (z - l.z) ** 2 < l.r * l.r) return 'lava';
     const is = this.def.island;
     const ex = (x - is.cx) / is.rx, ez = (z - is.cz) / is.rz;
     if (ex * ex + ez * ez > 1.3 * 1.3) return 'sea';
@@ -192,6 +195,7 @@ export class World {
   /** Freier Platz für Kulisse: weit genug von allen Straßen und nicht im Wasser. */
   isFree(x, z, clearance = 4) {
     if (this.heightAt(x, z) < 0.3) return false;
+    for (const l of this.lava) if ((x - l.x) ** 2 + (z - l.z) ** 2 < (l.r + clearance) ** 2) return false;
     const r = this.nearestRoad(x, z, 2, this._nr2 ?? (this._nr2 = {}));
     if (!r.road) return true;
     const wall = r.road.closed ? r.road.wallAt(r.i) : r.hw + 1;

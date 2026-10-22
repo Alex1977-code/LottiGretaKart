@@ -117,5 +117,47 @@ const CASTLE = {
   wallA: 0x9a94a8, wallB: 0x7e788e, wallTop: 0xd8262e, wallH: 1.1,
 };
 
-export const THEMES = { grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE };
+const DESERT = {
+  ...GRASS,
+  label: 'Wüste',
+  sky: [[1, 0x2f7fd0], [0.45, 0x6aa8e0], [0.15, 0xb8d4e8], [0.03, 0xf4dcb4], [0, 0xffe8c8], [-0.1, 0xe8c8a0], [-1, 0xc89a6a]],
+  background: 0xf0d8b0,
+  fog: { color: 0xf0d6ae, near: 110, far: 480 },
+  hemi: { sky: 0xfff0d8, ground: 0xc8904a, intensity: 1.45 },
+  sun: { color: 0xfff0d0, intensity: 3.0, dir: [-0.2, 1, 0.3] },
+  hills: 0xd9733a, hills2: 0xc8602e,
+  grass: 0xe8c27a, grass2: 0xe0b870, grassFar: 0xd8aa60, offroad: 0xd9a85a, offroad2: 0xcf9c50,
+  road: 0x8a7a72, road2: 0x84746c, line: 0xfff8e8, curbA: 0xe8392d, curbB: 0xfff8e8,
+  wallA: 0xe0a868, wallB: 0xc8864a, wallTop: 0x2fb8b0, wallH: 0.85,
+};
+
+const VOLCANO = {
+  ...GRASS,
+  label: 'Vulkan',
+  sky: [[1, 0x1a0e14], [0.45, 0x3a1a1e], [0.15, 0x7a2a1e], [0.04, 0xc8501e], [0, 0xe86a2a], [-0.1, 0x6a2418], [-1, 0x1a0a08]],
+  background: 0x5a2418,
+  fog: { color: 0x5a2a1e, near: 70, far: 330 },
+  hemi: { sky: 0xffb08a, ground: 0x3a1a14, intensity: 1.1 },
+  sun: { color: 0xffa070, intensity: 2.0, dir: [0.4, 0.8, 0.3] },
+  sunDisc: false, clouds: false, hills: 0x2e2228, hills2: 0x3a2a2a,
+  grass: 0x3e3438, grass2: 0x383034, grassFar: 0x2e2628, offroad: 0x5a4442, offroad2: 0x524040,   // Basalt und Asche
+  road: 0x4c4856, road2: 0x46424e, line: 0xffb040, curbA: 0xff7a1a, curbB: 0x2a2228,
+  wallA: 0x3a3238, wallB: 0x2e282e, wallTop: 0xff6a1a, wallH: 1.0,
+};
+
+const CANDY = {
+  ...GRASS,
+  label: 'Bonbonland',
+  sky: [[1, 0x7a8af0], [0.45, 0xa8b0ff], [0.15, 0xe0c8ff], [0.03, 0xffd8f0], [0, 0xffe8f6], [-0.1, 0xf0c8e8], [-1, 0xd0a0d8]],
+  background: 0xffd8f0,
+  fog: { color: 0xffdcf2, near: 100, far: 440 },
+  hemi: { sky: 0xfff0ff, ground: 0xd890c8, intensity: 1.4 },
+  sun: { color: 0xfff4fa, intensity: 2.6, dir: [-0.3, 1, 0.4] },
+  hills: 0xffb8e0, hills2: 0xb8f0d8,
+  grass: 0xa8f0d0, grass2: 0x9ce8c6, grassFar: 0x90dcbc, offroad: 0xffc8e4, offroad2: 0xffbadc,   // Minzwiese, Zuckerguss
+  road: 0x7a4a3a, road2: 0x744636, line: 0xfff4fa, curbA: 0xff3a6a, curbB: 0xfff4fa,
+  wallA: 0xfff4fa, wallB: 0xff3a6a, wallTop: 0x8fe0c0, wallH: 0.8,
+};
+
+export const THEMES = { grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
 export const getTheme = (n) => THEMES[n] ?? GRASS;

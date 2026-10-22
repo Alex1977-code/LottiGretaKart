@@ -230,6 +230,7 @@ export class Items {
     p.holder.scale.setScalar(p.scale ?? 1);
     this.scene.add(p.holder);
     p.age = 0;
+    p.nid = (this.nid = (this.nid ?? 0) + 1);
     this.projectiles.push(p);
     return p;
   }
@@ -288,6 +289,7 @@ export class Items {
 
   explode(pos, radius, by) {
     this.race.effects.explosion(pos, radius);
+    if (this.race.netHost) this.race.netEvents.push(['ex', Math.round(pos.x * 10) / 10, Math.round(pos.y * 10) / 10, Math.round(pos.z * 10) / 10, radius]);
     for (const r of this.race.racers) {
       const d = Math.hypot(r.pos.x - pos.x, r.pos.z - pos.z);
       if (d < radius + r.radius && Math.abs(r.pos.y - pos.y) < 4) r.hit('tumble', by);
@@ -309,7 +311,7 @@ export class Items {
           if (b.respawn <= 0) { b.active = true; b.pop = 0; }
         } else {
           b.pop = Math.min(1, b.pop + dt * 3);
-          for (const r of race.racers) {
+          if (!race.netGuest) for (const r of race.racers) {
             if (r.out) continue;
             const dx = r.pos.x - b.pos.x, dz = r.pos.z - b.pos.z;
             if (dx * dx + dz * dz < (1.2 + r.radius * 0.6) ** 2 && Math.abs(r.pos.y - b.pos.y) < 2.5) {
@@ -331,8 +333,8 @@ export class Items {
       }
       this.boxMesh.instanceMatrix.needsUpdate = true;
     }
-    // Glücksrad der Fahrer
-    for (const r of race.racers) {
+    // Glücksrad der Fahrer (beim Gast kommt der Gegenstand vom Gastgeber)
+    if (!race.netGuest) for (const r of race.racers) {
       if (r.roulette > 0) {
         r.roulette -= dt;
         if (r.roulette <= 0) {
@@ -348,8 +350,8 @@ export class Items {
     if (this.coins.length) {
       const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3();
       this.coins.forEach((c, k) => {
-        if (!c.active) { c.respawn -= dt; if (c.respawn <= 0) c.active = true; }
-        if (c.active) {
+        if (!c.active && !race.netGuest) { c.respawn -= dt; if (c.respawn <= 0) c.active = true; }
+        if (c.active && !race.netGuest) {
           for (const r of race.racers) {
             if (r.out) continue;
             const dx = r.pos.x - c.pos.x, dz = r.pos.z - c.pos.z;
@@ -376,7 +378,7 @@ export class Items {
     }
     // Turbo-Felder und Schanzen
     for (const r of race.racers) {
-      if (r.out) continue;
+      if (r.out || r.remote || r.puppet) continue;
       for (const p of this.pads) {
         if (Math.abs(r.pos.x - p.x) > 6 || Math.abs(r.pos.z - p.z) > 6) continue;
         if (inRect(r.pos.x, r.pos.z, p.x, p.z, p.yaw, p.len / 2 + 0.3, p.w / 2 + 0.3) && !r.air) r.boost(1.1, 0xffc21a, 1.25);
@@ -389,7 +391,7 @@ export class Items {
     for (const p of this.pads) p.model.update(dt, 'idle');
     // Geschosse
     for (const p of this.projectiles) {
-      if (p.dead) continue;
+      if (p.dead || p.puppet) continue;
       p.age += dt;
       if (p.age > p.life) { this.remove(p); continue; }
       this.step(p, dt, t);

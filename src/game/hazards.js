@@ -60,9 +60,15 @@ export class Hazards {
         }
         case 'roller': {
           const R = d.size ?? 2.2;
-          const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(R, 2), new THREE.MeshStandardMaterial({ color: 0xf6f9ff, roughness: 0.9, flatShading: true }));
+          // Aussehen: Schneeball (Standard), Steppenläufer (Wüste, Zweig-Gitter) oder Kaugummikugel (Bonbonland)
+          const style = d.style ?? 'snow';
+          const mat = style === 'tumbleweed' ? new THREE.MeshStandardMaterial({ color: 0xb8905a, roughness: 1, wireframe: true })
+            : style === 'gum' ? new THREE.MeshStandardMaterial({ color: d.color ?? 0xff5aa8, roughness: 0.25, metalness: 0.05 })
+            : new THREE.MeshStandardMaterial({ color: 0xf6f9ff, roughness: 0.9, flatShading: true });
+          const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(R, style === 'gum' ? 4 : 2), mat);
+          if (style === 'tumbleweed') ball.add(new THREE.Mesh(new THREE.IcosahedronGeometry(R * 0.7, 1), mat));
           // ein paar eingerollte Zweige und Steine, damit man das Rollen sieht
-          for (let k = 0; k < 5; k++) {
+          for (let k = 0; k < (style === 'snow' ? 5 : 0); k++) {
             const bit = new THREE.Mesh(new THREE.BoxGeometry(R * 0.5, R * 0.12, R * 0.12), new THREE.MeshStandardMaterial({ color: k % 2 ? 0x7a5a3a : 0x8a94a8 }));
             const a = k * 2.4, e = (k / 5 - 0.4) * 2;
             bit.position.set(Math.cos(a) * Math.cos(e) * R * 0.95, Math.sin(e) * R * 0.95, Math.sin(a) * Math.cos(e) * R * 0.95);
@@ -76,6 +82,26 @@ export class Hazards {
           h.lat = (Math.random() * 2 - 1) * base.hw;
           h.dir = Math.random() < 0.5 ? -1 : 1;
           h.speed = d.speed ?? 6;
+          break;
+        }
+        case 'geyser': {
+          // Feuer-Geysir auf der Fahrbahn: Warnring glüht auf, dann schießt eine Feuersäule hoch
+          h.lat = (d.lat ?? 0) * base.hw;
+          const p = track.pointAt(d.u, h.lat);
+          h.pos = new THREE.Vector3(p.x, p.y, p.z);
+          h.model = getModel('boss_marker');
+          h.holder = new THREE.Group();
+          h.holder.add(h.model.root);
+          h.model.root.scale.setScalar(2.2);
+          const col = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.5, 9, 14, 1, true), new THREE.MeshBasicMaterial({ color: 0xff7a1a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+          col.position.y = 4.5;
+          const core = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.8, 8, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff0a0, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+          core.position.y = 4;
+          h.column = new THREE.Group(); h.column.add(col, core); h.column.visible = false;
+          h.holder.add(h.column);
+          h.holder.position.copy(h.pos);
+          h.every = d.every ?? 3.2; h.timer = Math.random() * h.every; h.phase = 'idle';
+          h.radius = 1.6;
           break;
         }
         case 'stampfstein': {
@@ -140,7 +166,7 @@ export class Hazards {
           h.holder.rotation.y = p.yaw - h.dir * Math.PI / 2;
           h.model.update(dt, h.kind === 'brummer' ? 'fly' : { anim: h.anim ?? 'walk', speed: h.speed });
           for (const r of race.racers) {
-              if (r.out) continue;
+              if (r.out || r.remote || r.puppet) continue;
             const dx = r.pos.x - p.x, dz = r.pos.z - p.z, rr = r.radius + h.radius;
             if (dx * dx + dz * dz < rr * rr && Math.abs(r.pos.y + fly * 0.5 - p.y) < 2) {
               if (r.invincible) { h.down = 4; race.effects.sparkle(h.holder.position, 0xffffff, 12, 3); if (r.isPlayer) race.audio.sfx('stomp'); }
@@ -159,7 +185,7 @@ export class Hazards {
           if (h.phase === 'idle') {
             if (h.cool <= 0) {
               for (const r of race.racers) {
-                if (r.out) continue;
+                if (r.out || r.remote || r.puppet) continue;
                 if ((r.pos.x - p.x) ** 2 + (r.pos.z - p.z) ** 2 < 7 * 7) { h.phase = 'snap'; h.pt = 0; h.bit = false; break; }
               }
             }
@@ -173,7 +199,7 @@ export class Hazards {
               // Biss: vor der Blume, Richtung Fahrbahnmitte
               const side = h.lat > 0 ? -1 : 1, bx = p.x - track.tz[p.i] * side * 1.8, bz = p.z + track.tx[p.i] * side * 1.8;
               for (const r of race.racers) {
-                if (r.out) continue;
+                if (r.out || r.remote || r.puppet) continue;
                 if ((r.pos.x - bx) ** 2 + (r.pos.z - bz) ** 2 < (1.9 + r.radius) ** 2 && Math.abs(r.pos.y - p.y) < 2.5) {
                   if (r.invincible) { h.down = 4; race.effects.sparkle(h.holder.position, 0xffffff, 12, 3); if (r.isPlayer) race.audio.sfx('stomp'); }
                   else r.hit('spin', null);
@@ -186,7 +212,7 @@ export class Hazards {
           }
           // der Stiel ist ein Hindernis
           for (const r of race.racers) {
-            if (r.out) continue;
+            if (r.out || r.remote || r.puppet) continue;
             const dx = r.pos.x - p.x, dz = r.pos.z - p.z, d = Math.hypot(dx, dz), R = r.radius + 0.9;
             if (d < R && d > 1e-4) { r.pos.x += (dx / d) * (R - d); r.pos.z += (dz / d) * (R - d); if (r.bumpCooldown <= 0) { r.speed *= 0.6; r.bumpCooldown = 0.4; } }
           }
@@ -202,7 +228,7 @@ export class Hazards {
           // rollen: Drehung um die Fahrtrichtung der Strecke
           h.model.root.rotation.x -= h.dir * h.speed * dt / h.R;
           for (const r of race.racers) {
-            if (r.out) continue;
+            if (r.out || r.remote || r.puppet) continue;
             const dx = r.pos.x - p.x, dz = r.pos.z - p.z, rr = r.radius + h.radius;
             if (dx * dx + dz * dz < rr * rr && r.pos.y - p.y < h.R * 1.6) {
               if (r.invincible) { if (!(h.cool > 0)) { race.effects.dust(p.x, p.y + 1, p.z, 0xffffff, 4); h.dir *= -1; h.cool = 1; } }
@@ -210,6 +236,28 @@ export class Hazards {
             }
           }
           if (h.cool > 0) h.cool -= dt;
+          break;
+        }
+        case 'geyser': {
+          h.p = h.pos;
+          if (race.state === 'race' || race.state === 'finish' || race.state === 'free') h.timer -= dt;
+          if (h.phase === 'idle' && h.timer <= 1.0) h.phase = 'warn';
+          if (h.phase === 'warn' && h.timer <= 0) { h.phase = 'erupt'; h.et = 0; const pl = race.player; if (pl && race.focusDist2(h.pos.x, h.pos.z) < 30 * 30) race.audio.sfx('fireball'); }
+          h.model.update(dt, { k: h.phase === 'warn' ? 1 - Math.max(0, h.timer) : 0 });
+          h.model.root.visible = h.phase === 'warn';
+          if (h.phase === 'erupt') {
+            h.et += dt;
+            const k = Math.min(1, h.et / 0.15) * (h.et > 0.9 ? Math.max(0, 1 - (h.et - 0.9) / 0.3) : 1);
+            h.column.visible = k > 0.01;
+            h.column.scale.set(0.6 + 0.4 * k, k, 0.6 + 0.4 * k);
+            h.column.rotation.y += dt * 6;
+            if (Math.random() < 0.5) race.effects.trail(h.pos.x + (Math.random() - 0.5) * 2, h.pos.y + Math.random() * 7 * k, h.pos.z + (Math.random() - 0.5) * 2, 0xffa040, 0.8);
+            if (k > 0.5) for (const r of race.racers) {
+              if (r.out || r.puppet || r.remote) continue;
+              if ((r.pos.x - h.pos.x) ** 2 + (r.pos.z - h.pos.z) ** 2 < (h.radius + r.radius) ** 2 && r.pos.y - h.pos.y < 8) r.hit('tumble', null);
+            }
+            if (h.et > 1.2) { h.phase = 'idle'; h.timer = h.every + Math.random(); h.column.visible = false; }
+          }
           break;
         }
         case 'stampfstein': {
@@ -221,7 +269,7 @@ export class Hazards {
             let near = false;
             const tx = track.tx[p.i], tz = track.tz[p.i];
             for (const r of race.racers) {
-              if (r.out) continue;
+              if (r.out || r.remote || r.puppet) continue;
               const dx = r.pos.x - p.x, dz = r.pos.z - p.z;
               const along = dx * tx + dz * tz;
               if (along < -3 && along > -14 && Math.abs(-dx * tz + dz * tx) < h.size * 1.5) { near = true; break; }
@@ -237,7 +285,7 @@ export class Hazards {
               const dd = pl ? Math.hypot(pl.pos.x - p.x, pl.pos.z - p.z) : 99;
               if (dd < 35) { race.audio.sfx('slam'); race.shake = Math.max(race.shake ?? 0, 0.8 * (1 - dd / 35)); }
               for (const r of race.racers) {
-              if (r.out) continue;
+              if (r.out || r.remote || r.puppet) continue;
                 const dx = r.pos.x - p.x, dz = r.pos.z - p.z;
                 if (Math.abs(dx) < h.size * 0.75 + r.radius * 0.6 && Math.abs(dz) < h.size * 0.75 + r.radius * 0.6) r.hit('squish', null);
               }
@@ -256,7 +304,7 @@ export class Hazards {
           if (h.y < 1.2) {
             const tx = track.tx[p.i], tz = track.tz[p.i];
             for (const r of race.racers) {
-              if (r.out) continue;
+              if (r.out || r.remote || r.puppet) continue;
               const dx = r.pos.x - p.x, dz = r.pos.z - p.z, half = h.size * 0.5 + r.radius * 0.7;
               const along = dx * tx + dz * tz, side = -dx * tz + dz * tx;
               if (Math.abs(along) < half && Math.abs(side) < half) {

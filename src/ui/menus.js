@@ -10,6 +10,8 @@ import { Track } from '../world/Track.js';
 import { getTheme } from '../world/themes.js';
 import { racerIcon, preloadIcons } from './icons.js';
 import { logoHTML } from './logo.js';
+import { NetSession } from '../net/session.js';
+import { qrSVG, scanQR } from '../net/qr.js';
 import { fmtTime } from './hud.js';
 import { touch, isTouch, readJoin, deviceLabel, rumble } from './input.js';
 
@@ -47,7 +49,7 @@ export class Menus {
   /** Kopfzeile (schräger Reiter) und Tasten-Hinweise. */
   head(title, sub = '') { return `<header class="mhead"><b><span>${title}</span></b>${sub ? `<small class="chip">${sub}</small>` : ''}</header>`; }
   hints(back = true) { return `<footer class="mhints"><span><i class="a">A</i>Enter · Auswählen</span>${back ? '<span><i>B</i>Esc · Zurück</span>' : ''}</footer>`; }
-  get modeSub() { return `${MODE_NAMES[this.mode] ?? ''}${this.multi ? ` · ${this.party.length} Spieler` : ''} · ${CC[this.settings.cc].label}`; }
+  get modeSub() { return `${MODE_NAMES[this.mode] ?? ''}${this.multi ? ` · ${this.humanIds.length} Spieler` : ''} · ${CC[this.settings.cc].label}`; }
 
   // ------------------------------------------------------------------ Grundlagen
   hideAll() { this.el.innerHTML = ''; this.el.className = 'menus'; this.screen = null; }
@@ -135,7 +137,7 @@ export class Menus {
         </div>
       </div>${this.hints(false)}`);
     this.on('[data-mode]', (b) => {
-      if (b.dataset.mode === 'multi') { this.showLobby(); return; }
+      if (b.dataset.mode === 'multi') { this.showMultiChoice(); return; }
       this.party = null; this.mode = b.dataset.mode; this.showRacers();
     });
     this.on('[data-act="tv"]', () => this.showTV());
@@ -172,8 +174,10 @@ export class Menus {
           <h3>Gegenstände aus den Funkel-Kisten</h3>
           <p class="items-help">Turbo-Beere · Panzer · Goldpanzer (sucht sich ein Ziel) · Krabbelkäfer (hinten ablegen) · Kickbombe · Funkenblüte (3 Funkenbälle) · Funkelstern (unverwundbar) · Riesentrank · Zauberkugel (trifft die Spitze)</p>
           <p class="items-help">Bitcoins machen dein Kart schneller (bis zu 10). Turbo-Pfeile und Schanzen nutzen – in der Luft Drift drücken für einen Trick-Turbo! Über den See fährst du einfach auf dem Wasser.</p>
+          <h3>Mehrere Handys</h3>
+          <p class="items-help"><b>Über das Internet</b> (beliebig weit weg): einer wählt „Spiel erstellen“ und nennt den Raumcode, die anderen „Beitreten“ und tippen ihn ein. <b>Ohne Internet</b> (z. B. im Flugzeug): alle im selben WLAN oder Hotspot – Gastgeber zeigt einen QR-Code, Gast scannt ihn und zeigt seinen Antwort-Code zurück.</p>
           <h3>Die Insel</h3>
-          <p class="items-help"><b>Grand Prix</b>: ab dem zweiten Rennen fährst du über die Landstraße zur nächsten Strecke. <b>K.-o.-Tour</b>: quer über die Insel, an jedem Checkpoint scheiden die Letzten aus. <b>Freie Fahrt</b>: erkunde alles und finde die 36 Sternmünzen.</p>
+          <p class="items-help"><b>Grand Prix</b>: ab dem zweiten Rennen fährst du über die Landstraße zur nächsten Strecke. <b>K.-o.-Tour</b>: quer über die Insel, an jedem Checkpoint scheiden die Letzten aus. <b>Freie Fahrt</b>: erkunde alles und finde die 42 Sternmünzen.</p>
           <div class="row"><button data-back data-focus>Zurück</button></div>
         </div></div>
       </div>${this.hints()}`, 'full');
@@ -260,8 +264,214 @@ export class Menus {
 
   // ------------------------------------------------------------------ Mehrspieler
   /** Spieler im geteilten Bildschirm (null = Einzelspieler). */
-  get multi() { return this.party && this.party.length > 1; }
-  partyPlayers() { return this.multi ? this.party.map((p) => ({ id: p.racer, src: p.src })) : undefined; }
+  get multi() { return (this.party && this.party.length > 1) || !!this.netHost; }
+  get netHost() { return this.net?.isHost && this.net.guests.some((g) => g.racer) ? this.net : null; }
+  partyPlayers() {
+    if (this.netHost) return this.net.players();
+    return this.party && this.party.length > 1 ? this.party.map((p) => ({ id: p.racer, src: p.src })) : undefined;
+  }
+
+  /** Rennen starten; beim Gastgeber mehrerer Handys bekommen die Gäste die Startdaten. */
+  launch(o) {
+    const net = this.netHost;
+    const race = this.ctx.startRace(net ? { ...o, net } : o);
+    if (net) net.startRace(race, { mode: o.mode, courseId: o.courseId, fromId: o.fromId ?? null, laps: o.laps, tourId: o.tour?.id ?? null, roster: o.roster.map((r) => r.id), cc: o.cc, title: o.tour?.name ?? '' });
+    return race;
+  }
+
+  // ------------------------------------------------------------------ Mehrere Handys
+  showMultiChoice() {
+    this.ensureDemo();
+    const card = (k, ic, name, sub) => `<button class="card cup" data-mc="${k}"><div class="trophy won">${ic}</div><span>${name}</span><small>${sub}</small></button>`;
+    this.show('multichoice', `
+      <div class="mscreen">
+        ${this.head('Mehrspieler', 'wie wollt ihr spielen?')}
+        <div class="mbody"><div class="grid cups">
+          ${card('couch', '🎮', 'Ein Bildschirm', '2–4 Spieler mit Controllern oder geteilter Tastatur')}
+          ${card('host', '📡', 'Mehrere Handys: Spiel erstellen', 'du bist Gastgeber – über Internet oder im selben WLAN')}
+          ${card('join', '📲', 'Mehrere Handys: Beitreten', 'mit Raumcode oder QR-Code')}
+        </div>
+        <p class="lobby-tip">✈️ Im Flugzeug: ein Bildschirm geht immer – mehrere Handys über ein gemeinsames WLAN/Hotspot mit QR-Kopplung (ohne Internet).</p>
+        <div class="row"><button data-back>Zurück</button></div></div>
+      </div>${this.hints()}`, 'full');
+    this.on('[data-mc="couch"]', () => this.showLobby());
+    this.on('[data-mc="host"]', () => this.showNetHost());
+    this.on('[data-mc="join"]', () => this.showNetJoin());
+    this.on('[data-back]', () => this.showTitle());
+  }
+
+  netHandlers() {
+    return {
+      onChange: () => { if (this.screen === 'nethost') this.renderNetHost(); if (this.screen === 'netlobby' || this.screen === 'netjoin') this.renderNetGuest(); },
+      onStart: (o) => this.startGuestRace(o),
+      onDone: (m) => { const r = this.ctx.race; if (r?.netGuest) r.netDone(m.res.map((x) => ({ ...x, isPlayer: x.id === this.net.myRacer }))); },
+      onMenu: () => { if (!this.net?.isHost) { this.ctx.endRace(); this.ensureDemo(); this.renderNetGuest(); } },
+      onLost: (msg) => { this.ctx.endRace(); this.net = null; this.ensureDemo(); this.showNetMessage(msg); },
+    };
+  }
+
+  leaveNet() { this.net?.close(); this.net = null; }
+
+  showNetMessage(msg) {
+    this.show('netmsg', `
+      <div class="mscreen">${this.head('Mehrspieler')}
+        <div class="mbody center"><div class="glass" style="text-align:center;max-width:520px">
+          <p style="font-weight:800">${msg}</p>
+          <div class="row"><button class="go" data-back data-focus>OK</button></div>
+        </div></div></div>${this.hints()}`, 'full');
+    this.on('[data-back]', () => this.showMultiChoice());
+  }
+
+  async showNetHost() {
+    if (!this.net?.isHost) {
+      this.leaveNet();
+      this.net = new NetSession('host', this.netHandlers());
+      this.net.racerIds = RACERS.map((r) => r.id);
+      this.net.myRacer = this.settings.racer;
+      this.netStatus = navigator.onLine ? 'Raum wird geöffnet …' : 'Kein Internet – koppelt die Handys per QR-Code im selben WLAN/Hotspot.';
+      if (navigator.onLine) {
+        this.net.openOnline().then((code) => { this.netStatus = ''; this.net.code = code; this.renderNetHost(); })
+          .catch(() => { this.netStatus = 'Raumcode nicht möglich (kein Internet?) – koppelt per QR-Code im selben WLAN.'; this.renderNetHost(); });
+      }
+    }
+    this.renderNetHost();
+  }
+
+  renderNetHost() {
+    this.ensureDemo();
+    const n = this.net, r = this.ctx.renderer;
+    const url = `${location.origin}${location.pathname}?join=${n.code ?? ''}`;
+    const me = RACER_BY_ID[n.myRacer];
+    const rows = [`<div class="pslot" style="--pc:${PCOL[0]}"><div class="ptag">P1</div><img src="${racerIcon(r, me)}" alt="" /><b style="color:${me.color}">${me.name}</b><small>Gastgeber (dieses Handy)</small>
+        <div class="row"><button class="small" data-me="-1">◀</button><button class="small" data-me="1">▶</button></div></div>`,
+      ...n.guests.map((g, i) => { const d = RACER_BY_ID[g.racer]; return d ? `<div class="pslot ready" style="--pc:${PCOL[(i + 1) % 4]}"><div class="ptag">P${i + 2}</div><img src="${racerIcon(r, d)}" alt="" /><b style="color:${d.color}">${d.name}</b><small>📱 Gast verbunden</small></div>` : ''; })].join('');
+    this.show('nethost', `
+      <div class="mscreen">
+        ${this.head('Spiel erstellen', 'Gastgeber · mehrere Handys')}
+        <div class="mbody"><div class="netwrap">
+          <div class="glass netcode">
+            ${n.code ? `<p>Raumcode</p><div class="bigcode">${n.code}</div><div class="qr">${qrSVG(url, 3)}</div><small>Mit dem Handy scannen oder den Code unter „Beitreten“ eingeben – klappt über beliebige Entfernungen.</small>` : `<p>${this.netStatus || ''}</p>`}
+            <div class="row"><button class="small" data-offline>📶 Ohne Internet koppeln (QR)</button></div>
+          </div>
+          <div class="lobby">${rows}</div>
+        </div>
+        <div class="row"><button data-back>Zurück</button><button class="go" data-next ${n.guests.some((g) => g.racer) ? 'data-focus' : 'disabled'}>Weiter</button></div></div>
+      </div>${this.hints()}`, this.screen === 'nethost' ? 'full still' : 'full');
+    this.on('[data-me]', (b) => { const k = RACERS.findIndex((x) => x.id === n.myRacer); let j = k; do { j = (j + Number(b.dataset.me) + RACERS.length) % RACERS.length; } while (n.guests.some((g) => g.racer === RACERS[j].id)); n.setMyRacer(RACERS[j].id); this.settings.racer = RACERS[j].id; save(SAVE_KEY, this.settings); this.renderNetHost(); });
+    this.on('[data-offline]', () => this.showNetOffer());
+    this.on('[data-back]', () => { this.leaveNet(); this.showMultiChoice(); });
+    this.on('[data-next]', () => { this.party = null; this.showMpModes(); });
+  }
+
+  /** Gastgeber ohne Internet: Angebot als QR zeigen, Antwort des Gasts scannen. */
+  async showNetOffer() {
+    const n = this.net;
+    this.show('netoffer', `<div class="mscreen">${this.head('Handy koppeln', 'ohne Internet · gleiches WLAN oder Hotspot')}<div class="mbody center"><div class="glass"><p>Code wird erstellt …</p></div></div></div>`, 'full');
+    let code;
+    try { code = await n.newOffer(); } catch (e) { this.showNetMessage(`Koppeln nicht möglich: ${e.message}`); return; }
+    this.show('netoffer', `
+      <div class="mscreen">
+        ${this.head('Handy koppeln', 'ohne Internet · gleiches WLAN oder Hotspot')}
+        <div class="mbody"><div class="netwrap">
+          <div class="glass netcode"><p><b>1.</b> Der Gast wählt „Beitreten → QR scannen“ und scannt diesen Code:</p><div class="qr big">${qrSVG(code, 3)}</div>
+            <details><summary>Code als Text</summary><textarea readonly>${code}</textarea></details></div>
+          <div class="glass netcode"><p><b>2.</b> Dann den Antwort-Code vom Gast-Handy scannen:</p>
+            <video class="scan" playsinline muted></video>
+            <div class="row"><button class="small" data-cam>📷 Kamera starten</button></div>
+            <details><summary>Antwort als Text einfügen</summary><textarea class="ans" placeholder="LGK1A…"></textarea><button class="small" data-paste>Übernehmen</button></details>
+            <p class="netinfo"></p></div>
+        </div>
+        <div class="row"><button data-back>Zurück</button></div></div>
+      </div>${this.hints()}`, 'full');
+    const info = this.el.querySelector('.netinfo');
+    const done = async (text) => {
+      info.textContent = 'Verbinde …';
+      try { this.stopScan?.(); await n.acceptAnswer(text); this.ctx.audio.sfx('oneup'); this.renderNetHost(); } catch (e) { info.textContent = e.message; }
+    };
+    this.on('[data-cam]', async () => { try { this.stopScan = await scanQR(this.el.querySelector('video.scan'), (t) => { if (t.startsWith('LGK1A')) done(t); }); } catch (e) { info.textContent = 'Kamera nicht verfügbar – Antwort als Text einfügen.'; } });
+    this.on('[data-paste]', () => done(this.el.querySelector('textarea.ans').value));
+    this.on('[data-back]', () => { this.stopScan?.(); this.renderNetHost(); });
+  }
+
+  showNetJoin(code = '') {
+    if (!this.net || this.net.isHost) {
+      this.leaveNet();
+      this.net = new NetSession('guest', this.netHandlers());
+      this.net.myRacer = this.settings.racer;
+    }
+    this.show('netjoin', `
+      <div class="mscreen">
+        ${this.head('Beitreten', 'mehrere Handys')}
+        <div class="mbody"><div class="netwrap">
+          <div class="glass netcode"><p><b>Mit Internet</b> – Raumcode vom Gastgeber eingeben:</p>
+            <input class="codein" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="z. B. K7P2" value="${code}" />
+            <div class="row"><button class="go" data-join>Beitreten</button></div></div>
+          <div class="glass netcode"><p><b>Ohne Internet</b> (gleiches WLAN/Hotspot) – QR-Code vom Gastgeber scannen:</p>
+            <video class="scan" playsinline muted></video>
+            <div class="row"><button class="small" data-cam>📷 Kamera starten</button></div>
+            <details><summary>Code als Text einfügen</summary><textarea class="off" placeholder="LGK1O…"></textarea><button class="small" data-paste>Übernehmen</button></details>
+            <div class="answer"></div></div>
+        </div>
+        <p class="lobby-tip netinfo"></p>
+        <div class="row"><button data-back>Zurück</button></div></div>
+      </div>${this.hints()}`, 'full');
+    const info = this.el.querySelector('.netinfo');
+    const join = async () => {
+      const c = this.el.querySelector('.codein').value.trim();
+      if (c.length < 4) { info.textContent = 'Bitte den vierstelligen Raumcode eingeben.'; return; }
+      info.textContent = 'Verbinde …';
+      try { await this.net.joinOnline(c); this.renderNetGuest(); } catch (e) { info.textContent = e.message ?? String(e); }
+    };
+    const offer = async (text) => {
+      try {
+        this.stopScan?.();
+        const ans = await this.net.answer(text);
+        this.el.querySelector('.answer').innerHTML = `<p><b>Jetzt diesen Code dem Gastgeber zeigen:</b></p><div class="qr big">${qrSVG(ans, 3)}</div><details><summary>Als Text</summary><textarea readonly>${ans}</textarea></details>`;
+        info.textContent = 'Warte auf den Gastgeber …';
+      } catch (e) { info.textContent = e.message; }
+    };
+    this.on('[data-join]', join);
+    this.on('[data-cam]', async () => { try { this.stopScan = await scanQR(this.el.querySelector('video.scan'), (t) => { if (t.startsWith('LGK1O')) offer(t); else if (/[?&]join=/.test(t)) { this.el.querySelector('.codein').value = t.split('join=')[1].slice(0, 4); join(); } }); } catch (e) { info.textContent = 'Kamera nicht verfügbar – Code als Text einfügen.'; } });
+    this.on('[data-paste]', () => offer(this.el.querySelector('textarea.off').value));
+    this.on('[data-back]', () => { this.stopScan?.(); this.leaveNet(); this.showMultiChoice(); });
+    if (code && code.length === 4) join();
+  }
+
+  /** Gast: verbunden – Figur wählen und auf den Start warten. */
+  renderNetGuest() {
+    const n = this.net;
+    if (!n || n.isHost || !n.link) return;
+    const r = this.ctx.renderer;
+    const lob = n.lobby?.players ?? [];
+    const slots = lob.map((p, i) => { const d = RACER_BY_ID[p.racer]; if (!d) return ''; const me = p.id === n.myId; return `<div class="pslot ${me ? '' : 'ready'}" style="--pc:${PCOL[i % 4]}"><div class="ptag">P${i + 1}</div><img src="${racerIcon(r, d)}" alt="" /><b style="color:${d.color}">${d.name}</b><small>${i === 0 ? 'Gastgeber' : me ? 'Du' : 'Gast'}</small>${me ? '<div class="row"><button class="small" data-pick="-1">◀</button><button class="small" data-pick="1">▶</button></div>' : ''}</div>`; }).join('');
+    this.show('netlobby', `
+      <div class="mscreen">
+        ${this.head('Verbunden!', n.lobby?.code ? `Raum ${n.lobby.code}` : 'ohne Internet')}
+        <div class="mbody"><div class="lobby">${slots}</div>
+          <p class="lobby-tip">Wähle deine Figur – der Gastgeber sucht die Strecke aus und startet.</p>
+          <div class="row"><button data-back>Verlassen</button></div></div>
+      </div>${this.hints()}`, this.screen === 'netlobby' ? 'full still' : 'full');
+    this.on('[data-pick]', (b) => {
+      const taken = new Set(lob.filter((p) => p.id !== n.myId).map((p) => p.racer));
+      let j = RACERS.findIndex((x) => x.id === n.myRacer);
+      do { j = (j + Number(b.dataset.pick) + RACERS.length) % RACERS.length; } while (taken.has(RACERS[j].id));
+      n.pick(RACERS[j].id); this.settings.racer = RACERS[j].id; save(SAVE_KEY, this.settings);
+    });
+    this.on('[data-back]', () => { this.leaveNet(); this.showMultiChoice(); });
+  }
+
+  /** Gast: Rennen nach den Startdaten des Gastgebers aufbauen. */
+  startGuestRace(o) {
+    const n = this.net;
+    this.hideAll();
+    const tour = o.tourId ? KO_TOURS.find((t) => t.id === o.tourId) : null;
+    const race = this.ctx.startRace({
+      mode: o.mode, courseId: o.courseId, fromId: o.fromId, laps: o.laps, tour, roster: o.roster.map((id) => RACER_BY_ID[id]),
+      playerId: n.myRacer, players: [{ id: n.myRacer, src: 'auto' }], cc: o.cc, assist: this.settings.assist, net: n,
+      onDone: (res) => this.showResults(res, { trackDef: TRACK_BY_ID[o.courseId], title: o.title || (o.mode === 'free' ? 'Freie Fahrt' : ''), netGuest: true }),
+    });
+    n.race = race;
+  }
 
   showLobby() {
     this.ensureDemo();
@@ -338,7 +548,7 @@ export class Menus {
     const card = (mode, ic, name, sub) => `<button class="card cup" data-mm="${mode}"><div class="trophy won">${ic}</div><span>${name}</span><small>${sub}</small></button>`;
     this.show('mpmodes', `
       <div class="mscreen">
-        ${this.head('Was wollt ihr fahren?', `${this.party.length} Spieler · ${CC[this.settings.cc].label}`)}
+        ${this.head('Was wollt ihr fahren?', `${this.humanIds.length} Spieler · ${CC[this.settings.cc].label}`)}
         <div class="mbody"><div class="grid cups">
           ${card('gp', '🏆', 'Grand Prix', 'Cup mit 4 Rennen und Punkten')}
           ${card('single', '🏁', 'Rennen', 'eine Strecke frei wählen')}
@@ -348,7 +558,7 @@ export class Menus {
         <div class="row"><button data-back>Zurück</button></div></div>
       </div>${this.hints()}`, 'full');
     this.on('[data-mm]', (b) => { this.mode = b.dataset.mm; this.afterRacer(); });
-    this.on('[data-back]', () => this.showLobby());
+    this.on('[data-back]', () => (this.netHost ? this.renderNetHost() : this.showLobby()));
   }
 
   /** Auf den Fernseher bringen: Anleitung je Gerät, Vollbild. */
@@ -410,7 +620,7 @@ export class Menus {
     const s = this.settings;
     this.lastKO = tour;
     this.hideAll();
-    this.ctx.startRace({
+    this.launch({
       mode: 'ko', tour, courseId: tour.stops[tour.stops.length - 1], roster: this.roster(s.racer, null, 12), playerId: this.leadId, players: this.partyPlayers(), cc: s.cc, assist: s.assist,
       onDone: (res) => this.showResults(res, { title: tour.name, ko: true }),
       onEvent: (e, v, r) => this.onRaceEvent(e, v, r),
@@ -423,7 +633,7 @@ export class Menus {
     this.hideAll();
     const ids = this.humanIds;
     const others = RACERS.filter((r) => !ids.includes(r.id)).sort(() => Math.random() - 0.5).slice(0, 8 - ids.length);
-    this.ctx.startRace({
+    this.launch({
       mode: 'free', roster: [...ids.map((id) => RACER_BY_ID[id]), ...others], playerId: this.leadId, players: this.partyPlayers(), cc: s.cc, assist: false,
       onEvent: (e, v, r) => this.onRaceEvent(e, v, r),
     });
@@ -490,7 +700,10 @@ export class Menus {
 
   // ------------------------------------------------------------------ Rennen
   /** Figuren der Menschen (Einzelspieler: die gewählte Figur). */
-  get humanIds() { return this.multi ? this.party.map((p) => p.racer) : [this.settings.racer]; }
+  get humanIds() {
+    if (this.netHost) return this.net.players().map((p) => p.id);
+    return this.party && this.party.length > 1 ? this.party.map((p) => p.racer) : [this.settings.racer];
+  }
   get leadId() { return this.humanIds[0]; }
 
   roster(playerId, order = null, n = 12) {
@@ -507,7 +720,7 @@ export class Menus {
     const trial = this.mode === 'trial';
     const roster = trial ? [RACER_BY_ID[s.racer]] : this.roster(s.racer);
     this.hideAll();
-    this.ctx.startRace({
+    this.launch({
       mode: trial ? 'trial' : 'race', courseId: trackDef.id, roster, playerId: this.leadId, players: trial ? undefined : this.partyPlayers(), cc: s.cc, laps: s.laps, assist: s.assist,
       onDone: (res) => this.showResults(res, { trackDef, single: true }),
       onEvent: (e, v, r) => this.onRaceEvent(e, v, r),
@@ -525,7 +738,7 @@ export class Menus {
     const trackDef = TRACK_BY_ID[g.cup.tracks[g.index]];
     this.hideAll();
     const from = g.index > 0 ? g.cup.tracks[g.index - 1] : null;
-    const race = this.ctx.startRace({
+    const race = this.launch({
       mode: 'gp', courseId: trackDef.id, fromId: from, roster: this.roster(s.racer, g.order), playerId: this.leadId, players: this.partyPlayers(), cc: s.cc,
       laps: from ? Math.max(1, s.laps - 1) : s.laps, assist: s.assist,
       onDone: (res) => this.showResults(res, { trackDef, gp: true }),
@@ -552,7 +765,8 @@ export class Menus {
     }
   }
 
-  showResults(res, { trackDef = null, gp = false, single = false, ko = false, title = '' }) {
+  showResults(res, { trackDef = null, gp = false, single = false, ko = false, title = '', netGuest = false }) {
+    if (netGuest) { this.showGuestResults(res, title || trackDef?.name || 'Ergebnis'); return; }
     const r = this.ctx.renderer;
     const me = res.find((x) => x.isPlayer);
     // Bestzeit
@@ -594,7 +808,23 @@ export class Menus {
     });
     this.on('[data-again]', () => (ko ? this.startKO(this.lastKO) : this.startSingle(trackDef)));
     this.on('[data-other]', () => { this.ctx.endRace(); this.ensureDemo(); if (ko) this.showTours(); else this.showTracks(); });
-    this.on('[data-menu]', () => { this.gp = null; this.ctx.endRace(); this.showTitle(); });
+    this.on('[data-menu]', () => { this.gp = null; this.ctx.endRace(); if (this.netHost) { this.net.toMenu(); this.ensureDemo(); this.renderNetHost(); } else this.showTitle(); });
+  }
+
+  /** Gast: Ergebnisse vom Gastgeber; das nächste Rennen startet der Gastgeber. */
+  showGuestResults(res, title) {
+    const r = this.ctx.renderer;
+    const rows = res.map((x, i) => `<tr class="${x.isPlayer ? 'me' : ''}"><td class="pl">${i + 1}.</td><td><img src="${racerIcon(r, RACER_BY_ID[x.id])}" alt="" /></td><td>${x.name}</td><td>${x.out ? 'ausgeschieden' : fmtTime(x.time)}</td></tr>`).join('');
+    this.show('results', `
+      <div class="mscreen">
+        ${this.head(title, 'Mehrspieler')}
+        <div class="mbody"><div class="results-wrap"><table>${rows}</table>
+          <p class="lobby-tip">Warte auf den Gastgeber …</p>
+          <div class="row"><button data-leave>Verlassen</button></div></div></div>
+      </div>`, 'results dim');
+    this.ctx.hud.show(false);
+    this.ctx.touch.show(false);
+    this.on('[data-leave]', () => { this.ctx.endRace(); this.leaveNet(); this.ensureDemo(); this.showMultiChoice(); });
   }
 
   showStandings() {
@@ -618,7 +848,7 @@ export class Menus {
         </div>
       </div>`, 'results');
     if (trophy) this.ctx.audio.sfx('star');
-    this.on('[data-menu]', () => { this.gp = null; this.ctx.endRace(); this.showTitle(); });
+    this.on('[data-menu]', () => { this.gp = null; this.ctx.endRace(); if (this.netHost) { this.net.toMenu(); this.ensureDemo(); this.renderNetHost(); } else this.showTitle(); });
   }
 
   // ------------------------------------------------------------------ Pause
@@ -644,7 +874,7 @@ export class Menus {
       if (race.free) { this.startFree(); return; }
       this.startSingle(race.def);
     });
-    this.on('[data-quit]', () => { this.gp = null; this.ctx.endRace(); this.showTitle(); });
+    this.on('[data-quit]', () => { this.gp = null; this.ctx.endRace(); if (this.net) { if (this.net.isHost) { this.net.toMenu(); this.ensureDemo(); this.renderNetHost(); } else { this.leaveNet(); this.ensureDemo(); this.showMultiChoice(); } } else this.showTitle(); });
   }
 
   resume() {

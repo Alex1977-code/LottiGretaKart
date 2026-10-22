@@ -23,7 +23,7 @@ if (!base) {
 const only = process.argv[2];
 // Fälle: Runden auf jeder Strecke, Grand Prix mit Anfahrt (inkl. Seeüberquerung), K.-o.-Tour
 const CASES = [
-  ...['kraxelwiese', 'herbstwald', 'laternengrotte', 'manege', 'autobahn', 'strand', 'gipfel', 'burg'].map((t) => ({ id: t, q: `race=${t}&laps=1&racer=greta`, rows: 12 })),
+  ...['kraxelwiese', 'herbstwald', 'laternengrotte', 'manege', 'autobahn', 'strand', 'gipfel', 'burg', 'wueste', 'vulkan', 'bonbon'].map((t) => ({ id: t, q: `race=${t}&laps=1&racer=greta`, rows: 12 })),
   { id: 'gp-wiese-wald', q: 'mode=gp&from=kraxelwiese&race=herbstwald&laps=1&racer=lotti', rows: 12 },
   { id: 'gp-zirkus-wiese', q: 'mode=gp&from=manege&race=kraxelwiese&laps=1&racer=pflaume', rows: 12 },
   { id: 'gp-wiese-strand', q: 'mode=gp&from=kraxelwiese&race=strand&laps=1&racer=kobold', rows: 12 },
@@ -32,6 +32,9 @@ const CASES = [
   { id: 'gp-gipfel-wald', q: 'mode=gp&from=gipfel&race=herbstwald&laps=1&racer=bulle', rows: 12 },
   { id: 'gp-wald-burg', q: 'mode=gp&from=herbstwald&race=burg&laps=1&racer=greta', rows: 12 },
   { id: 'ko-kueste', q: 'mode=ko&tour=kueste&racer=lotti', rows: 12, ko: true },
+  { id: 'gp-stadt-wueste', q: 'mode=gp&from=autobahn&race=wueste&laps=1&racer=lotti', rows: 12 },
+  { id: 'gp-grotte-vulkan', q: 'mode=gp&from=laternengrotte&race=vulkan&laps=1&racer=greta', rows: 12 },
+  { id: 'gp-burg-bonbon', q: 'mode=gp&from=burg&race=bonbon&laps=1&racer=pilzling', rows: 12 },
   { id: 'mp-2', q: 'race=strand&laps=1&players=lotti:kb1,greta:kb2', rows: 12 },
   { id: 'mp-4-gp', q: 'mode=gp&from=autobahn&race=gipfel&laps=1&players=pflaume:pad0,bulle:pad1,kobold:kb1,baron:kb2', rows: 12 },
   { id: 'ko-kurz', q: 'mode=ko&tour=kurz&race=kraxelwiese&racer=lotti', rows: 12, ko: true },
@@ -47,7 +50,7 @@ for (const c of CASES) {
   const errors = [];
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push(`${e.message}\n${e.stack}`));
-  await page.goto(`${base}?${c.q}`);
+  await page.goto(`${base}?${c.q}&quality=2`);   // Grafikstufe Hoch: Ultra ist im Software-Renderer zu langsam
   await page.waitForFunction(() => window.__kart?.race, null, { timeout: 120000 });
   const res = await page.evaluate(async () => {
     const k = window.__kart; k.paused = true;
@@ -75,7 +78,8 @@ for (const c of CASES) {
     return { state: r.state, time: r.time, steps, used, items, maxSpeed, drifts, boosts, place: p.place, finished: r.racers.filter((x) => x.finished).length, lapTime: p.finishTime, out: r.outOrder.length, rescues: r.rescues ?? 0, length: r.track.finishS };
   });
   await page.waitForTimeout(400);
-  await page.screenshot({ path: `tests/out/race-${id}.png` });
+  await page.evaluate(() => { window.__kart.freeze = true; });
+  await page.screenshot({ path: `tests/out/race-${id}.png`, timeout: 120000 });
   const rows = await page.evaluate(() => document.querySelectorAll('.results tr').length);
   check(res.state === 'done', `Rennen beendet (Zustand ${res.state}, ${(res.steps / 60).toFixed(0)} s)`);
   check(res.finished === 12, `alle zwölf gewertet (${res.finished}${c.ko ? `, davon ${res.out} ausgeschieden` : ''})`);

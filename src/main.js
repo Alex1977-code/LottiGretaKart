@@ -174,6 +174,9 @@ async function boot() {
       onEvent: (e, v, r) => menus.onRaceEvent(e, v, r),
     });
     menus.hideAll();
+  } else if (params.has('join')) {
+    menus.ensureDemo();
+    menus.showNetJoin((params.get('join') ?? '').slice(0, 4).toUpperCase());
   } else {
     menus.showTitle();
   }
@@ -185,6 +188,7 @@ let last = performance.now();
 let slow = 0;
 function frame(now) {
   requestAnimationFrame(frame);
+  if (ctx.freeze) return;   // Tests: Bildschleife anhalten (Screenshot des letzten Bilds)
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   const meta = readMeta();
