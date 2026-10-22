@@ -21,19 +21,26 @@ if (!base) {
   await new Promise((r) => setTimeout(r, 2500));
 }
 const only = process.argv[2];
-const TRACKS = ['kraxelwiese', 'herbstwald', 'laternengrotte', 'manege', 'autobahn'].filter((t) => !only || t === only);
+// Fälle: Runden auf jeder Strecke, Grand Prix mit Anfahrt (inkl. Seeüberquerung), K.-o.-Tour
+const CASES = [
+  ...['kraxelwiese', 'herbstwald', 'laternengrotte', 'manege', 'autobahn'].map((t) => ({ id: t, q: `race=${t}&laps=1&racer=greta`, rows: 12 })),
+  { id: 'gp-wiese-wald', q: 'mode=gp&from=kraxelwiese&race=herbstwald&laps=1&racer=lotti', rows: 12 },
+  { id: 'gp-zirkus-wiese', q: 'mode=gp&from=manege&race=kraxelwiese&laps=1&racer=pflaume', rows: 12 },
+  { id: 'ko-kurz', q: 'mode=ko&tour=kurz&race=kraxelwiese&racer=lotti', rows: 12, ko: true },
+].filter((c) => !only || c.id === only);
 const browser = await pw.chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 let failed = 0;
 const check = (ok, msg) => { console.log(`${ok ? '  ok  ' : '  FEHLER'} ${msg}`); if (!ok) failed++; };
 
-for (const id of TRACKS) {
-  console.log(`Strecke ${id}`);
+for (const c of CASES) {
+  const id = c.id;
+  console.log(`Fall ${id}`);
   const page = await browser.newPage({ viewport: { width: 1024, height: 576 } });
   const errors = [];
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push(`${e.message}\n${e.stack}`));
-  await page.goto(`${base}?race=${id}&laps=1&racer=greta`);
-  await page.waitForFunction(() => window.__kart?.race, null, { timeout: 60000 });
+  await page.goto(`${base}?${c.q}`);
+  await page.waitForFunction(() => window.__kart?.race, null, { timeout: 120000 });
   const res = await page.evaluate(async () => {
     const k = window.__kart; k.paused = true;
     const r = k.race, p = r.player;
@@ -46,7 +53,7 @@ for (const id of TRACKS) {
     // Die Spielerin fährt mit derselben KI wie die Gegner (Eingaben über window.__testInput)
     ai.initAI(p, 0.8, Math.random);
     let steps = 0;
-    while (r.state !== 'done' && steps < 60 * 240) {
+    while (r.state !== 'done' && steps < 60 * 400) {
       window.__testInput = ai.aiInput(p, r, 1 / 60);
       k.step(1, 1 / 60, false);
       steps++;
@@ -55,15 +62,16 @@ for (const id of TRACKS) {
       if (p.boostT > 0) boosts++;
     }
     k.step(0);
-    return { state: r.state, time: r.time, steps, used, items, maxSpeed, drifts, boosts, place: p.place, finished: r.racers.filter((x) => x.finished).length, lapTime: p.finishTime };
+    return { state: r.state, time: r.time, steps, used, items, maxSpeed, drifts, boosts, place: p.place, finished: r.racers.filter((x) => x.finished).length, lapTime: p.finishTime, out: r.outOrder.length, rescues: r.rescues ?? 0, length: r.track.finishS };
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: `tests/out/race-${id}.png` });
   const rows = await page.evaluate(() => document.querySelectorAll('.results tr').length);
   check(res.state === 'done', `Rennen beendet (Zustand ${res.state}, ${(res.steps / 60).toFixed(0)} s)`);
-  check(res.finished === 8, `alle acht im Ziel (${res.finished})`);
-  check(rows === 8, `Ergebnisliste mit 8 Zeilen (${rows})`);
-  check(res.lapTime > 15 && res.lapTime < 90, `Rundenzeit der Spielerin ${res.lapTime?.toFixed(1)} s, Platz ${res.place}`);
+  check(res.finished === 12, `alle zwölf gewertet (${res.finished}${c.ko ? `, davon ${res.out} ausgeschieden` : ''})`);
+  check(rows === c.rows, `Ergebnisliste mit ${c.rows} Zeilen (${rows})`);
+  check(res.lapTime > 15 && res.lapTime < 300, `Zeit der Spielerin ${res.lapTime?.toFixed(1)} s für ${res.length.toFixed(0)} m, Platz ${res.place}`);
+  check(res.rescues <= 3, `Rettungen (Festgefahren/Meer): ${res.rescues}`);
   check(res.items > 0, `Kisten eingesammelt: ${res.items}, Gegenstände benutzt: ${res.used}`);
   check(res.maxSpeed > 18, `Höchsttempo ${res.maxSpeed.toFixed(1)} m/s, Turbo-Bilder ${res.boosts}, Drift-Bilder ${res.drifts}`);
   check(errors.length === 0, `keine Konsolenfehler${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);

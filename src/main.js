@@ -1,6 +1,7 @@
 // Lotti & Greta Kart – Einstieg: Renderer, Kamera, Hauptschleife und Menü-Ablauf.
-// URL-Parameter (Tests/Fehlersuche): ?race=<strecke> startet sofort ein Rennen, ?racer=<id> wählt die Fahrerin,
-// ?cc=50|100|150, ?laps=n, ?demo=1 nur Computer-Fahrer, ?quality=0|1|2.
+// Beim Start wird einmal die ganze Insel-Welt gebaut (Ladebalken), danach laufen alle Rennen darin.
+// URL-Parameter (Tests/Fehlersuche): ?race=<strecke> startet sofort ein Rennen, ?from=<strecke> mit Anfahrt,
+// ?mode=race|gp|ko|free|trial|demo, ?racer=<id>, ?cc=50|100|150, ?laps=n, ?quality=0|1|2, ?assist=1.
 
 import * as THREE from 'three';
 import { getRenderer } from './lgw/three/renderer.js';
@@ -14,6 +15,11 @@ import { aiInput, initAI } from './game/ai.js';
 import { RACERS, RACER_BY_ID } from './game/racers.js';
 import { TRACK_BY_ID } from './tracks/index.js';
 import { registerSW } from './pwa.js';
+import { World } from './world/World.js';
+import { WorldView } from './world/WorldView.js';
+import { Sky } from './world/Sky.js';
+import { getTheme } from './world/themes.js';
+import { KO_TOURS } from './world/worldDef.js';
 
 const params = new URLSearchParams(location.search);
 const app = document.getElementById('app');
@@ -24,7 +30,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 
 const quality = params.has('quality') ? Number(params.get('quality')) : (isTouch() ? 1 : 2);
-const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.1, 1400);
+const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.1, 1600);
 
 const ctx = {
   renderer, camera, audio, quality,
@@ -63,9 +69,10 @@ ctx.startRace = (o) => {
   const race = new Race(ctx, o);
   ctx.race = race;
   ctx.paused = false;
-  ctx.hud.show(!o.demo);
-  ctx.touch.show(!o.demo && isTouch());
-  document.body.classList.toggle('touch-on', !o.demo && isTouch());
+  const demo = o.mode === 'demo';
+  ctx.hud.show(!demo);
+  ctx.touch.show(!demo && isTouch());
+  document.body.classList.toggle('touch-on', !demo && isTouch());
   ctx.touch.onStartTap = () => race.startTap();
   return race;
 };
@@ -93,20 +100,48 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && ctx.race && !ctx.race.demo && !ctx.paused && ctx.race.state !== 'done') menus.pause();
 });
 
-// Direktstart über die URL
-if (params.has('race')) {
-  const trackDef = TRACK_BY_ID[params.get('race')] ?? Object.values(TRACK_BY_ID)[0];
-  const playerId = params.get('racer') ?? 'lotti';
-  const roster = [...RACERS].sort((a, b) => (a.id === playerId ? 1 : 0) - (b.id === playerId ? 1 : 0));
-  ctx.startRace({
-    trackDef, roster, playerId, cc: Number(params.get('cc') ?? 100), laps: Number(params.get('laps') ?? 3),
-    demo: params.get('demo') === '1', seed: 7, assist: params.get('assist') === '1',
-    onDone: (res) => menus.showResults(res, { trackDef, single: true }),
-    onEvent: (e, v) => menus.onRaceEvent(e, v),
-  });
-  menus.hideAll();
-} else {
-  menus.showTitle();
+// ------------------------------------------------------------------ Welt bauen (einmal), dann Menü oder Direktstart
+const loading = document.createElement('div');
+loading.id = 'loading';
+loading.innerHTML = `<div class="logo"><span class="l1">Lotti</span><span class="amp">&amp;</span><span class="l2">Greta</span><span class="kart">KART</span></div>
+  <div class="bar"><i></i></div><p>Die Insel wird gebaut …</p>`;
+document.body.appendChild(loading);
+const setProgress = (k, text) => { loading.querySelector('i').style.width = `${Math.round(k * 100)}%`; loading.querySelector('p').textContent = text; };
+const nextFrame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+
+async function boot() {
+  setProgress(0.05, 'Gelände und Straßen …');
+  await nextFrame();
+  ctx.world = new World();
+  ctx.scene = new THREE.Scene();
+  ctx.sky = new Sky(ctx.scene, getTheme('grass'), { quality, sunDisc: true });
+  ctx.worldView = new WorldView(ctx.world, ctx.scene, { quality });
+  await ctx.worldView.build((k, text) => setProgress(0.2 + 0.75 * k, `${text} …`));
+  // Shader vorab übersetzen (kein Ruckeln beim ersten Bild)
+  renderer.compile(ctx.scene, camera);
+  setProgress(1, 'Los geht\'s!');
+  loading.classList.add('done');
+  setTimeout(() => loading.remove(), 600);
+
+  if (params.has('race') || params.get('mode') === 'free' || params.get('mode') === 'ko') {
+    const mode = params.get('mode') ?? (params.get('demo') === '1' ? 'demo' : 'race');
+    const trackDef = TRACK_BY_ID[params.get('race')] ?? Object.values(TRACK_BY_ID)[0];
+    const playerId = params.get('racer') ?? 'lotti';
+    const n = Number(params.get('n') ?? 12);
+    const roster = mode === 'trial' ? [RACER_BY_ID[playerId]] : [...RACERS].slice(0, n).sort((a, b) => (a.id === playerId ? 1 : 0) - (b.id === playerId ? 1 : 0));
+    if (!roster.some((r) => r.id === playerId) && mode !== 'demo') roster.push(RACER_BY_ID[playerId]);
+    const tour = KO_TOURS.find((t) => t.id === params.get('tour')) ?? KO_TOURS[0];
+    ctx.startRace({
+      mode, courseId: trackDef.id, fromId: params.get('from'), tour, roster, playerId, cc: Number(params.get('cc') ?? 100), laps: Number(params.get('laps') ?? 3),
+      seed: 7, assist: params.get('assist') === '1',
+      onDone: (res) => menus.showResults(res, { trackDef, single: mode !== 'ko', ko: mode === 'ko', title: mode === 'ko' ? tour.name : '' }),
+      onEvent: (e, v) => menus.onRaceEvent(e, v),
+    });
+    menus.hideAll();
+  } else {
+    menus.showTitle();
+  }
+  requestAnimationFrame(frame);
 }
 
 // ------------------------------------------------------------------ Hauptschleife
@@ -125,7 +160,9 @@ function frame(now) {
   // Bildrate schwach? Auflösung stufenweise senken
   if (dt > 1 / 40) slow++; else slow = Math.max(0, slow - 1);
   if (slow > 90 && pixelScale > 0.6) { pixelScale -= 0.15; slow = 0; resize(); }
+  // immer noch zu langsam: Schatten abschalten (einmalig)
+  else if (slow > 150 && ctx.sky?.sun.castShadow) { ctx.sky.sun.castShadow = false; slow = 0; }
 }
-requestAnimationFrame(frame);
+boot();
 
 registerSW();

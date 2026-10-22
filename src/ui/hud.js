@@ -10,6 +10,7 @@ export const fmtTime = (s) => {
   const m = Math.floor(s / 60), r = s - m * 60;
   return `${m}:${r.toFixed(2).padStart(5, '0')}`;
 };
+const pointXZ = (tr, s) => { const p = tr.pointAtS(s, 0); return [p.x, p.z]; };
 const PLACE_COLORS = ['#ffc21a', '#d6dbe8', '#e0905a', '#8fd468', '#8fd468', '#8fd468', '#8fd468', '#8fd468'];
 
 export class Hud {
@@ -25,7 +26,7 @@ export class Hud {
       </div>
       <div class="hud-item"><div class="slot"><img alt="" /><span class="badge"></span></div></div>
       <div class="hud-bl"><div class="hud-coins"><span class="coin-ic">₿</span> <b class="coins">0</b></div></div>
-      <div class="hud-br"><canvas class="minimap" width="220" height="220"></canvas><div class="hud-place"><b>8</b><small>.</small></div></div>
+      <div class="hud-br"><canvas class="minimap" width="240" height="185"></canvas><div class="hud-place"><b>8</b><small>.</small></div></div>
       <div class="hud-center"><div class="countdown"></div><div class="message"></div></div>
       <div class="hud-wrong">FALSCHE RICHTUNG!</div>`;
     root.appendChild(this.el);
@@ -43,31 +44,62 @@ export class Hud {
 
   show(on) { this.el.classList.toggle('visible', on); }
 
-  setupMap(track) {
-    this.track = track;
+  /** Karte: ganze Insel (einmal je Welt gezeichnet), darüber der Rennpfad dieses Rennens. */
+  setupMap(race) {
+    const world = race.world;
     const W = this.map.width, H = this.map.height;
-    this.mt = track.mapTransform(W, H, 16);
-    // Strecke einmal vorzeichnen
+    const b = world.def.bounds;
+    const s = Math.min(W / (b.maxX - b.minX), H / (b.maxZ - b.minZ));
+    const ox = (W - (b.maxX - b.minX) * s) / 2, oz = (H - (b.maxZ - b.minZ) * s) / 2;
+    this.mt = { s, map: (x, z) => [ox + (x - b.minX) * s, oz + (z - b.minZ) * s] };
+    if (!world.mapCanvas || world.mapCanvas.width !== W) {
+      const off = document.createElement('canvas');
+      off.width = W; off.height = H;
+      const c = off.getContext('2d');
+      const img = c.createImageData(W, H);
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const wx = b.minX + (x - ox) / s, wz = b.minZ + (y - oz) / s, h = world.heightAt(wx, wz);
+        const i = (y * W + x) * 4;
+        let col;
+        if (h < -2.5) col = [0, 0, 0, 0];
+        else if (h < 0) col = [90, 170, 240, 200];
+        else if (h < 1.2) col = [240, 225, 170, 235];
+        else { const k = Math.min(1, h / 40); col = [110 + 90 * k, 200 - 50 * k, 90 + 50 * k, 235]; }
+        img.data[i] = col[0]; img.data[i + 1] = col[1]; img.data[i + 2] = col[2]; img.data[i + 3] = col[3];
+      }
+      c.putImageData(img, 0, 0);
+      c.lineJoin = 'round'; c.lineCap = 'round';
+      for (const tr of world.roads) {
+        c.beginPath();
+        for (let i = 0; i <= tr.N; i += 3) {
+          const k = Math.min(i, tr.N - 1) % tr.N;
+          const [x, y] = this.mt.map(tr.px[k], tr.pz[k]);
+          if (i === 0) c.moveTo(x, y); else c.lineTo(x, y);
+        }
+        if (tr.closed) c.closePath();
+        c.strokeStyle = 'rgba(255,248,238,0.95)'; c.lineWidth = 3; c.stroke();
+      }
+      world.mapCanvas = off;
+    }
+    // Rennpfad hervorheben
     const off = document.createElement('canvas');
     off.width = W; off.height = H;
     const c = off.getContext('2d');
-    c.lineJoin = 'round'; c.lineCap = 'round';
-    const path = () => {
+    c.drawImage(world.mapCanvas, 0, 0);
+    const tr = race.track;
+    if (tr) {
+      c.lineJoin = 'round'; c.lineCap = 'round';
       c.beginPath();
-      for (let i = 0; i <= track.N; i += 2) {
-        const k = i % track.N;
-        const [x, y] = this.mt.map(track.px[k], track.pz[k]);
-        if (i === 0) c.moveTo(x, y); else c.lineTo(x, y);
-      }
-      c.closePath();
-    };
-    path(); c.strokeStyle = 'rgba(20,16,40,0.55)'; c.lineWidth = 15; c.stroke();
-    path(); c.strokeStyle = '#fff8ee'; c.lineWidth = 9; c.stroke();
-    path(); c.strokeStyle = '#a6a3b8'; c.lineWidth = 6; c.stroke();
-    const [sx, sy] = this.mt.map(track.px[0], track.pz[0]);
-    c.fillStyle = '#2a2834'; c.fillRect(sx - 5, sy - 5, 10, 10);
-    c.fillStyle = '#fff'; c.fillRect(sx - 5, sy - 5, 5, 5); c.fillRect(sx, sy, 5, 5);
+      for (let i = 0; i < tr.N; i += 3) { const [x, y] = this.mt.map(tr.px[i], tr.pz[i]); if (i === 0) c.moveTo(x, y); else c.lineTo(x, y); }
+      c.strokeStyle = 'rgba(42,30,62,0.6)'; c.lineWidth = 6; c.stroke();
+      c.strokeStyle = '#ffc21a'; c.lineWidth = 3.5; c.stroke();
+      const [fx, fy] = this.mt.map(...pointXZ(tr, tr.finishS));
+      c.fillStyle = '#2a2834'; c.fillRect(fx - 4, fy - 4, 8, 8);
+      c.fillStyle = '#fff'; c.fillRect(fx - 4, fy - 4, 4, 4); c.fillRect(fx, fy, 4, 4);
+      for (const cp of tr.checkpoints) { const [x, y] = this.mt.map(...pointXZ(tr, cp.s)); c.fillStyle = '#e8392d'; c.beginPath(); c.arc(x, y, 4, 0, Math.PI * 2); c.fill(); }
+    }
     this.mapBg = off;
+    this.race = race;
   }
 
   message(text, dur = 1.6, cls = '') {
@@ -86,12 +118,24 @@ export class Hud {
   update(dt, race) {
     const p = race.player;
     if (!p) return;
-    this.lapsEl.textContent = race.laps;
-    this.lapEl.textContent = Math.max(1, Math.min(race.laps, p.lap));
+    // Runde / Anfahrt / Checkpoint / Sternmünzen
+    let lapHtml;
+    if (race.free) {
+      const got = race.starCoins.filter((c) => c.got).length;
+      lapHtml = `<small>STERNE</small> <b>${got}</b><i>/${race.starCoins.length}</i>`;
+    } else if (race.ko) {
+      const tr = race.track, n = tr.checkpoints.length;
+      lapHtml = `<small>CHECKPOINT</small> <b>${Math.min(n, p.cp ?? 0)}</b><i>/${n}</i><span class="sub">noch ${race.active().length} im Rennen</span>`;
+    } else {
+      const route = race.track.lapMarks.length && p.progress < race.track.lapMarks[0] && race.track.label.includes('→');
+      lapHtml = `<small>RUNDE</small> <b>${Math.max(1, Math.min(race.laps, p.lap))}</b><i>/${race.laps}</i>${route ? '<span class="sub">Anfahrt</span>' : ''}`;
+    }
+    if (lapHtml !== this.lapHtml) { this.lapHtml = lapHtml; this.q('.hud-lap').innerHTML = lapHtml; }
     this.timeEl.textContent = fmtTime(p.finished ? p.finishTime : race.time);
     this.coinsEl.textContent = p.coins;
     this.coinsEl.parentElement.classList.toggle('full', p.coins >= 10);
     const pl = p.place;
+    this.placeEl.style.visibility = race.free ? 'hidden' : 'visible';
     this.placeEl.innerHTML = `<b>${pl}</b><small>.</small>`;
     this.placeEl.style.color = PLACE_COLORS[pl - 1] ?? '#fff';
     // Gegenstand / Glücksrad
@@ -125,7 +169,7 @@ export class Hud {
     }
     // Einblendungen
     if (this.msgT > 0) { this.msgT -= dt; if (this.msgT <= 0) this.msgEl.className = 'message'; }
-    this.wrongEl.classList.toggle('show', p.wrongWayT > 1.2 && race.state === 'race');
+    this.wrongEl.classList.toggle('show', p.wrongWayT > 1.2 && race.state === 'race' && !p.finished);
     this.drawMap(race);
   }
 
@@ -140,8 +184,14 @@ export class Hud {
       c.fillStyle = pr.kind === 'zauberkugel' ? '#3ae0d0' : pr.kind === 'kaefer' ? '#e8392d' : '#fff';
       c.beginPath(); c.arc(x, y, 3, 0, Math.PI * 2); c.fill();
     }
+    // Sternmünzen (Freie Fahrt)
+    if (race.free) for (const sc of race.starCoins) {
+      if (sc.got) continue;
+      const [x, y] = this.mt.map(sc.x, sc.z);
+      c.fillStyle = '#8fe060'; c.beginPath(); c.arc(x, y, 2.5, 0, Math.PI * 2); c.fill();
+    }
     // Fahrer (Spielerin zuletzt, größer)
-    const list = [...race.racers].sort((a, b) => (a.isPlayer ? 1 : 0) - (b.isPlayer ? 1 : 0));
+    const list = race.racers.filter((r) => !r.out).sort((a, b) => (a.isPlayer ? 1 : 0) - (b.isPlayer ? 1 : 0));
     for (const r of list) {
       const [x, y] = this.mt.map(r.pos.x, r.pos.z);
       const rad = r.isPlayer ? 8 : 5.5;

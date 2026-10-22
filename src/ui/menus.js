@@ -2,7 +2,8 @@
 // Im Hintergrund fährt ein Demo-Rennen der Computer-Fahrer.
 
 import { RACERS, RACER_BY_ID } from '../game/racers.js';
-import { TRACKS, TRACK_BY_ID, CUPS } from '../tracks/index.js';
+import { TRACKS, TRACK_BY_ID } from '../tracks/index.js';
+import { WORLD_CUPS as CUPS, KO_TOURS } from '../world/worldDef.js';
 import { CC } from '../game/Race.js';
 import { Ceremony } from '../game/Ceremony.js';
 import { Track } from '../world/Track.js';
@@ -11,11 +12,12 @@ import { racerIcon, preloadIcons } from './icons.js';
 import { fmtTime } from './hud.js';
 import { touch, isTouch } from './input.js';
 
-const POINTS = [15, 12, 10, 8, 6, 4, 2, 1];
+const POINTS = [15, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
 const STAT_NAMES = { speed: 'Tempo', accel: 'Beschleunigung', weight: 'Gewicht', handling: 'Lenkung', offroad: 'Gelände' };
 const SAVE_KEY = 'lgkart.settings.v1';
 const BEST_KEY = 'lgkart.best.v1';
 const CUP_KEY = 'lgkart.cups.v1';
+const STAR_KEY = 'lgkart.starcoins.v1';
 
 function load(key, def) { try { return { ...def, ...JSON.parse(localStorage.getItem(key) ?? '{}') }; } catch (_) { return { ...def }; } }
 function save(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch (_) { /* egal */ } }
@@ -35,6 +37,7 @@ export class Menus {
     this.gp = null;
     this.screen = null;
     this.trackThumbs = {};
+    try { ctx.collected = new Set(JSON.parse(localStorage.getItem(STAR_KEY) ?? '[]')); } catch (_) { ctx.collected = new Set(); }
   }
 
   // ------------------------------------------------------------------ Grundlagen
@@ -83,9 +86,9 @@ export class Menus {
   ensureDemo() {
     const r = this.ctx.race;
     if (r && r.demo) return;
-    if (r && !r.demo) this.ctx.endRace();
+    if (r) this.ctx.endRace();
     const trackDef = TRACKS[Math.floor(Math.random() * TRACKS.length)];
-    this.ctx.startRace({ trackDef, roster: [...RACERS].sort(() => Math.random() - 0.5), cc: 100, laps: 99, demo: true, seed: Math.floor(Math.random() * 1e6) });
+    this.ctx.startRace({ mode: 'demo', courseId: trackDef.id, roster: [...RACERS].sort(() => Math.random() - 0.5), cc: 100, laps: 40, seed: Math.floor(Math.random() * 1e6) });
     this.ctx.audio.play('course_map');
   }
 
@@ -101,10 +104,12 @@ export class Menus {
     const el = this.show('title', `
       <div class="panel title">
         <h1 class="logo"><span class="l1">Lotti</span><span class="amp">&amp;</span><span class="l2">Greta</span><span class="kart">KART</span></h1>
-        <p class="sub">Das Funrennen der Grünen Blockinsel</p>
+        <p class="sub">Eine ganze Insel voller Strecken – fahr von Rennen zu Rennen!</p>
         <div class="row col">
           <button class="big" data-mode="gp" data-focus>🏆 Grand Prix</button>
+          <button class="big" data-mode="ko">💥 K.-o.-Tour</button>
           <button class="big" data-mode="single">🏁 Einzelrennen</button>
+          <button class="big alt" data-mode="free">🗺️ Freie Fahrt</button>
           <button class="big alt" data-mode="trial">⏱️ Zeitfahren</button>
         </div>
         <div class="row">
@@ -214,7 +219,48 @@ export class Menus {
 
   afterRacer() {
     if (this.mode === 'gp') this.showCups();
+    else if (this.mode === 'ko') this.showTours();
+    else if (this.mode === 'free') this.startFree();
     else this.showTracks();
+  }
+
+  showTours() {
+    const cards = KO_TOURS.map((t) => `<button class="card cup" data-tour="${t.id}">
+        <div class="trophy">💥</div><span>${t.name}</span>
+        <small>${t.stops.map((id) => TRACK_BY_ID[id].short ?? TRACK_BY_ID[id].name).join(' → ')}</small>
+        <small>12 Fahrer · ${t.survivors.length} Checkpoints</small>
+      </button>`).join('');
+    this.show('tours', `
+      <div class="panel cups">
+        <h2>K.-o.-Tour · ${CC[this.settings.cc].label}</h2>
+        <p class="sub" style="text-align:center">Quer über die Insel! An jedem Checkpoint scheiden die Letzten aus.</p>
+        <div class="grid cups">${cards}</div>
+        <div class="row"><button data-back>Zurück</button></div>
+      </div>`, 'wide');
+    this.on('[data-tour]', (b) => this.startKO(KO_TOURS.find((t) => t.id === b.dataset.tour)));
+    this.on('[data-back]', () => this.showRacers());
+  }
+
+  startKO(tour) {
+    const s = this.settings;
+    this.lastKO = tour;
+    this.hideAll();
+    this.ctx.startRace({
+      mode: 'ko', tour, courseId: tour.stops[tour.stops.length - 1], roster: this.roster(s.racer, null, 12), playerId: s.racer, cc: s.cc, assist: s.assist,
+      onDone: (res) => this.showResults(res, { title: tour.name, ko: true }),
+      onEvent: (e, v) => this.onRaceEvent(e, v),
+    });
+    this.ctx.hud.message(tour.name, 2.6, 'intro');
+  }
+
+  startFree() {
+    const s = this.settings;
+    this.hideAll();
+    const others = RACERS.filter((r) => r.id !== s.racer).sort(() => Math.random() - 0.5).slice(0, 7);
+    this.ctx.startRace({
+      mode: 'free', roster: [RACER_BY_ID[s.racer], ...others], playerId: s.racer, cc: s.cc, assist: false,
+      onEvent: (e, v) => this.onRaceEvent(e, v),
+    });
   }
 
   // ------------------------------------------------------------------ Cups und Strecken
@@ -277,10 +323,10 @@ export class Menus {
   }
 
   // ------------------------------------------------------------------ Rennen
-  roster(playerId, order = null) {
+  roster(playerId, order = null, n = 12) {
     if (order) return order.map((id) => RACER_BY_ID[id]);
-    const others = RACERS.filter((r) => r.id !== playerId).sort(() => Math.random() - 0.5);
-    others.splice(5, 0, RACER_BY_ID[playerId]); // Spielerin startet als Sechste
+    const others = RACERS.filter((r) => r.id !== playerId).sort(() => Math.random() - 0.5).slice(0, n - 1);
+    others.splice(Math.min(others.length, Math.round(n * 0.7)), 0, RACER_BY_ID[playerId]); // Spielerin startet weiter hinten
     return others;
   }
 
@@ -290,7 +336,7 @@ export class Menus {
     const roster = trial ? [RACER_BY_ID[s.racer]] : this.roster(s.racer);
     this.hideAll();
     this.ctx.startRace({
-      trackDef, roster, playerId: s.racer, cc: s.cc, laps: s.laps, trial, assist: s.assist,
+      mode: trial ? 'trial' : 'race', courseId: trackDef.id, roster, playerId: s.racer, cc: s.cc, laps: s.laps, assist: s.assist,
       onDone: (res) => this.showResults(res, { trackDef, single: true }),
       onEvent: (e, v) => this.onRaceEvent(e, v),
     });
@@ -306,28 +352,36 @@ export class Menus {
     const g = this.gp, s = this.settings;
     const trackDef = TRACK_BY_ID[g.cup.tracks[g.index]];
     this.hideAll();
+    const from = g.index > 0 ? g.cup.tracks[g.index - 1] : null;
     const race = this.ctx.startRace({
-      trackDef, roster: this.roster(s.racer, g.order), playerId: s.racer, cc: s.cc, laps: s.laps, assist: s.assist,
+      mode: 'gp', courseId: trackDef.id, fromId: from, roster: this.roster(s.racer, g.order), playerId: s.racer, cc: s.cc,
+      laps: from ? Math.max(1, s.laps - 1) : s.laps, assist: s.assist,
       onDone: (res) => this.showResults(res, { trackDef, gp: true }),
       onEvent: (e, v) => this.onRaceEvent(e, v),
     });
-    this.ctx.hud.message(`${g.cup.name} · Rennen ${g.index + 1}/${g.cup.tracks.length}`, 2.6, 'intro');
+    this.ctx.hud.message(`${g.cup.name} · Rennen ${g.index + 1}/${g.cup.tracks.length}${from ? ' · mit Anfahrt' : ''}`, 2.6, 'intro');
     return race;
   }
 
   onRaceEvent(e, v) {
+    if (e === 'starcoin') {
+      this.ctx.collected.add(v);
+      try { localStorage.setItem(STAR_KEY, JSON.stringify([...this.ctx.collected])); } catch (_) { /* egal */ }
+      return;
+    }
+    if (e === 'out') { this.ctx.hud.message(`Ausgeschieden – Platz ${v}`, 4); return; }
     if (e === 'finish') {
       const msg = v === 1 ? 'Super – 1. Platz!' : v <= 3 ? `Toll – ${v}. Platz!` : `${v}. Platz`;
       this.ctx.hud.message(msg, 4, v <= 3 ? 'good' : '');
     }
   }
 
-  showResults(res, { trackDef, gp = false, single = false }) {
+  showResults(res, { trackDef = null, gp = false, single = false, ko = false, title = '' }) {
     const r = this.ctx.renderer;
     const me = res.find((x) => x.isPlayer);
     // Bestzeit
     let record = false;
-    if (me && me.place && trackDef) {
+    if (me && me.place && trackDef && !me.out) {
       const b = this.best[trackDef.id];
       if (!b || me.time < b.time) { this.best[trackDef.id] = { time: me.time, racer: me.id }; save(BEST_KEY, this.best); record = true; }
     }
@@ -336,16 +390,16 @@ export class Menus {
       res.forEach((x, i) => { this.gp.points[x.id] += POINTS[i] ?? 0; });
       rows = res.map((x, i) => `<tr class="${x.isPlayer ? 'me' : ''}"><td class="pl">${i + 1}.</td><td><img src="${racerIcon(r, RACER_BY_ID[x.id])}" alt="" /></td><td>${x.name}</td><td>${fmtTime(x.time)}</td><td class="pts">+${POINTS[i] ?? 0}</td><td class="tot">${this.gp.points[x.id]}</td></tr>`).join('');
     } else {
-      rows = res.map((x, i) => `<tr class="${x.isPlayer ? 'me' : ''}"><td class="pl">${i + 1}.</td><td><img src="${racerIcon(r, RACER_BY_ID[x.id])}" alt="" /></td><td>${x.name}</td><td>${fmtTime(x.time)}</td><td>${isFinite(x.best) ? `Runde ${fmtTime(x.best)}` : ''}</td></tr>`).join('');
+      rows = res.map((x, i) => `<tr class="${x.isPlayer ? 'me' : ''}"><td class="pl">${i + 1}.</td><td><img src="${racerIcon(r, RACER_BY_ID[x.id])}" alt="" /></td><td>${x.name}</td><td>${x.out ? 'ausgeschieden' : fmtTime(x.time)}</td><td>${!ko && isFinite(x.best) ? `Runde ${fmtTime(x.best)}` : ''}</td></tr>`).join('');
     }
     const last = gp && this.gp.index >= this.gp.cup.tracks.length - 1;
     this.show('results', `
       <div class="panel results">
-        <h2>${trackDef.name}</h2>
+        <h2>${title || trackDef?.name || ''}</h2>
         ${record && me ? `<p class="record">Neue Bestzeit: ${fmtTime(me.time)}!</p>` : ''}
         <table>${rows}</table>
         <div class="row">
-          ${gp ? `<button class="go" data-next data-focus>${last ? 'Gesamtwertung' : 'Nächstes Rennen'}</button>` : `<button class="go" data-again data-focus>Nochmal</button><button data-other>Andere Strecke</button>`}
+          ${gp ? `<button class="go" data-next data-focus>${last ? 'Gesamtwertung' : 'Nächstes Rennen'}</button>` : `<button class="go" data-again data-focus>Nochmal</button><button data-other>${ko ? 'Andere Tour' : 'Andere Strecke'}</button>`}
           <button data-menu>Menü</button>
         </div>
       </div>`, 'results');
@@ -358,8 +412,8 @@ export class Menus {
       this.gp.index++;
       this.nextGP();
     });
-    this.on('[data-again]', () => this.startSingle(trackDef));
-    this.on('[data-other]', () => { this.ctx.endRace(); this.showTracks(); this.ensureDemo(); });
+    this.on('[data-again]', () => (ko ? this.startKO(this.lastKO) : this.startSingle(trackDef)));
+    this.on('[data-other]', () => { this.ctx.endRace(); this.ensureDemo(); if (ko) this.showTours(); else this.showTracks(); });
     this.on('[data-menu]', () => { this.gp = null; this.ctx.endRace(); this.showTitle(); });
   }
 
@@ -406,8 +460,9 @@ export class Menus {
     this.on('[data-mute]', (b) => { const m = this.toggleMute(); b.textContent = m ? '🔇 Ton aus' : '🔊 Ton an'; });
     this.on('[data-restart]', () => {
       if (this.gp) { this.nextGP(); return; }
-      const def = race.def;
-      this.startSingle(def);
+      if (race.ko) { this.startKO(this.lastKO); return; }
+      if (race.free) { this.startFree(); return; }
+      this.startSingle(race.def);
     });
     this.on('[data-quit]', () => { this.gp = null; this.ctx.endRace(); this.showTitle(); });
   }

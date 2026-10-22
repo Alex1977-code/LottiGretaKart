@@ -93,8 +93,9 @@ class ModelDriver {
     this.root.scale.setScalar(seat.scale ?? 1);
     this.root.position.set(seat.x ?? 0, seat.y ?? 0, 0);
     kart.seat.add(this.root);
-    this.model = getModel(racer.model, {});
+    this.model = getModel(racer.model, racer.modelOpts ?? {});
     this.root.add(this.model.root);
+    if (racer.hideFirst) this.model.root.children[0].visible = false; // z. B. Erdhügel des Wühlers
     this.model.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     this.anim = null; this.animT = 0;
   }

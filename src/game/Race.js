@@ -1,19 +1,22 @@
-// Ein Rennen: baut Szene (Himmel, Strecke, Kulisse, Kisten, Gefahren), stellt die acht Karts auf, zählt mit der
-// Start-Ampel herunter, simuliert Physik/KI/Gegenstände, ermittelt Platzierungen und führt die Kamera.
-// Zustände: intro (Kameraflug) → countdown → race → finish (Spielerin im Ziel, die anderen fahren zu Ende) → done
+// Ein Rennen in der Insel-Welt (wie Mario Kart World). Die Welt (Gelände, Strecken, Kulisse, Himmel) besteht
+// dauerhaft; das Rennen legt Fahrer, Gegenstände, Gefahren und Effekte in eine eigene Gruppe und folgt einem
+// Rennpfad (RacePath). Modi:
+//   race   Runden auf einer Strecke                  gp     Grand Prix: ab dem 2. Rennen mit Anfahrt
+//   trial  Zeitfahren (allein, drei Turbo-Beeren)     ko     K.-o.-Tour über die Insel mit Checkpoints
+//   free   Freie Fahrt (offene Welt, Sternmünzen)     demo   Menü-Hintergrund (nur Computer-Fahrer)
+// Zustände: intro → countdown → race → finish → done (Freie Fahrt/Demo: free/demo)
 
 import * as THREE from 'three';
-import { Track } from '../world/Track.js';
-import { Sky } from '../world/Sky.js';
-import { Decor } from '../world/decor.js';
-import { getTheme } from '../world/themes.js';
 import { Racer } from './Racer.js';
 import { Items } from './items.js';
 import { Hazards } from './hazards.js';
 import { Effects } from './effects.js';
+import { RacePath } from './RacePath.js';
 import { initAI, aiInput } from './ai.js';
 import { readDrive, touch } from '../ui/input.js';
 import { SPARK_COLORS } from './kartModel.js';
+import { getModel } from '../lgw/course/models/index.js';
+import { getTheme } from '../world/themes.js';
 
 const TAU = Math.PI * 2;
 const wrapA = (a) => { a %= TAU; if (a > Math.PI) a -= TAU; else if (a < -Math.PI) a += TAU; return a; };
@@ -39,8 +42,9 @@ function mulberry(seed) {
 
 export class Race {
   /**
-   * @param {object} app  { renderer, camera, audio, hud, quality }
-   * @param {object} o    { trackDef, roster: [racerDef...] (Startreihenfolge, vorn zuerst), playerId, cc, laps, demo }
+   * @param {object} app  { renderer, camera, audio, hud, world, worldView, sky, scene, quality }
+   * @param {object} o    { mode, courseId, fromId, laps, tour, roster (Startreihenfolge, vorn zuerst), playerId, cc, assist,
+   *                        seed, onDone(results), onEvent(name, value) }
    */
   constructor(app, o) {
     this.app = app;
@@ -48,48 +52,50 @@ export class Race {
     this.hud = app.hud;
     this.camera = app.camera;
     this.view = { renderer: app.renderer };
-    this.def = o.trackDef;
-    this.laps = o.laps ?? 3;
+    this.world = app.world;
+    this.mode = o.mode ?? 'race';
+    this.demo = this.mode === 'demo';
+    this.free = this.mode === 'free';
+    this.trial = this.mode === 'trial';
+    this.ko = this.mode === 'ko';
+    this.assist = !!o.assist;
     this.ccKey = o.cc ?? 100;
     this.ccDef = CC[this.ccKey] ?? CC[100];
     this.cc = this.ccDef.mult;
-    this.demo = !!o.demo;
     this.rnd = mulberry(o.seed ?? (Date.now() & 0xffff));
-    this.time = 0;
-    this.state = 'intro';
+    this.time = 0; this.clock = 0;
     this.stateT = 0;
     this.shake = 0;
     this.finishOrder = [];
+    this.outOrder = [];
     this.onDone = o.onDone ?? null;
     this.onEvent = o.onEvent ?? null;
+    this.tour = o.tour ?? null;
 
-    this.scene = new THREE.Scene();
-    this.theme = getTheme(this.def.theme);
-    this.sky = new Sky(this.scene, this.theme, { quality: app.quality ?? 1 });
-    this.track = new Track(this.def, this.theme);
-    this.track.cell = (app.quality ?? 2) >= 2 ? 3 : 4.5;
-    this.scene.add(this.track.build());
+    // Rennpfad
+    const w = this.world;
+    if (this.ko) this.track = RacePath.forTour(w, o.tour.stops, o.tour.survivors);
+    else if (this.free) this.track = null;
+    else if (this.mode === 'gp' && o.fromId && o.fromId !== o.courseId) this.track = RacePath.forRoute(w, o.fromId, o.courseId, o.laps ?? 2);
+    else this.track = RacePath.forCourse(w, o.courseId, o.laps ?? 3);
+    this.laps = this.track?.laps ?? 1;
+    this.course = w.courseById[o.courseId ?? this.track?.courseId ?? 'kraxelwiese'] ?? w.courses[0];
+    this.def = this.course.def;
+    this.theme = this.course.theme;
+    this.label = this.track?.label ?? 'Freie Fahrt';
+
+    // Gruppe für alles Rennen-eigene (wird mit dispose entfernt)
+    this.scene = new THREE.Group();
+    this.scene.name = 'rennen';
+    app.scene.add(this.scene);
     this.effects = new Effects(this.scene);
-    this.decor = new Decor(this, this.track, this.theme, this.def.seed ?? 3, app.quality ?? 2);
-    this.def.scenery?.(this.decor, this);
-    this.decor.build();
-    this.trial = !!o.trial;
-    this.assist = !!o.assist;
     this.items = new Items(this);
-    // Zeitfahren: keine Kisten, dafür drei Turbo-Beeren
-    this.items.build(this.trial ? { ...this.def, items: [] } : this.def);
+    this.items.build(w, { boxes: !this.trial });
     this.hazards = new Hazards(this);
-    this.hazards.build(this.def.hazards ?? []);
-    // Ampel und Start-Tor
-    this.decor.startGate(this.def.banner ?? 'LOTTI & GRETA KART');
-    const lightAt = this.track.pointAt(8 / this.track.length, -(this.track.hw[0] + 2.2));
-    this.trafficLight = this.decor.model('traffic_light', { x: lightAt.x, z: lightAt.z }, { yaw: lightAt.yaw + Math.PI, state: 'off', scale: 1.15 });
-    // Licht an der Spielerin (Höhle, Zirkus)
-    if (this.theme.playerLight) {
-      const pl = this.theme.playerLight;
-      this.playerLight = new THREE.PointLight(pl.color, pl.intensity, pl.distance, 1.5);
-      this.scene.add(this.playerLight);
-    }
+    this.hazards.build(w);
+    // Licht an der Spielerin (dunkel in Höhle und Zelt; Stärke folgt der Region, Anzahl Lichter bleibt gleich)
+    this.playerLight = new THREE.PointLight(0xffd0a0, 0, 24, 1.5);
+    this.scene.add(this.playerLight);
 
     // Fahrer
     this.racers = [];
@@ -97,37 +103,81 @@ export class Race {
       const isPlayer = !this.demo && def.id === o.playerId;
       const r = new Racer(this, def, slot, isPlayer);
       if (!isPlayer) initAI(r, clamp(this.ccDef.skill + (this.rnd() - 0.5) * 0.3, 0.1, 1), this.rnd);
+      r.lap = 1;
       this.racers.push(r);
       if (isPlayer) this.player = r;
     });
-    this.grid();
+    if (this.free) this.setupFree(); else this.grid();
     if (this.trial && this.player) this.player.item = { id: 'beere3', charges: 3 };
+    // Start-Ampel neben der Startlinie
+    if (this.track) {
+      const q = this.track.pointAtS(this.track.startS + 8, 0);
+      const side = this.track.pointAtS(this.track.startS + 8, -(q.hw + 2.6));
+      this.trafficLight = { model: getModel('traffic_light'), state: 'off' };
+      const m = this.trafficLight.model.root;
+      m.position.set(side.x, Math.max(0, side.y), side.z);
+      m.rotation.y = side.yaw + Math.PI;
+      m.scale.setScalar(1.15);
+      this.scene.add(m);
+    }
     this.camState = { pos: new THREE.Vector3(), look: new THREE.Vector3(), yaw: 0, fov: 70 };
+    this.focus = (this.player ?? this.racers[0]).pos;
     this.introSetup();
-    if (this.hud && !this.demo) { this.hud.setupMap(this.track); }
+    if (this.hud && !this.demo) this.hud.setupMap(this);
+    this.ambT = 0;
   }
 
-  /** Startaufstellung: zwei Reihen versetzt hinter der Linie. */
+  /** Startaufstellung: zwei Reihen versetzt hinter der Startlinie des Pfads. */
   grid() {
     const tr = this.track;
     this.racers.forEach((r, k) => {
       const row = Math.floor(k / 2), side = k % 2 ? 1 : -1;
-      const s = -5 - row * 4.2 - (k % 2) * 1.6;
-      const p = tr.pointAt(s / tr.length, side * Math.min(2.6, tr.hw[0] * 0.4));
-      r.placeAt(p.x, p.z, p.yaw);
-      r.lap = 0; r.passedHalf = true;
+      const s = tr.startS - 5 - row * 4.2 - (k % 2) * 1.6;
+      const p0 = tr.pointAtS(s, 0);
+      const p = tr.pointAtS(s, side * Math.min(2.6, p0.hw * 0.4));
+      r.placeAt(p.x, p.z, p.yaw, p.i);
       r.updateProgress(r.loc);
     });
   }
 
+  /** Freie Fahrt: Spielerin an der Kraxelwiese, Computer-Fahrer kreisen auf ihren Heimstrecken. */
+  setupFree() {
+    const w = this.world, ids = w.courses.map((c) => c.id);
+    this.racers.forEach((r, k) => {
+      if (r.isPlayer) {
+        const tr = w.courseById.kraxelwiese.track, p = tr.pointAt(0.02, 0);
+        r.path = null;
+        r.placeAt(p.x, p.z, p.yaw);
+        return;
+      }
+      const cid = ids[k % ids.length];
+      r.path = RacePath.loop(w, cid, 40);
+      const s = r.path.startS + 30 + this.rnd() * (r.path.length * 0.05);
+      const p = r.path.pointAtS(s, (this.rnd() - 0.5) * 4);
+      r.placeAt(p.x, p.z, p.yaw, p.i);
+      r.updateProgress(r.loc);
+    });
+    // Sternmünzen
+    this.starCoins = w.def.starCoins.map(([x, z], k) => {
+      const m = getModel('star_coin');
+      const y = Math.max(0, w.heightAt(x, z));
+      m.root.position.set(x, y + 0.9, z);
+      m.root.scale.setScalar(1.6);
+      this.scene.add(m.root);
+      return { k, x, z, y, m, got: !!this.app.collected?.has(k) };
+    });
+    for (const c of this.starCoins) c.m.root.visible = !c.got;
+  }
+
   // ------------------------------------------------------------------ Hilfen für Gegenstände/KI
-  leader() { return this.racers.find((r) => r.place === 1); }
-  racerAhead(r) { return this.racers.find((o) => o.place === r.place - 1) ?? null; }
-  racerBehind(r) { return this.racers.find((o) => o.place === r.place + 1) ?? null; }
+  active() { return this.racers.filter((r) => !r.out); }
+  leader() { return this.racers.find((r) => r.place === 1 && !r.out) ?? this.racers.find((r) => !r.out); }
+  racerAhead(r) { return this.racers.find((o) => o.place === r.place - 1 && !o.out && o.path === r.path) ?? null; }
+  racerBehind(r) { return this.racers.find((o) => o.place === r.place + 1 && !o.out && o.path === r.path) ?? null; }
 
   /** Gummiband: Computer-Fahrer hinter der Spielerin werden etwas schneller, vorn etwas langsamer. */
   rubber(r) {
-    if (r.isPlayer || !this.player || r.finished) return 1;
+    if (r.isPlayer || !this.player || r.finished || this.free || !this.player.path) return 1;
     const d = r.progress - this.player.progress;
     const k = this.ccDef.rubber;
     const skill = this.ccDef.ai + 0.05 * ((r.ai?.skill ?? 0.5) - 0.5);
@@ -135,27 +185,77 @@ export class Race {
     return skill * (1 + clamp(-d / 120, 0, 1) * k * 1.4);
   }
 
-  onLap(r) {
-    if (r.lap > 1) r.lapTimes.push(this.time - r.lapStart);
-    r.lapStart = this.time;
-    if (r.lap > this.laps && !r.finished) {
-      r.finished = true;
-      r.finishTime = this.time;
-      this.finishOrder.push(r);
-      r.cancelDrift();
-      if (r.isPlayer) this.playerFinished();
-      return;
+  /** Fortschritt eines Fahrers: Runden, Checkpoints (K.-o.), Ziel. */
+  onProgress(r) {
+    const tr = r.path;
+    if (!tr || r.finished || r.out || tr !== this.track) return;
+    let lap = 1;
+    for (const m of tr.lapMarks) if (r.progress >= m) lap++;
+    lap = Math.min(lap, tr.laps + 1);
+    if (lap > r.lap) {
+      r.lapTimes.push(this.time - r.lapStart);
+      r.lapStart = this.time;
+      r.lap = lap;
+      this.onLap(r);
     }
-    if (r.isPlayer && r.lap > 1) {
-      if (r.lap === this.laps) {
-        this.hud?.message('LETZTE RUNDE!', 2.2, 'final');
-        this.audio.sfx('timewarn');
-        this.audio.energy(true);
-      } else {
-        this.hud?.message(`RUNDE ${r.lap}`, 1.4);
-        this.audio.sfx('checkpoint');
+    if (this.ko) {
+      r.cp = r.cp ?? 0;
+      const cp = tr.checkpoints[r.cp];
+      if (cp && r.progress >= cp.s) {
+        r.cp++;
+        cp.passed = (cp.passed ?? 0) + 1;
+        if (r.isPlayer) { this.hud?.message(`Checkpoint: ${cp.name}`, 1.6, 'good'); this.audio.sfx('checkpoint'); }
+        if (cp.passed >= cp.survivors && !cp.closed) this.closeCheckpoint(cp, r.cp);
       }
     }
+    if (r.progress >= tr.finishS) this.finishRacer(r);
+  }
+
+  /** K.-o.: Sobald genug Fahrer durch sind, scheiden alle anderen aus. */
+  closeCheckpoint(cp, index) {
+    cp.closed = true;
+    const losers = this.racers.filter((r) => !r.out && !r.finished && (r.cp ?? 0) < index).sort((a, b) => a.progress - b.progress);
+    for (const r of losers) this.eliminate(r);
+    if (this.player && !this.player.out) this.hud?.message(`Weiter! Noch ${this.active().length} im Rennen`, 2.2, 'final');
+  }
+
+  eliminate(r) {
+    r.out = true;
+    r.finished = true;
+    r.finishTime = this.time;
+    this.outOrder.push(r);
+    this.effects.sparkle(r.pos, 0xffffff, 24, 4);
+    this.effects.confetti(r.pos, 20, 2);
+    r.root.visible = false;
+    if (r.isPlayer) {
+      this.audio.sfx('die');
+      this.audio.stopMotor();
+      this.hud?.countdown('RAUS!', 'goal');
+      this.state = 'finish'; this.stateT = 0;
+      setTimeout(() => this.hud?.countdown(''), 1800);
+      this.onEvent?.('out', this.active().length + 1);
+      this.spectate = this.leader();
+    }
+  }
+
+  onLap(r) {
+    if (!r.isPlayer || r.lap > this.laps) return;
+    if (r.lap === this.laps && this.laps > 1) {
+      this.hud?.message('LETZTE RUNDE!', 2.2, 'final');
+      this.audio.sfx('timewarn');
+      this.audio.energy(true);
+    } else if (r.lap > 1) {
+      this.hud?.message(`RUNDE ${r.lap}`, 1.4);
+      this.audio.sfx('checkpoint');
+    }
+  }
+
+  finishRacer(r) {
+    r.finished = true;
+    r.finishTime = this.time;
+    this.finishOrder.push(r);
+    r.cancelDrift();
+    if (r.isPlayer) this.playerFinished();
   }
 
   onHit(r, kind) {
@@ -186,18 +286,21 @@ export class Race {
   introSetup() {
     this.stateT = 0;
     if (this.demo) { this.state = 'demo'; return; }
+    if (this.free) { this.state = 'free'; this.audio.play('course_map'); this.hud?.message('Freie Fahrt – erkunde die Insel!', 3, 'intro'); return; }
     this.state = 'intro';
     this.audio.play(this.def.music ?? 'course_grass');
   }
 
   /**
    * Lenkhilfe (für Kinder, abschaltbar): hält die Spielerin auf der Fahrbahn – nahe am Rand lenkt sie sanft zur
-   * Mitte zurück, solange nicht bewusst nach innen gelenkt wird; fährt sie verkehrt herum, dreht sie mit.
+   * Mitte zurück; fährt sie verkehrt herum, dreht sie mit.
    */
   steerAssist(r, inp) {
-    const tr = this.track, i = r.loc.i, hw = tr.hw[i];
+    const tr = r.path;
+    if (!tr) return inp;
+    const i = r.loc.i, hw = tr.hw[i];
     const k = Math.abs(r.loc.lat) / hw;
-    const ahead = tr.pointAt(tr.wrap(i + Math.round((6 + Math.abs(r.speed) * 0.45) / tr.ds)) / tr.N, r.loc.lat * 0.6);
+    const ahead = tr.pointAt(tr.wrap(i + Math.round((6 + Math.abs(r.speed) * 0.45) / tr.ds)) / (tr.N - 1), r.loc.lat * 0.6);
     const want = Math.atan2(-(ahead.z - r.pos.z), ahead.x - r.pos.x);
     const diff = wrapA(want - r.yaw);
     const auto = clamp(diff * 2.2, -1, 1);
@@ -220,42 +323,15 @@ export class Race {
   update(dt) {
     dt = Math.min(dt, 1 / 20);
     this.stateT += dt;
-    const t = (this.clock = (this.clock ?? 0) + dt);
-    const S = this.state;
+    const t = (this.clock += dt);
 
-    // Countdown mit Start-Ampel und Startturbo
-    if (S === 'intro' && this.stateT > 3.2) { this.state = 'countdown'; this.stateT = 0; }
-    if (this.state === 'countdown') {
-      const c = this.stateT;
-      const phase = c < 0.6 ? -1 : c < 1.6 ? 3 : c < 2.6 ? 2 : c < 3.6 ? 1 : 0;
-      if (phase !== this.cdPhase) {
-        this.cdPhase = phase;
-        if (phase > 0) { this.hud?.countdown(String(phase)); this.audio.beep(520, 0.2); }
-        this.trafficLight.state = phase === 3 ? 'red' : phase === 2 ? 'red' : phase === 1 ? 'yellow' : phase === 0 ? 'green' : 'off';
-        if (phase === 0) {
-          this.hud?.countdown('LOS!', 'go');
-          this.audio.beep(1040, 0.5, 0.3);
-          this.state = 'race'; this.stateT = 0; this.time = 0;
-          setTimeout(() => this.hud?.countdown(''), 900);
-          // Startturbo: Gas genau beim „2“ gedrückt (nicht vorher)
-          for (const r of this.racers) {
-            const good = r.isPlayer ? this.startGas === 2 : r.ai && this.rnd() < r.ai.skill * 0.7;
-            if (good) r.boost(1.0, 0xffc21a, 1.0);
-            else if (r.isPlayer && this.startGas === 3) { r.spinT = 0.6; this.audio.sfx('hurt'); }
-          }
-        }
-      }
-      if (this.player && !touch.active) {
-        const gas = readDrive().throttle > 0;
-        if (gas && !this.startGas) this.startGas = phase === 2 ? 2 : phase === 3 ? 3 : phase === 1 ? 1 : 0;
-        if (!gas && this.startGas === 3 && phase >= 2) this.startGas = 0;
-      }
-    }
-    if (this.state === 'race' || this.state === 'finish' || this.state === 'demo') this.time += dt;
+    if (this.state === 'intro' && this.stateT > 3.2) { this.state = 'countdown'; this.stateT = 0; }
+    if (this.state === 'countdown') this.countdown();
+    const running = ['race', 'finish', 'demo', 'free'].includes(this.state);
+    if (running) this.time += dt;
 
-    // Simulation
-    const running = this.state === 'race' || this.state === 'finish' || this.state === 'demo';
     for (const r of this.racers) {
+      if (r.out) continue;
       let inp;
       if (!running) inp = { steer: 0, throttle: 0, brake: 0 };
       else if (r.isPlayer && !r.finished) inp = this.assist ? this.steerAssist(r, readDrive()) : readDrive();
@@ -267,95 +343,169 @@ export class Race {
       this.rescue(dt);
       this.collide();
       this.items.update(dt, t);
+      if (this.free) this.updateFree(dt, t);
     } else this.items.update(0, t);
     this.hazards.update(running ? dt : 0, t);
     this.rank();
     this.emit(dt, t);
-    for (const r of this.racers) r.syncVisual(dt, t);
-    this.decor.update(dt, t);
+    for (const r of this.racers) if (!r.out) r.syncVisual(dt, t);
+    this.trafficLight?.model.update(dt, this.trafficLight.state);
     this.effects.update(dt, this.app.viewH ?? 800);
 
-    // Funkelstern-Musik zurück
     if (this.starMusic && this.player && this.player.starT <= 0) {
       this.starMusic = false;
       if (this.state === 'race') this.audio.play(this.def.music ?? 'course_grass');
+      if (this.state === 'free') this.audio.play('course_map');
     }
-    // Motor
     if (this.player && !this.demo) {
       const p = this.player;
-      this.audio.setMotor(this.state !== 'intro', p.speed, p.phys.top, p.boostT > 0 ? 1 : 0, p.offroad);
+      this.audio.setMotor(this.state !== 'intro' && !p.out, p.speed, p.phys.top, p.boostT > 0 ? 1 : 0, p.offroad);
     }
-    // Ende: alle im Ziel oder genug Zeit nach der Spielerin
-    if (this.state === 'finish' && (this.stateT > 7 || this.racers.every((r) => r.finished) && this.stateT > 4)) {
-      this.state = 'done';
-      this.complete();
-    }
-    if (this.state === 'demo' && this.player === undefined) {
-      // Demo endlos: nichts zu tun
+    if (this.state === 'finish') {
+      const allDone = this.racers.every((r) => r.finished);
+      if (this.stateT > (this.ko && this.player?.out ? 5 : 7) || (allDone && this.stateT > 4)) { this.state = 'done'; this.complete(); }
     }
     this.updateCamera(dt, t);
-    if (this.playerLight && this.player) this.playerLight.position.set(this.player.pos.x, this.player.pos.y + 3.5, this.player.pos.z);
-    this.sky.update(dt, this.camera, this.focus ?? this.camera.position);
+    this.updateAmbience(dt);
     if (this.hud && !this.demo) this.hud.update(dt, this);
   }
 
-  /** Restliche Fahrer nach ihrem Fortschritt einordnen und Zielzeiten schätzen. */
-  complete() {
-    const rest = this.racers.filter((r) => !r.finished).sort((a, b) => b.progress - a.progress);
-    for (const r of rest) {
-      const left = this.laps * this.track.length - r.progress;
-      r.finishTime = this.time + left / Math.max(8, r.phys.top * 0.85);
-      r.finished = true;
-      this.finishOrder.push(r);
+  countdown() {
+    const c = this.stateT;
+    const phase = c < 0.6 ? -1 : c < 1.6 ? 3 : c < 2.6 ? 2 : c < 3.6 ? 1 : 0;
+    if (phase !== this.cdPhase) {
+      this.cdPhase = phase;
+      if (phase > 0) { this.hud?.countdown(String(phase)); this.audio.beep(520, 0.2); }
+      if (this.trafficLight) this.trafficLight.state = phase === 3 || phase === 2 ? 'red' : phase === 1 ? 'yellow' : phase === 0 ? 'green' : 'off';
+      if (phase === 0) {
+        this.hud?.countdown('LOS!', 'go');
+        this.audio.beep(1040, 0.5, 0.3);
+        this.state = 'race'; this.stateT = 0; this.time = 0;
+        for (const r of this.racers) r.lapStart = 0;
+        setTimeout(() => this.hud?.countdown(''), 900);
+        // Startturbo: Gas genau beim „2“ gedrückt (nicht vorher)
+        for (const r of this.racers) {
+          const good = r.isPlayer ? this.startGas === 2 : r.ai && this.rnd() < r.ai.skill * 0.7;
+          if (good) r.boost(1.0, 0xffc21a, 1.0);
+          else if (r.isPlayer && this.startGas === 3) { r.spinT = 0.6; this.audio.sfx('hurt'); }
+        }
+      }
     }
-    this.audio.stopMotor();
-    this.onDone?.(this.finishOrder.map((r, i) => ({ id: r.id, name: r.name, place: i + 1, time: r.finishTime, isPlayer: r.isPlayer, best: Math.min(...r.lapTimes, Infinity) })));
+    if (this.player && !touch.active) {
+      const gas = readDrive().throttle > 0;
+      if (gas && !this.startGas) this.startGas = phase === 2 ? 2 : phase === 3 ? 3 : phase === 1 ? 1 : 0;
+      if (!gas && this.startGas === 3 && phase >= 2) this.startGas = 0;
+    }
   }
 
-  /**
-   * Rettung: kommt jemand 6 s lang nicht voran (festgefahren, eingeklemmt), setzt ihn der Waldkobold mit
-   * kurzem Aufblitzen ein Stück weiter auf die Fahrbahnmitte zurück.
-   */
-  rescue(dt) {
-    if (this.state !== 'race' && this.state !== 'finish' && this.state !== 'demo') return;
-    for (const r of this.racers) {
-      if (r.finished && !r.isPlayer) continue;
-      const rs = r.rescueState ?? (r.rescueState = { best: r.progress, t: 0 });
-      if (r.progress > rs.best + 4 || (r.isPlayer && !r.trying)) { rs.best = Math.max(rs.best, r.progress); rs.t = 0; continue; }
-      rs.t += dt;
-      if (rs.t > (r.isPlayer ? 6 : 4)) {
-        const tr = this.track;
-        if ((this.rescueLog ??= []).length < 20) this.rescueLog.push(`${r.id}@${r.loc.i}/${r.loc.lat.toFixed(1)} sp=${r.speed.toFixed(1)} yaw=${r.yaw.toFixed(2)} y=${r.pos.y.toFixed(1)} air=${r.air} spin=${r.spinT.toFixed(1)} sq=${r.squishT.toFixed(1)}`);
-        const i = tr.wrap(r.loc.i + 6);
-        const q = tr.pointAt(i / tr.N, 0);
-        this.effects.sparkle(r.pos, 0xffffff, 16, 3);
-        const prevI = r.lastI;
-        r.placeAt(q.x, q.z, q.yaw);
-        r.lastI = prevI; // Rundenzählung sieht das Überqueren der Ziellinie im nächsten Schritt
-        r.cancelDrift();
-        r.invulnT = 2;
-        if (r.ai) { r.ai.reverse = 0; r.ai.stuck = 0; r.ai.drifting = false; }
-        this.effects.sparkle(r.pos, 0xfff2a0, 16, 3);
-        this.rescues = (this.rescues ?? 0) + 1;
-        if (r.isPlayer) { this.hud?.message('Hopp – zurück auf die Strecke!', 1.6); this.audio.sfx('oneup'); }
-        rs.best = r.progress; rs.t = 0;
+  /** Freie Fahrt: Sternmünzen einsammeln. */
+  updateFree(dt, t) {
+    const p = this.player;
+    if (!p) return;
+    for (const c of this.starCoins) {
+      if (c.got) continue;
+      const d2 = (p.pos.x - c.x) ** 2 + (p.pos.z - c.z) ** 2;
+      const vis = d2 < 260 * 260;
+      c.m.root.visible = vis;
+      if (!vis) continue;
+      c.m.update(dt, 'idle');
+      c.m.root.rotation.y = t * 2 + c.k;
+      if (d2 < 2.4 * 2.4 && Math.abs(p.pos.y - c.y) < 3) {
+        c.got = true;
+        c.m.root.visible = false;
+        this.effects.sparkle(c.m.root.position, 0x8fe060, 30, 5);
+        this.audio.sfx('bigCoin');
+        this.onEvent?.('starcoin', c.k);
+        const got = this.starCoins.filter((x) => x.got).length;
+        this.hud?.message(got === this.starCoins.length ? 'Alle Sternmünzen gefunden!' : `Sternmünze ${got}/${this.starCoins.length}`, 2, 'good');
       }
     }
   }
 
+  /** Stimmung (Himmel, Licht, Nebel) nach der Region um die Kamera-Mitte. */
+  updateAmbience(dt) {
+    this.ambT -= dt;
+    if (this.ambT > 0) return;
+    this.ambT = 0.15;
+    const f = this.focus ?? this.camera.position;
+    const ws = this.world.ambienceAt(f.x, f.z).map((x) => ({ theme: getTheme(x.theme), w: x.w, name: x.theme }));
+    this.app.sky.blend(ws);
+    const dark = ws.reduce((a, x) => a + ((x.name === 'cave' || x.name === 'circus') ? x.w : 0), 0);
+    this.playerLight.intensity = 26 * dark;
+    this.darkness = dark;
+  }
+
+  /** Ergebnis: Ziel-Reihenfolge, dann die übrigen nach Fortschritt, zuletzt die Ausgeschiedenen. */
+  complete() {
+    const fin = this.finishOrder.filter((r) => !r.out);
+    const rest = this.racers.filter((r) => !r.finished).sort((a, b) => b.progress - a.progress);
+    for (const r of rest) {
+      const left = (this.track?.finishS ?? 0) - r.progress;
+      r.finishTime = this.time + left / Math.max(8, r.phys.top * 0.85);
+      r.finished = true;
+      fin.push(r);
+    }
+    const order = [...fin, ...[...this.outOrder].reverse()];
+    this.audio.stopMotor();
+    this.onDone?.(order.map((r, i) => ({ id: r.id, name: r.name, place: i + 1, time: r.finishTime, isPlayer: r.isPlayer, out: !!r.out, best: Math.min(...r.lapTimes, Infinity) })));
+  }
+
+  /**
+   * Rettung: kommt jemand nicht voran (festgefahren) oder fällt ins offene Meer, setzt ihn der Waldkobold mit
+   * kurzem Aufblitzen ein Stück weiter auf die Straße zurück.
+   */
+  rescue(dt) {
+    for (const r of this.racers) {
+      if (r.out || (r.finished && !r.isPlayer)) continue;
+      const rs = r.rescueState ?? (r.rescueState = { best: r.progress, t: 0, sea: 0 });
+      rs.sea = r.surface === 'sea' ? rs.sea + dt : 0;
+      let need = rs.sea > 0.6;
+      if (!need && r.path) {
+        if (r.progress > rs.best + 4 || (r.isPlayer && !r.trying)) { rs.best = Math.max(rs.best, r.progress); rs.t = 0; continue; }
+        rs.t += dt;
+        need = rs.t > (r.isPlayer ? 6 : 4);
+      }
+      if (!need) continue;
+      if ((this.rescueLog ??= []).length < 30) this.rescueLog.push(`${r.id}@${r.loc.i}/${r.loc.lat?.toFixed(1)} x=${r.pos.x.toFixed(0)} z=${r.pos.z.toFixed(0)} sp=${r.speed.toFixed(1)} surf=${r.surface} sea=${rs.sea.toFixed(1)}`);
+      this.effects.sparkle(r.pos, 0xffffff, 16, 3);
+      if (r.path) {
+        const tr = r.path, i = tr.wrap(r.loc.i + 6);
+        const q = tr.pointAt(i / (tr.N - 1), 0);
+        r.placeAt(q.x, q.z, q.yaw, i);
+      } else {
+        const nr = this.world.nearestRoad(r.pos.x, r.pos.z, 12, {});
+        if (nr.road) {
+          const tr = nr.road, i = nr.i;
+          r.placeAt(tr.px[i], tr.pz[i], Math.atan2(-tr.tz[i], tr.tx[i]));
+        }
+      }
+      r.cancelDrift();
+      r.invulnT = 2;
+      if (r.ai) { r.ai.reverse = 0; r.ai.stuck = 0; r.ai.drifting = false; }
+      this.effects.sparkle(r.pos, 0xfff2a0, 16, 3);
+      this.rescues = (this.rescues ?? 0) + 1;
+      if (r.isPlayer) { this.hud?.message('Hopp – zurück auf die Strecke!', 1.6); this.audio.sfx('oneup'); }
+      rs.best = r.progress; rs.t = 0; rs.sea = 0;
+    }
+  }
+
   rank() {
-    const fin = this.finishOrder;
-    const rest = this.racers.filter((r) => !fin.includes(r)).sort((a, b) => b.progress - a.progress);
+    if (this.free) { this.racers.forEach((r, i) => { r.place = i + 1; }); return; }
+    const fin = this.finishOrder.filter((r) => !r.out);
+    const rest = this.racers.filter((r) => !r.finished).sort((a, b) => b.progress - a.progress);
     fin.forEach((r, i) => { r.place = i + 1; });
     rest.forEach((r, i) => { r.place = fin.length + i + 1; });
+    [...this.outOrder].reverse().forEach((r, i) => { r.place = fin.length + rest.length + i + 1; });
   }
 
   /** Karts schubsen sich gegenseitig (Gewicht zählt); Stern/Riese werfen andere um. */
   collide() {
     const rs = this.racers;
     for (let a = 0; a < rs.length; a++) {
+      if (rs[a].out) continue;
       for (let b = a + 1; b < rs.length; b++) {
         const A = rs[a], B = rs[b];
+        if (B.out) continue;
         const dx = B.pos.x - A.pos.x, dz = B.pos.z - A.pos.z, dy = B.pos.y - A.pos.y;
         const rr = A.radius + B.radius;
         const d2 = dx * dx + dz * dz;
@@ -364,11 +514,9 @@ export class Race {
         const wa = A.weight, wb = B.weight, sum = wa + wb;
         A.pos.x -= nx * pen * (wb / sum); A.pos.z -= nz * pen * (wb / sum);
         B.pos.x += nx * pen * (wa / sum); B.pos.z += nz * pen * (wa / sum);
-        // seitlicher Stoß (in Kart-Koordinaten)
         const push = 4.5;
         A.vlat -= push * (wb / sum) * (nx * Math.sin(A.yaw) + nz * Math.cos(A.yaw));
         B.vlat += push * (wa / sum) * (nx * Math.sin(B.yaw) + nz * Math.cos(B.yaw));
-        // Sonderfälle
         if (A.starT > 0 && B.starT <= 0) B.hit('spin', A);
         else if (B.starT > 0 && A.starT <= 0) A.hit('spin', B);
         if (A.giantT > 0 && B.giantT <= 0 && B.starT <= 0) B.hit('squish', A);
@@ -381,10 +529,13 @@ export class Race {
     }
   }
 
-  /** Partikel: Drift-Funken, Turbo, Staub, Funkelstern. */
+  /** Partikel: Drift-Funken, Turbo, Staub, Wasser-Gischt, Schienen-Funken, Funkelstern. */
   emit(dt, t) {
-    const fx = this.effects;
+    const fx = this.effects, f = this.focus;
     for (const r of this.racers) {
+      if (r.out) continue;
+      if (f && (r.pos.x - f.x) ** 2 + (r.pos.z - f.z) ** 2 > 120 * 120) continue;
+      if (r.grind && Math.random() < 0.9) fx.trail(r.pos.x, r.pos.y, r.pos.z, 0xfff0a0, 0.5);
       if (r.air) continue;
       const c = Math.cos(r.yaw), s = -Math.sin(r.yaw);
       const bx = r.pos.x - c * 0.9 * r.giantScale, bz = r.pos.z - s * 0.9 * r.giantScale;
@@ -392,8 +543,12 @@ export class Race {
         const col = SPARK_COLORS[r.drift.level] ?? 0xffffff;
         for (const side of [-1, 1]) fx.trail(bx + s * side * 0.55, r.pos.y + 0.1, bz - c * side * 0.55, r.drift.level ? col : 0xfff0d0, r.drift.level ? 0.55 : 0.3);
       }
+      if (r.charge > 0.2 && Math.random() < 0.6) fx.trail(bx, r.pos.y + 0.1, bz, r.charge > 1 ? 0xff5ad0 : 0x58b8ff, 0.4);
       if (r.boostT > 0 && Math.random() < 0.8) fx.trail(bx - c * 0.3, r.pos.y + 0.35, bz - s * 0.3, r.boostColor, 0.7);
-      if (r.offroad && Math.abs(r.speed) > 4 && Math.random() < 0.5) fx.dust(bx, r.pos.y, bz, this.theme.offroad, 0.9);
+      if (r.offroad && Math.abs(r.speed) > 4 && Math.random() < 0.5) fx.dust(bx, r.pos.y, bz, 0xe8d8b0, 0.9);
+      if (r.onWater && Math.abs(r.speed) > 3 && Math.random() < 0.8) {
+        for (const side of [-1, 1]) fx.dust(bx + s * side * 0.6, r.pos.y + 0.1, bz - c * side * 0.6, 0xeaf8ff, 1.1);
+      }
       if (r.starT > 0 && Math.random() < 0.8) fx.rainbow(r.pos);
     }
   }
@@ -401,19 +556,22 @@ export class Race {
   // ------------------------------------------------------------------ Kamera
   updateCamera(dt, t) {
     const cam = this.camera, cs = this.camState;
-    let pos = new THREE.Vector3(), look = new THREE.Vector3(), fov = 70;
-    const target = this.player ?? this.racers.find((r) => r.place === 1) ?? this.racers[0];
+    const pos = new THREE.Vector3(), look = new THREE.Vector3();
+    let fov = 70;
+    let target = this.spectate && !this.spectate.out ? this.spectate : this.player ?? this.racers.find((r) => r.place === 1) ?? this.racers[0];
+    if (target.out) target = this.leader() ?? target;
     if (this.state === 'intro') {
       // Kameraflug: über das Starterfeld hinweg zur Startlinie
       const k = clamp(this.stateT / 3.2, 0, 1), e = k * k * (3 - 2 * k);
-      const p0 = this.track.pointAt(0.04, 0), g = this.track.pointAt(-20 / this.track.length, 0);
+      const tr = this.track;
+      const g = tr.pointAtS(tr.startS - 18, 0), p0 = tr.pointAtS(tr.startS, 0);
       const ang = p0.yaw + Math.PI * (0.35 + 0.75 * e);
-      const R = 26 - 14 * e;
-      pos.set(g.x + Math.cos(ang) * R, g.y + 12 - 7 * e, g.z - Math.sin(ang) * R);
-      look.set(g.x, g.y + 1, g.z);
+      const R = 30 - 16 * e;
+      pos.set(g.x + Math.cos(ang) * R, Math.max(0, g.y) + 14 - 8 * e, g.z - Math.sin(ang) * R);
+      look.set(g.x, Math.max(0, g.y) + 1, g.z);
       cs.pos.copy(pos); cs.look.copy(look);
       cs.yaw = target.yaw;
-    } else if (this.state === 'demo' && !this.player) {
+    } else if (this.state === 'demo') {
       // Menü-Hintergrund: wechselnde Kamerafahrten, bevorzugt Lotti und Greta
       this.demoT = (this.demoT ?? 0) - dt;
       if (this.demoT <= 0 || !this.demoTarget) {
@@ -425,21 +583,16 @@ export class Race {
         cs.snap = true;
       }
       const r = this.demoTarget, c = Math.cos(r.yaw), s = -Math.sin(r.yaw);
-      if (this.demoMode === 0) { // schräg von vorn
-        pos.set(r.pos.x + c * 4.2 - s * 2.4 * this.demoSide, r.pos.y + 1.3, r.pos.z + s * 4.2 + c * 2.4 * this.demoSide);
-      } else if (this.demoMode === 1) { // seitlich mitfahrend
-        pos.set(r.pos.x - s * 4.5 * this.demoSide - c * 0.5, r.pos.y + 1.6, r.pos.z + c * 4.5 * this.demoSide - s * 0.5);
-      } else { // von hinten oben
-        pos.set(r.pos.x - c * 6, r.pos.y + 3.2, r.pos.z - s * 6);
-      }
+      if (this.demoMode === 0) pos.set(r.pos.x + c * 4.2 - s * 2.4 * this.demoSide, r.pos.y + 1.3, r.pos.z + s * 4.2 + c * 2.4 * this.demoSide);
+      else if (this.demoMode === 1) pos.set(r.pos.x - s * 4.5 * this.demoSide - c * 0.5, r.pos.y + 1.6, r.pos.z + c * 4.5 * this.demoSide - s * 0.5);
+      else pos.set(r.pos.x - c * 6, r.pos.y + 3.2, r.pos.z - s * 6);
       look.set(r.pos.x + c * 0.5, r.pos.y + 0.7, r.pos.z + s * 0.5);
       if (cs.snap) { cs.pos.copy(pos); cs.look.copy(look); cs.snap = false; }
       cs.pos.lerp(pos, 1 - Math.exp(-6 * dt)); cs.look.lerp(look, 1 - Math.exp(-10 * dt));
       fov = 55;
-    } else if (this.state === 'finish' || this.state === 'done' || this.state === 'demo') {
-      // Umkreisen der Spielerin (bzw. der Spitze in der Demo)
-      const a = t * 0.35;
-      const R = this.state === 'demo' ? 9 : 6.5;
+      target = r;
+    } else if ((this.state === 'finish' || this.state === 'done') && !this.spectate) {
+      const a = t * 0.35, R = 6.5;
       pos.set(target.pos.x + Math.cos(a) * R, target.pos.y + 2.6, target.pos.z + Math.sin(a) * R);
       look.set(target.pos.x, target.pos.y + 0.9, target.pos.z);
       cs.pos.lerp(pos, 1 - Math.exp(-3 * dt)); cs.look.lerp(look, 1 - Math.exp(-6 * dt));
@@ -452,12 +605,10 @@ export class Race {
       const h = 1.85 * (0.75 + 0.25 * r.giantScale);
       const cx = Math.cos(cs.yaw), cz = -Math.sin(cs.yaw);
       pos.set(r.pos.x - cx * dist, r.pos.y + h, r.pos.z - cz * dist);
-      // Kamera nicht unter das Gelände
-      const gy = this.track.heightAt(pos.x, pos.z) + 0.8;
+      const gy = Math.max(0, this.world.heightAt(pos.x, pos.z)) + 0.8;
       if (pos.y < gy) pos.y = gy;
       look.set(r.pos.x + cx * 3, r.pos.y + 1.0, r.pos.z + cz * 3);
-      // waagerecht starr am Kart (Gier ist schon geglättet), Höhe weich (Sprünge)
-      const blend = this.state === 'countdown' && this.stateT < 1.2 ? 1 - Math.exp(-3 * dt) : 1;
+      const blend = this.state === 'countdown' && this.stateT < 1.2 ? 1 - Math.exp(-3 * dt) : this.spectate ? 1 - Math.exp(-4 * dt) : 1;
       const yS = cs.pos.y;
       cs.pos.lerp(pos, blend);
       if (blend === 1) cs.pos.y = damp(yS, pos.y, 8, dt);
@@ -475,10 +626,13 @@ export class Race {
     cam.lookAt(cs.look);
     if (Math.abs(cam.fov - cs.fov) > 0.05) { cam.fov = cs.fov; cam.updateProjectionMatrix(); }
     this.focus = target.pos;
+    this.app.sky.update(dt, cam, this.focus);
+    this.app.worldView.update(dt, t, this.focus);
+    this.playerLight.position.set(target.pos.x, target.pos.y + 3.5, target.pos.z);
   }
 
   render(renderer) {
-    renderer.render(this.scene, this.camera);
+    renderer.render(this.app.scene, this.camera);
   }
 
   dispose() {
@@ -486,10 +640,9 @@ export class Race {
     for (const r of this.racers) r.dispose();
     this.items.dispose();
     this.hazards.dispose();
-    this.decor.dispose();
     this.effects.dispose();
-    this.sky.dispose();
-    this.track.dispose();
-    this.scene.traverse((o) => { if (o.isMesh && o.geometry && !o.geometry.userData?.shared) { /* geteilte Geometrien bleiben */ } });
+    this.trafficLight?.model.dispose();
+    for (const c of this.starCoins ?? []) c.m.dispose();
+    this.scene.removeFromParent();
   }
 }

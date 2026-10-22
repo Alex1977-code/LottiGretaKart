@@ -21,7 +21,7 @@ export function initAI(racer, skill, rnd) {
 
 /** Eingabe für einen Computer-Fahrer (auch für die Spielerin nach dem Zieleinlauf). */
 export function aiInput(racer, race, dt) {
-  const ai = racer.ai, track = race.track, inp = { steer: 0, throttle: 1, brake: 0, drift: false, item: false };
+  const ai = racer.ai, track = racer.path, inp = { steer: 0, throttle: 1, brake: 0, drift: false, item: false };
   const N = track.N, i = racer.loc.i;
   ai.laneT -= dt;
   if (ai.laneT <= 0) { ai.lane = clamp(ai.lane + (ai.rnd() - 0.5) * 0.7, -0.7, 0.7); ai.laneT = 2 + ai.rnd() * 4; }
@@ -39,13 +39,17 @@ export function aiInput(racer, race, dt) {
   const inside = clamp(Math.sign(curv) * Math.min(1, Math.abs(curv) * 22), -0.75, 0.75) * (0.4 + 0.5 * ai.skill);
   let laneF = offTrack ? clamp(racer.loc.lat / track.hw[i], -0.5, 0.5) : clamp(ai.lane * (1 - Math.abs(inside)) + inside, -0.78, 0.78);
   // Stampfsteine umfahren: freie Spur suchen, die der gewünschten am nächsten liegt
-  const stones = (race.hazards?.list ?? []).filter((h) => h.kind === 'stampfstein' && h.p);
+  const stones = [];
+  for (const h of race.hazards?.list ?? []) {
+    if (h.kind !== 'stampfstein' || !h.p) continue;
+    if ((h.p.x - racer.pos.x) ** 2 + (h.p.z - racer.pos.z) ** 2 > 40 * 40) continue;
+    const q = track.locate(h.p.x, h.p.z, i, ai._sl ?? (ai._sl = {}));
+    if (Math.abs(q.lat) > q.hw + 3) continue; // liegt nicht an meinem Weg
+    stones.push({ ahead: (q.i - i) * track.ds, lat: q.lat, size: h.size });
+  }
   if (stones.length) {
     const hwHere = track.hw[i];
-    const blocked = (lat) => stones.some((h) => {
-      const ahead = track.wrap(h.p.i - i) * track.ds;
-      return ahead > -2 && ahead < 28 && Math.abs(lat - h.lat) < h.size * 0.5 + 1.5;
-    });
+    const blocked = (lat) => stones.some((h) => h.ahead > -2 && h.ahead < 28 && Math.abs(lat - h.lat) < h.size * 0.5 + 1.5);
     if (blocked(laneF * hwHere)) {
       let best = laneF, bd = Infinity;
       for (let f = -0.85; f <= 0.851; f += 0.085) {
@@ -72,6 +76,8 @@ export function aiInput(racer, race, dt) {
     if (!d.on && !d.hop && sharp > 0.022 && speed > 13 && ai.rnd() < 0.08 * ai.skill) ai.drifting = true;
     if (d.on && (sharp < 0.008 || inp.steer * d.dir < -0.4 || d.level >= (ai.skill > 0.7 ? 2 : 1) && sharp < 0.015)) ai.drifting = false;
   }
+  // nicht driften beim Grinden, in der Luft nach Schienen/Schanzen oder wenn das Kart quer zur Strecke steht
+  if (racer.grind || Math.abs(diff) > 0.8) ai.drifting = false;
   if (ai.drifting) {
     inp.drift = true;
     if (!d.on && !d.hop) inp.steer = Math.sign(-curv) * Math.max(0.5, Math.abs(inp.steer));
@@ -81,7 +87,8 @@ export function aiInput(racer, race, dt) {
 
   // Feststecken (kaum Fortschritt, z. B. an der Bande): kurz rückwärts mit Gegenlenkung
   const running = race.state === 'race' || race.state === 'finish' || race.state === 'demo';
-  if (ai.progRef === undefined || racer.progress > ai.progRef + 3 || !running || racer.disabled) { ai.progRef = racer.progress; ai.stuck = 0; }
+  // (Wenden zählt nicht als Feststecken: nur wenn das Kart dabei auch langsam ist)
+  if (ai.progRef === undefined || racer.progress > ai.progRef + 3 || !running || racer.disabled || speed > 5) { if (speed > 5 && racer.progress <= ai.progRef + 3) ai.stuck = Math.max(0, ai.stuck - dt); else { ai.progRef = racer.progress; ai.stuck = 0; } }
   else ai.stuck += dt;
   if (ai.stuck > 1.6 && ai.reverse <= 0) { ai.reverse = 1.0; ai.stuck = 0; ai.drifting = false; ai.progRef = racer.progress; }
   if (speed < 6 && !racer.drift.hop) ai.drifting = false;
@@ -104,7 +111,7 @@ function shouldUse(racer, race) {
   const dA = ahead ? ahead.progress - racer.progress : Infinity;
   const dB = behind ? racer.progress - behind.progress : Infinity;
   switch (id) {
-    case 'beere': case 'beere3': return Math.abs(race.track.curv[racer.loc.i]) < 0.02;
+    case 'beere': case 'beere3': return Math.abs(racer.path.curv[racer.loc.i]) < 0.02;
     case 'stern': case 'riese': case 'zauberkugel': return true;
     case 'panzer': case 'funken': return dA < 40 && aimed(racer, ahead) || racer.ai.rnd() < 0.01;
     case 'goldpanzer': return dA < 120 || racer.ai.rnd() < 0.01;

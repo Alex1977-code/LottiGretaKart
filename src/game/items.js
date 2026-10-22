@@ -14,7 +14,7 @@
 
 import * as THREE from 'three';
 import { getModel } from '../lgw/course/models/index.js';
-import { coinBodyGeo, coinFacesGeo, coinMaterials } from '../lgw/course/models/lib/kit.js';
+import { coinBodyGeo, coinFacesGeo, coinMaterials, Build, starShape } from '../lgw/course/models/lib/kit.js';
 
 export const ITEMS = {
   beere: { name: 'Turbo-Beere', model: 'powerup_wachstumsbeere', charges: 1 },
@@ -50,6 +50,27 @@ function weights(f, race) {
 
 const tmpV = new THREE.Vector3();
 const TAU = Math.PI * 2;
+const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _s = new THREE.Vector3();
+
+/** Funkel-Kiste (wie der goldene Block der Welt): goldener Würfel, weißer Funkelstern auf allen vier Seiten. */
+let _boxGeo = null, _boxMat = null;
+function boxGeo() {
+  if (_boxGeo) return _boxGeo;
+  // schlanke Geometrie (viele Kisten auf der Insel): runder Würfel, flache Funkelsterne auf vier Seiten und oben
+  const b = new Build();
+  b.box(1, 1, 1, 0xffc21a, {}, 0.1, 1);
+  const shape = starShape(0.3, 0.12, 4);
+  for (let k = 0; k < 5; k++) {
+    const a = (k / 4) * TAU;
+    const o = k < 4 ? { p: [Math.cos(a) * 0.505, 0, -Math.sin(a) * 0.505], r: [0, a + Math.PI / 2, 0] } : { p: [0, 0.505, 0], r: [-Math.PI / 2, 0, 0] };
+    b.add(new THREE.ShapeGeometry(shape, 2), 0xfff8ee, o);
+  }
+  _boxGeo = b.geometry();
+  return _boxGeo;
+}
+function boxMat() {
+  return _boxMat ?? (_boxMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.15, emissive: 0x4a3000, emissiveIntensity: 0.35 }));
+}
 
 export class Items {
   constructor(race) {
@@ -64,63 +85,68 @@ export class Items {
   }
 
   // ------------------------------------------------------------------ Aufbau
-  build(def) {
-    const track = this.race.track;
-    // Kisten-Reihen
-    for (const u of def.items ?? []) {
-      const p = track.pointAt(u, 0);
-      const n = p.hw > 8 ? 5 : 4;
-      for (let k = 0; k < n; k++) {
-        const lat = (k - (n - 1) / 2) * (p.hw * 1.5 / (n - 1));
-        const q = track.pointAt(u, lat);
-        const model = getModel('question_block');
-        const holder = new THREE.Group();
-        holder.add(model.root);
-        model.root.position.set(0, -0.5, 0);
-        holder.position.set(q.x, q.y + 1.05, q.z);
-        holder.scale.setScalar(0.85);
-        model.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-        this.scene.add(holder);
-        this.boxes.push({ holder, model, active: true, respawn: 0, phase: this.rnd() * TAU, pos: new THREE.Vector3(q.x, q.y + 0.6, q.z), pop: 1 });
+  /** Alle Kisten, Bitcoins, Turbo-Felder und Schanzen der Welt (Strecken und Verbindungsstraßen). */
+  build(world, { boxes = true } = {}) {
+    const roads = [
+      ...world.courses.map((c) => ({ tr: c.track, def: c.def })),
+      ...world.connectors.map((c) => ({ tr: c.track, def: c.def })),
+    ];
+    const boxPos = [], coinList = [];
+    for (const { tr, def } of roads) {
+      // Kisten-Reihen
+      if (boxes) for (const u of def.items ?? []) {
+        const p = tr.pointAt(u, 0);
+        if (tr.water && tr.water[p.i]) continue;
+        const n = p.hw > 8 ? 5 : 4;
+        for (let k = 0; k < n; k++) {
+          const lat = (k - (n - 1) / 2) * (p.hw * 1.5 / (n - 1));
+          const q = tr.pointAt(u, lat);
+          boxPos.push(new THREE.Vector3(q.x, Math.max(0, q.y) + 0.6, q.z));
+        }
+      }
+      // Bitcoins
+      for (const [u0, u1, lat0 = 0, lat1 = lat0, n = 6] of def.coins ?? []) {
+        for (let k = 0; k < n; k++) {
+          const f = n === 1 ? 0 : k / (n - 1);
+          const p = tr.pointAt(u0 + (u1 - u0) * f, (lat0 + (lat1 - lat0) * f) * (tr.closed ? 1 : tr.hw[0] * 0.6));
+          coinList.push(new THREE.Vector3(p.x, Math.max(0, p.y) + 0.75, p.z));
+        }
+      }
+      // Turbo-Felder (Pfeile) und Sprungschanzen
+      for (const [u, lat = 0, len = 3] of def.boosts ?? []) {
+        const p = tr.pointAt(u, lat * tr.hw[tr.wrap(Math.round(u * tr.N))]);
+        const m = getModel('boost_arrow', { length: len, width: 2.2 });
+        m.root.position.set(p.x, p.y + 0.07, p.z);
+        m.root.rotation.y = p.yaw;
+        m.root.translateX(-len / 2);
+        this.scene.add(m.root);
+        this.pads.push({ model: m, x: p.x, z: p.z, yaw: p.yaw, len, w: 2.2, i: p.i });
+      }
+      for (const [u, lat = 0, w = 5] of def.ramps ?? []) {
+        const hw = tr.hw[tr.wrap(Math.round(u * tr.N))];
+        const p = tr.pointAt(u, lat * hw);
+        const g = rampModel(w, this.race.theme);
+        g.position.set(p.x, p.y + 0.05, p.z);
+        g.rotation.y = p.yaw;
+        this.scene.add(g);
+        this.ramps.push({ g, x: p.x, z: p.z, yaw: p.yaw, w, len: 2.6 });
       }
     }
-    // Bitcoins als Instanzen (zwei Zeichenaufrufe für alle)
-    const coinList = [];
-    for (const [u0, u1, lat0, lat1 = lat0, n = 6] of def.coins ?? []) {
-      for (let k = 0; k < n; k++) {
-        const f = n === 1 ? 0 : k / (n - 1);
-        const p = track.pointAt(u0 + (u1 - u0) * f, (lat0 + (lat1 - lat0) * f));
-        coinList.push(new THREE.Vector3(p.x, p.y + 0.75, p.z));
-      }
+    // Kisten als eine Instanz-Wolke (ein Zeichenaufruf für alle)
+    if (boxPos.length) {
+      this.boxMesh = new THREE.InstancedMesh(boxGeo(), boxMat(), boxPos.length);
+      this.boxMesh.castShadow = true;
+      this.boxMesh.frustumCulled = false;
+      this.scene.add(this.boxMesh);
+      this.boxes = boxPos.map((pos, k) => ({ k, pos, active: true, respawn: 0, phase: this.rnd() * TAU, pop: 1 }));
     }
     if (coinList.length) {
       const mats = coinMaterials('coin');
-      this.coinBody = new THREE.InstancedMesh(coinBodyGeo(32), mats.body, coinList.length);
-      this.coinFace = new THREE.InstancedMesh(coinFacesGeo(28), mats.face, coinList.length);
+      this.coinBody = new THREE.InstancedMesh(coinBodyGeo(16), mats.body, coinList.length);
+      this.coinFace = new THREE.InstancedMesh(coinFacesGeo(16), mats.face, coinList.length);
       this.coinBody.castShadow = true;
       for (const m of [this.coinBody, this.coinFace]) { m.frustumCulled = false; this.scene.add(m); }
       this.coins = coinList.map((pos) => ({ pos, active: true, respawn: 0 }));
-    }
-    // Turbo-Felder (Pfeile)
-    for (const [u, lat = 0, len = 3] of def.boosts ?? []) {
-      const p = track.pointAt(u, lat * track.hw[track.wrap(Math.round(u * track.N))]);
-      const m = getModel('boost_arrow', { length: len, width: 2.2 });
-      m.root.position.set(p.x, p.y + 0.07, p.z);
-      m.root.rotation.y = p.yaw;
-      // Pfeilfeld beginnt am Ursprung und zeigt nach +X: mittig setzen
-      m.root.translateX(-len / 2);
-      this.scene.add(m.root);
-      this.pads.push({ model: m, x: p.x, z: p.z, yaw: p.yaw, len, w: 2.2, i: p.i });
-    }
-    // Sprungschanzen (Trampolin-Rampen)
-    for (const [u, lat = 0, w = 5] of def.ramps ?? []) {
-      const hw = track.hw[track.wrap(Math.round(u * track.N))];
-      const p = track.pointAt(u, lat * hw);
-      const g = rampModel(w, this.race.theme);
-      g.position.set(p.x, p.y + 0.05, p.z);
-      g.rotation.y = p.yaw;
-      this.scene.add(g);
-      this.ramps.push({ g, x: p.x, z: p.z, yaw: p.yaw, w, len: 2.6 });
     }
   }
 
@@ -225,7 +251,7 @@ export class Items {
     // höchstens 16 Käfer gleichzeitig auf der Strecke
     const bugs = this.projectiles.filter((p) => p.kind === 'kaefer');
     if (bugs.length >= 16) this.remove(bugs[0]);
-    this.addProjectile({ kind: 'kaefer', modelName: 'krabbelkaefer', opts: { color: 'red' }, scale: 1.25, pos: new THREE.Vector3(x, this.race.track.heightAt(x, z), z), yaw: racer.yaw, owner: racer, life: 9999, radius: 0.55, i: racer.loc.i });
+    this.addProjectile({ kind: 'kaefer', modelName: 'krabbelkaefer', opts: { color: 'red' }, scale: 1.25, pos: new THREE.Vector3(x, Math.max(0, this.race.world.heightAt(x, z)), z), yaw: racer.yaw, owner: racer, life: 9999, radius: 0.55, i: racer.loc.i });
   }
 
   spawnBomb(racer, fx, fz) {
@@ -274,30 +300,36 @@ export class Items {
   // ------------------------------------------------------------------ Simulation
   update(dt, t) {
     const race = this.race, track = race.track;
-    // Kisten
-    for (const b of this.boxes) {
-      if (!b.active) {
-        b.respawn -= dt;
-        if (b.respawn <= 0) { b.active = true; b.pop = 0; b.holder.visible = true; b.model.update(0, 'idle'); }
-        continue;
-      }
-      b.pop = Math.min(1, b.pop + dt * 3);
-      const s = 0.85 * (b.pop < 1 ? Math.sin(b.pop * Math.PI * 0.75) / Math.sin(Math.PI * 0.75) : 1);
-      b.holder.scale.setScalar(Math.max(0.01, s));
-      b.holder.rotation.y = t * 1.2 + b.phase;
-      b.holder.rotation.x = 0.25 * Math.sin(t * 1.3 + b.phase);
-      b.holder.position.y = b.pos.y + 0.45 + 0.18 * Math.sin(t * 2.2 + b.phase);
-      b.model.update(dt, 'idle');
-      for (const r of race.racers) {
-        const dx = r.pos.x - b.pos.x, dz = r.pos.z - b.pos.z;
-        if (dx * dx + dz * dz < (1.2 + r.radius * 0.6) ** 2 && Math.abs(r.pos.y - b.pos.y) < 2.5) {
-          b.active = false; b.respawn = 2.4; b.holder.visible = false;
-          race.effects.sparkle(b.holder.position, 0xfff2a0, 16, 4);
-          if (r.isPlayer) race.audio.sfx('blockhit');
-          this.giveItem(r);
-          break;
+    // Kisten (Instanzen: drehen, schweben, beim Treffen verschwinden, nach 2,4 s wieder da)
+    if (this.boxMesh) {
+      const m = _m, q = _q, e = _e, sc = _s;
+      for (const b of this.boxes) {
+        if (!b.active) {
+          b.respawn -= dt;
+          if (b.respawn <= 0) { b.active = true; b.pop = 0; }
+        } else {
+          b.pop = Math.min(1, b.pop + dt * 3);
+          for (const r of race.racers) {
+            if (r.out) continue;
+            const dx = r.pos.x - b.pos.x, dz = r.pos.z - b.pos.z;
+            if (dx * dx + dz * dz < (1.2 + r.radius * 0.6) ** 2 && Math.abs(r.pos.y - b.pos.y) < 2.5) {
+              b.active = false; b.respawn = 2.4;
+              race.effects.sparkle(b.pos, 0xfff2a0, 16, 4);
+              if (r.isPlayer) race.audio.sfx('blockhit');
+              this.giveItem(r);
+              break;
+            }
+          }
         }
+        const sz = b.active ? 0.95 * (b.pop < 1 ? Math.sin(b.pop * Math.PI * 0.75) / Math.sin(Math.PI * 0.75) : 1) : 0.0001;
+        e.set(0.25 * Math.sin(t * 1.3 + b.phase), t * 1.2 + b.phase, 0);
+        q.setFromEuler(e);
+        tmpV.set(b.pos.x, b.pos.y + 0.45 + 0.18 * Math.sin(t * 2.2 + b.phase), b.pos.z);
+        sc.setScalar(Math.max(0.0001, sz));
+        m.compose(tmpV, q, sc);
+        this.boxMesh.setMatrixAt(b.k, m);
       }
+      this.boxMesh.instanceMatrix.needsUpdate = true;
     }
     // Glücksrad der Fahrer
     for (const r of race.racers) {
@@ -319,6 +351,7 @@ export class Items {
         if (!c.active) { c.respawn -= dt; if (c.respawn <= 0) c.active = true; }
         if (c.active) {
           for (const r of race.racers) {
+            if (r.out) continue;
             const dx = r.pos.x - c.pos.x, dz = r.pos.z - c.pos.z;
             if (dx * dx + dz * dz < (0.9 + r.radius * 0.5) ** 2 && Math.abs(r.pos.y + 0.6 - c.pos.y) < 1.6) {
               c.active = false; c.respawn = 14;
@@ -343,10 +376,13 @@ export class Items {
     }
     // Turbo-Felder und Schanzen
     for (const r of race.racers) {
+      if (r.out) continue;
       for (const p of this.pads) {
+        if (Math.abs(r.pos.x - p.x) > 6 || Math.abs(r.pos.z - p.z) > 6) continue;
         if (inRect(r.pos.x, r.pos.z, p.x, p.z, p.yaw, p.len / 2 + 0.3, p.w / 2 + 0.3) && !r.air) r.boost(1.1, 0xffc21a, 1.25);
       }
       for (const p of this.ramps) {
+        if (Math.abs(r.pos.x - p.x) > 6 || Math.abs(r.pos.z - p.z) > 6) continue;
         if (inRect(r.pos.x, r.pos.z, p.x, p.z, p.yaw, p.len / 2, p.w / 2) && r.speed > 5) r.launch(8.5 + Math.min(3, r.speed * 0.08));
       }
     }
@@ -362,10 +398,10 @@ export class Items {
   }
 
   step(p, dt, t) {
-    const race = this.race, track = race.track;
-    const loc = track.locate(p.pos.x, p.pos.z, p.i, p.loc ?? (p.loc = {}));
+    const race = this.race, track = p.path ?? p.owner?.path ?? race.track, world = race.world;
+    const loc = track ? track.locate(p.pos.x, p.pos.z, p.i, p.loc ?? (p.loc = {})) : (p.loc ?? (p.loc = { i: 0, lat: 0 }));
     p.i = loc.i;
-    const ground = track.heightAt(p.pos.x, p.pos.z);
+    const groundRaw = world.heightAt(p.pos.x, p.pos.z), ground = groundRaw < 0 ? 0 : groundRaw;
     switch (p.kind) {
       case 'panzer': case 'goldpanzer': {
         if (p.kind === 'goldpanzer' && p.target && !p.target.finished) {
@@ -373,7 +409,7 @@ export class Items {
           const tg = p.target;
           const dx = tg.pos.x - p.pos.x, dz = tg.pos.z - p.pos.z, dist = Math.hypot(dx, dz);
           let ax, az;
-          if (dist < 22) { ax = dx / dist; az = dz / dist; }
+          if (dist < 22 || !track) { ax = dx / (dist || 1); az = dz / (dist || 1); }
           else {
             const q = track.pointAt(track.wrap(loc.i + 10) / track.N, tg.loc.lat * 0.6);
             ax = q.x - p.pos.x; az = q.z - p.pos.z; const l = Math.hypot(ax, az) || 1; ax /= l; az /= l;
@@ -384,18 +420,17 @@ export class Items {
           p.vz = (p.vz / vl + (az - p.vz / vl) * k) * p.speed;
         }
         p.pos.x += p.vx * dt; p.pos.z += p.vz * dt; p.pos.y = ground;
-        // Bande: abprallen
-        track.locate(p.pos.x, p.pos.z, loc.i, loc);
-        const wall = track.wallAt(loc.i) - 0.4;
-        if (Math.abs(loc.lat) > wall) {
-          const sgn = Math.sign(loc.lat), nx = sgn * track.tz[loc.i], nz = -sgn * track.tx[loc.i];
-          const vn = p.vx * nx + p.vz * nz;
+        // Bande/Wand: abprallen
+        const col = world.collide(p.pos.x, p.pos.z, 0.4, this._col ?? (this._col = {}));
+        if (col) {
+          const nx = col.nx, nz = col.nz, vn = p.vx * nx + p.vz * nz;
           if (vn < 0) { p.vx -= 2 * vn * nx; p.vz -= 2 * vn * nz; }
-          p.pos.x += nx * (Math.abs(loc.lat) - wall); p.pos.z += nz * (Math.abs(loc.lat) - wall);
+          p.pos.x += col.px; p.pos.z += col.pz;
           p.bounces++;
           race.effects.sparks(p.pos, nx, nz, 0xffffff, 5);
           if (p.bounces > 5) { this.remove(p); return; }
         }
+        if (world.surfaceAt(p.pos.x, p.pos.z) === 'sea') { this.remove(p); return; }
         p.model.update(dt, { anim: 'spin', speed: 12 });
         break;
       }
@@ -415,24 +450,23 @@ export class Items {
           p.fuse -= dt;
           if (p.fuse <= 0) { this.explode(p.pos, 5.5, p.owner); this.remove(p); return; }
         }
-        // in der Bande bleiben
-        track.locate(p.pos.x, p.pos.z, loc.i, loc);
-        const wall = track.wallAt(loc.i) - 0.5;
-        if (Math.abs(loc.lat) > wall) { p.vx *= -0.4; p.vz *= -0.4; const sgn = Math.sign(loc.lat); p.pos.x += sgn * track.tz[loc.i] * 0.3; p.pos.z -= sgn * track.tx[loc.i] * 0.3; }
+        // an Wänden abprallen
+        const colB = world.collide(p.pos.x, p.pos.z, 0.5, this._col ?? (this._col = {}));
+        if (colB) { p.vx *= -0.4; p.vz *= -0.4; p.pos.x += colB.px; p.pos.z += colB.pz; }
         p.model.update(dt, p.landed ? { anim: 'lit', fuse: 1 - p.fuse / 1.5 } : { anim: 'kicked', speed: 6 });
         break;
       }
       case 'funkenball': {
         p.pos.x += p.vx * dt; p.pos.z += p.vz * dt;
         p.pos.y = ground + 0.3 + Math.abs(Math.sin(p.age * 9)) * 1.0;
-        track.locate(p.pos.x, p.pos.z, loc.i, loc);
-        if (Math.abs(loc.lat) > track.wallAt(loc.i) - 0.3) { race.effects.sparks(p.pos, 0, 0, 0xff8a2a, 8); this.remove(p); return; }
+        if (world.collide(p.pos.x, p.pos.z, 0.3, this._col ?? (this._col = {}))) { race.effects.sparks(p.pos, 0, 0, 0xff8a2a, 8); this.remove(p); return; }
         race.effects.trail(p.pos.x, p.pos.y, p.pos.z, 0xff7a2a, 0.6);
         p.model.update(dt, 'idle');
         break;
       }
       case 'zauberkugel': {
         const leader = race.leader();
+        if (!track) { this.remove(p); return; }
         if (p.phase === 'fly') {
           // entlang der Strecke vorwärts in 7 m Höhe, bis die Spitze erreicht ist
           const step = Math.round((60 * dt) / track.ds);
@@ -465,6 +499,7 @@ export class Items {
     // Treffer
     for (const r of race.racers) {
       if (p.dead) break;
+      if (r.out) continue;
       if (r === p.owner && p.age < 0.35) continue;
       if (p.kind === 'zauberkugel') continue;
       const dx = r.pos.x - p.pos.x, dz = r.pos.z - p.pos.z;
@@ -492,7 +527,7 @@ export class Items {
   }
 
   dispose() {
-    for (const b of this.boxes) { b.model.dispose(); b.holder.removeFromParent(); }
+    if (this.boxMesh) { this.boxMesh.removeFromParent(); this.boxMesh.dispose(); }
     for (const p of this.projectiles) if (!p.dead) this.remove(p);
     for (const p of this.pads) p.model.dispose();
     for (const r of this.ramps) r.g.removeFromParent();

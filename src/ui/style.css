@@ -55,7 +55,8 @@ html, body {
 }
 .hud-coins.full b { color: var(--gold); }
 .hud-br { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: 8px; display: flex; align-items: flex-end; gap: 10px; }
-.minimap { width: 150px; height: 150px; opacity: 0.95; }
+.minimap { width: 220px; height: 170px; opacity: 0.95; }
+.hud-lap .sub { display: block; font-size: 15px; letter-spacing: 1px; margin-top: -4px; color: #ffe27a; }
 .hud-place { font-weight: 900; line-height: 0.8; -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill; }
 .hud-place b { font-size: 96px; }
 .hud-place small { font-size: 40px; }
@@ -116,7 +117,7 @@ button.small { font-size: 16px; padding: 8px 14px; border-width: 3px; box-shadow
 button.opt { min-width: 90px; display: flex; flex-direction: column; align-items: center; }
 button.opt small { font-size: 12px; opacity: 0.7; }
 button.opt.on { background: var(--blue); color: #fff; }
-.grid { display: grid; gap: 12px; grid-template-columns: repeat(4, 1fr); }
+.grid { display: grid; gap: 10px; grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .grid.tracks, .grid.cups { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 .card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; border-radius: 22px; background: #fff; }
 .card img { width: 100%; max-width: 130px; aspect-ratio: 1; object-fit: contain; border-radius: 16px; background: radial-gradient(circle at 50% 40%, #fff, #e6f2ff); }
@@ -191,7 +192,7 @@ body.touch-on .hud-place b { font-size: 64px; }
   h2 { font-size: 22px; }
   button { font-size: 16px; padding: 7px 14px; }
   button.big { font-size: 20px; padding: 9px 18px; }
-  .grid { gap: 6px; grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  .grid { gap: 6px; grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .grid.tracks, .grid.cups { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
   .card { padding: 5px; border-radius: 16px; }
   .card img { width: 100%; max-width: 76px; }
@@ -207,7 +208,7 @@ body.touch-on .hud-place b { font-size: 64px; }
   .info { min-height: 0; }
   .stat { font-size: 11px; }
   .hud-place b { font-size: 70px; }
-  .minimap { width: 110px; height: 110px; }
+  .minimap { width: 150px; height: 116px; }
   .hud-item .slot { width: 74px; height: 74px; }
   .hud-item img { width: 64px; height: 64px; }
   .countdown { font-size: 100px; }
@@ -237,3 +238,15 @@ body.touch-on .hud-place b { font-size: 64px; }
 .panel.standings.side .podium { display: none; }
 .panel.standings.side table { font-size: 15px; }
 .panel.standings.side td img { width: 30px; height: 30px; }
+
+/* Ladebildschirm (Insel wird gebaut) */
+#loading { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  background: radial-gradient(circle at 50% 40%, #8cd3ff, #2b8de8); color: #fff; font-weight: 800; transition: opacity 0.5s; }
+#loading.done { opacity: 0; pointer-events: none; }
+#loading .logo { font-size: 54px; line-height: 0.95; display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 0 10px; max-width: 520px; }
+#loading .logo span { -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; text-shadow: 0 5px 0 var(--ink); }
+#loading .logo .l1 { color: var(--blue); } #loading .logo .amp { color: var(--red); } #loading .logo .l2 { color: var(--green); }
+#loading .logo .kart { width: 100%; text-align: center; color: var(--gold); font-size: 1.25em; letter-spacing: 6px; }
+#loading .bar { width: min(420px, 70vw); height: 18px; border-radius: 10px; background: rgba(255, 255, 255, 0.35); border: 3px solid #fff; overflow: hidden; }
+#loading .bar i { display: block; height: 100%; width: 0; background: var(--gold); transition: width 0.3s; }
+#loading p { margin: 0; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25); }

@@ -17,11 +17,15 @@ export class Hazards {
     this.bombs = [];
   }
 
-  build(defs = []) {
-    const track = this.race.track;
+  /** Gefahren aller Strecken der Welt (jede an ihrer eigenen Strecke verankert). */
+  build(world) {
+    for (const c of world.courses) this.buildFor(c.track, c.def.hazards ?? []);
+  }
+
+  buildFor(track, defs) {
     for (const d of defs) {
       const base = track.pointAt(d.u, 0);
-      const h = { ...d, base, t: Math.random() * 3 };
+      const h = { ...d, base, track, t: Math.random() * 3 };
       switch (d.kind) {
         case 'walker': {
           h.model = getModel(d.model ?? 'pilzling', d.opts ?? {});
@@ -78,8 +82,14 @@ export class Hazards {
   }
 
   update(dt, t) {
-    const race = this.race, track = race.track;
+    const race = this.race, focus = race.focus;
     for (const h of this.list) {
+      const track = h.track;
+      // weit weg: nicht simulieren, nicht zeichnen
+      const hp = h.p ?? h.base ?? h.pos;
+      if (focus && hp && (hp.x - focus.x) ** 2 + (hp.z - focus.z) ** 2 > 260 * 260) { h.holder.visible = false; continue; }
+      if (h.kind !== 'walker' && h.kind !== 'brummer') h.holder.visible = true;
+      else if (!(h.down > 0)) h.holder.visible = true;
       h.t += dt;
       switch (h.kind) {
         case 'walker': case 'brummer': {
@@ -99,6 +109,7 @@ export class Hazards {
           h.holder.rotation.y = p.yaw - h.dir * Math.PI / 2;
           h.model.update(dt, h.kind === 'brummer' ? 'fly' : { anim: h.anim ?? 'walk', speed: h.speed });
           for (const r of race.racers) {
+              if (r.out) continue;
             const dx = r.pos.x - p.x, dz = r.pos.z - p.z, rr = r.radius + h.radius;
             if (dx * dx + dz * dz < rr * rr && Math.abs(r.pos.y + fly * 0.5 - p.y) < 2) {
               if (r.invincible) { h.down = 4; race.effects.sparkle(h.holder.position, 0xffffff, 12, 3); if (r.isPlayer) race.audio.sfx('stomp'); }
@@ -116,6 +127,7 @@ export class Hazards {
             let near = false;
             const tx = track.tx[p.i], tz = track.tz[p.i];
             for (const r of race.racers) {
+              if (r.out) continue;
               const dx = r.pos.x - p.x, dz = r.pos.z - p.z;
               const along = dx * tx + dz * tz;
               if (along < -3 && along > -14 && Math.abs(-dx * tz + dz * tx) < h.size * 1.5) { near = true; break; }
@@ -131,6 +143,7 @@ export class Hazards {
               const dd = pl ? Math.hypot(pl.pos.x - p.x, pl.pos.z - p.z) : 99;
               if (dd < 35) { race.audio.sfx('slam'); race.shake = Math.max(race.shake ?? 0, 0.8 * (1 - dd / 35)); }
               for (const r of race.racers) {
+              if (r.out) continue;
                 const dx = r.pos.x - p.x, dz = r.pos.z - p.z;
                 if (Math.abs(dx) < h.size * 0.75 + r.radius * 0.6 && Math.abs(dz) < h.size * 0.75 + r.radius * 0.6) r.hit('squish', null);
               }
@@ -149,6 +162,7 @@ export class Hazards {
           if (h.y < 1.2) {
             const tx = track.tx[p.i], tz = track.tz[p.i];
             for (const r of race.racers) {
+              if (r.out) continue;
               const dx = r.pos.x - p.x, dz = r.pos.z - p.z, half = h.size * 0.5 + r.radius * 0.7;
               const along = dx * tx + dz * tz, side = -dx * tz + dz * tx;
               if (Math.abs(along) < half && Math.abs(side) < half) {
@@ -200,7 +214,7 @@ export class Hazards {
   }
 
   fireBomb(h) {
-    const race = this.race, track = race.track;
+    const race = this.race, track = h.track;
     // Ziel: zufällige Stelle auf der Fahrbahn, bevorzugt vor der Spitzengruppe nahe der Kanone
     const du = (Math.random() * 2 - 1) * (22 / track.length);
     const tp = track.pointAt(h.u + du, (Math.random() * 2 - 1) * h.base.hw * 0.8);

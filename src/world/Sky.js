@@ -6,9 +6,18 @@ import * as THREE from 'three';
 import { colorize, lin, mixc, smooth, Rnd } from '../lgw/three/world/geometry.js';
 
 const SKY_R = 900;
+const _c = new THREE.Color();
+
+/** Farbe des Himmelsverlaufs auf Höhe t (−1 … 1) aus den Stützstellen (linear). */
+function skyColor(stops, t, o) {
+  let i = 0;
+  while (i < stops.length - 2 && t < stops[i + 1][0]) i++;
+  const [t0, c0] = stops[i], [t1, c1] = stops[i + 1];
+  return mixc(c0, c1, smooth(t0, t1, t), o);
+}
 
 export class Sky {
-  constructor(scene, theme, { quality = 1 } = {}) {
+  constructor(scene, theme, { quality = 1, sunDisc = null } = {}) {
     this.scene = scene;
     this.theme = theme;
     this.group = new THREE.Group();
@@ -16,8 +25,9 @@ export class Sky {
     scene.add(this.group);
     scene.background = new THREE.Color(theme.background);
     scene.fog = new THREE.Fog(theme.fog.color, theme.fog.near, theme.fog.far);
+    this.forceSun = !!sunDisc;
     this.buildDome();
-    if (theme.clouds) this.buildClouds();
+    if (theme.clouds || sunDisc) this.buildClouds();
     // Licht
     this.hemi = new THREE.HemisphereLight(theme.hemi.sky, theme.hemi.ground, theme.hemi.intensity);
     scene.add(this.hemi);
@@ -35,20 +45,14 @@ export class Sky {
 
   buildDome() {
     const stops = this.theme.sky.map(([t, c]) => [t, lin(c)]);
-    const dome = colorize(new THREE.SphereGeometry(SKY_R, 32, 16), (p, n, o) => {
-      const t = p.y / SKY_R;
-      let i = 0;
-      while (i < stops.length - 2 && t < stops[i + 1][0]) i++;
-      const [t0, c0] = stops[i], [t1, c1] = stops[i + 1];
-      mixc(c0, c1, smooth(t0, t1, t), o);
-    });
+    const dome = colorize(new THREE.SphereGeometry(SKY_R, 32, 16), (p, n, o) => skyColor(stops, p.y / SKY_R, o));
     const mat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false });
     this.dome = new THREE.Mesh(dome, mat);
     this.dome.frustumCulled = false;
     this.dome.renderOrder = -10;
     this.domeGroup = new THREE.Group();
     this.domeGroup.add(this.dome);
-    if (this.theme.sunDisc) {
+    if (this.theme.sunDisc || this.forceSun) {
       const d = new THREE.Vector3(...this.theme.sun.dir).normalize();
       const sunPos = new THREE.Vector3(d.x, Math.max(0.12, d.y * 0.35), d.z).normalize().multiplyScalar(SKY_R * 0.9);
       const disc = new THREE.Mesh(new THREE.CircleGeometry(26, 32), new THREE.MeshBasicMaterial({ color: 0xfff7d2, fog: false, depthWrite: false }));
@@ -70,6 +74,7 @@ export class Sky {
       glow.scale.setScalar(190);
       glow.renderOrder = -8;
       this.domeGroup.add(disc, glow);
+      this.sunParts = [disc, glow];
     }
     this.group.add(this.domeGroup);
   }
@@ -97,6 +102,45 @@ export class Sky {
     im.frustumCulled = false;
     this.clouds = im;
     this.domeGroup.add(im);
+  }
+
+  /**
+   * Stimmung mehrerer Themen überblenden (offene Welt): weights = [{ theme (Objekt), w }]. Färbt die Kuppel neu
+   * (nur wenn sich die Gewichte merklich ändern) und mischt Nebel, Hintergrund, Himmels-/Bodenlicht und Sonne.
+   */
+  blend(weights) {
+    const key = weights.map((x) => x.w.toFixed(2)).join(',');
+    const C = (hex) => _c.setHex(hex);
+    const mixHex = (get) => {
+      const out = new THREE.Color(0, 0, 0);
+      for (const { theme, w } of weights) if (w > 0) out.add(C(get(theme)).multiplyScalar(w));
+      return out;
+    };
+    const mixNum = (get) => weights.reduce((a, { theme, w }) => a + get(theme) * w, 0);
+    this.scene.background.copy(mixHex((t) => t.background));
+    this.scene.fog.color.copy(mixHex((t) => t.fog.color));
+    this.scene.fog.near = mixNum((t) => t.fog.near);
+    this.scene.fog.far = mixNum((t) => t.fog.far);
+    this.hemi.color.copy(mixHex((t) => t.hemi.sky));
+    this.hemi.groundColor.copy(mixHex((t) => t.hemi.ground));
+    this.hemi.intensity = mixNum((t) => t.hemi.intensity);
+    this.sun.color.copy(mixHex((t) => t.sun.color));
+    this.sun.intensity = mixNum((t) => t.sun.intensity);
+    const disc = mixNum((t) => (t.sunDisc ? 1 : 0));
+    if (this.sunParts) for (const m of this.sunParts) m.visible = disc > 0.5;
+    if (this.clouds) this.clouds.visible = mixNum((t) => (t.clouds ? 1 : 0)) > 0.4;
+    if (key === this.blendKey) return;
+    this.blendKey = key;
+    const P = this.dome.geometry.attributes.position, Col = this.dome.geometry.attributes.color;
+    const lists = weights.filter((x) => x.w > 0.01).map(({ theme, w }) => [theme.sky.map(([t, c]) => [t, lin(c)]), w]);
+    const o = [0, 0, 0];
+    for (let i = 0; i < P.count; i++) {
+      const t = P.getY(i) / SKY_R;
+      let r = 0, g = 0, b = 0, sum = 0;
+      for (const [stops, w] of lists) { skyColor(stops, t, o); r += o[0] * w; g += o[1] * w; b += o[2] * w; sum += w; }
+      Col.setXYZ(i, r / sum, g / sum, b / sum);
+    }
+    Col.needsUpdate = true;
   }
 
   /** Kuppel und Schattenkamera folgen dem Fokus (Spieler). */

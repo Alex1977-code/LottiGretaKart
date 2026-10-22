@@ -14,26 +14,26 @@ const GEO = {};
 function g(key, make) { return GEO[key] ?? (GEO[key] = make()); }
 
 const roundTree = () => g('roundTree', () => new Build()
-  .cyl(0.28, 0.4, 2.2, 0x9a6534, { p: [0, 1.1, 0] }, 10)
-  .sphere(1.9, 0xffffff, { p: [0, 3.6, 0] }, 16, 12)
-  .sphere(1.35, 0xffffff, { p: [0.9, 3.0, 0.6] }, 14, 10)
-  .sphere(1.3, 0xffffff, { p: [-0.8, 3.2, -0.6] }, 14, 10)
+  .cyl(0.28, 0.4, 2.2, 0x9a6534, { p: [0, 1.1, 0] }, 7)
+  .sphere(1.9, 0xffffff, { p: [0, 3.6, 0] }, 12, 8)
+  .sphere(1.35, 0xffffff, { p: [0.9, 3.0, 0.6] }, 10, 7)
+  .sphere(1.3, 0xffffff, { p: [-0.8, 3.2, -0.6] }, 10, 7)
   .geometry());
 const pineTree = () => g('pineTree', () => new Build()
-  .cyl(0.25, 0.32, 1.4, 0x8a5a2e, { p: [0, 0.7, 0] }, 8)
-  .cone(2.0, 2.6, 0xffffff, { p: [0, 2.4, 0] }, 12)
-  .cone(1.6, 2.2, 0xffffff, { p: [0, 3.6, 0] }, 12)
-  .cone(1.1, 1.8, 0xffffff, { p: [0, 4.7, 0] }, 12)
+  .cyl(0.25, 0.32, 1.4, 0x8a5a2e, { p: [0, 0.7, 0] }, 6)
+  .cone(2.0, 2.6, 0xffffff, { p: [0, 2.4, 0] }, 9)
+  .cone(1.6, 2.2, 0xffffff, { p: [0, 3.6, 0] }, 9)
+  .cone(1.1, 1.8, 0xffffff, { p: [0, 4.7, 0] }, 9)
   .geometry());
 const bush = () => g('bush', () => new Build()
-  .sphere(0.9, 0xffffff, { p: [0, 0.6, 0] }, 12, 8)
-  .sphere(0.7, 0xffffff, { p: [0.7, 0.45, 0.2] }, 12, 8)
-  .sphere(0.65, 0xffffff, { p: [-0.6, 0.45, -0.25] }, 12, 8)
+  .sphere(0.9, 0xffffff, { p: [0, 0.6, 0] }, 9, 6)
+  .sphere(0.7, 0xffffff, { p: [0.7, 0.45, 0.2] }, 8, 6)
+  .sphere(0.65, 0xffffff, { p: [-0.6, 0.45, -0.25] }, 8, 6)
   .geometry());
 const flower = () => g('flower', () => {
   const b = new Build().cyl(0.03, 0.03, 0.5, 0x3f9a2a, { p: [0, 0.25, 0] }, 5);
-  for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; b.sphere(0.1, 0xffffff, { p: [Math.cos(a) * 0.12, 0.55, Math.sin(a) * 0.12], s: [1, 0.5, 1] }, 8, 5); }
-  return b.sphere(0.08, 0xffd21f, { p: [0, 0.57, 0] }, 8, 5).geometry();
+  for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; b.sphere(0.1, 0xffffff, { p: [Math.cos(a) * 0.12, 0.55, Math.sin(a) * 0.12], s: [1, 0.5, 1] }, 5, 3); }
+  return b.sphere(0.08, 0xffd21f, { p: [0, 0.57, 0] }, 5, 3).geometry();
 });
 const mushroom = () => g('mushroom', () => {
   const b = new Build()
@@ -65,10 +65,13 @@ const building = () => g('building', () => new Build().box(1, 1, 1, 0xffffff, { 
 const block = () => g('block', () => new Build().box(1, 1, 1, 0xffffff, { p: [0, 0.5, 0] }, 0.08).geometry());
 
 const KINDS = { roundTree, pineTree, bush, flower, mushroom, rock, crystal, stalactite, hill, building, block };
+// Hindernis-Radius je Art (× Größe) in der offenen Welt
+const COLLIDE = { roundTree: 0.5, pineTree: 0.45, mushroom: 0.9, rock: 1.0, block: 0.6, crystal: 0.4 };
 
 export class Decor {
-  constructor(race, track, theme, seed = 1, quality = 2) {
+  constructor(race, track, theme, seed = 1, quality = 2, world = null) {
     this.race = race;
+    this.world = world;           // Insel-Welt: freie Plätze und Hindernisse kommen von dort
     this.quality = quality;
     this.density = quality >= 2 ? 1 : 0.55;   // Handy: weniger Kulisse
     this.track = track;
@@ -85,6 +88,7 @@ export class Decor {
 
   /** Freier Platz? (Abstand zur Bande, eigene Größe) */
   clear(x, z, size = 2) {
+    if (this.world) return this.world.isFree(x, z, 1.2 + size);
     const { i, d } = this.track.nearestIndex(x, z, 4);
     return d > this.track.wallAt(i) + 1.2 + size;
   }
@@ -93,7 +97,9 @@ export class Decor {
     let list = this.batches.get(kind);
     if (!list) { list = []; this.batches.set(kind, list); }
     const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ry, 0)), new THREE.Vector3(s, sy, s));
-    list.push({ m, c: new THREE.Color(color) });
+    list.push({ m, c: new THREE.Color(color), x, z });
+    // In der offenen Welt sind Stämme, Pilze, Felsen und Blöcke Hindernisse
+    if (this.world && COLLIDE[kind]) this.world.addCircle(x, z, COLLIDE[kind] * s);
   }
 
   /** Viele Objekte zufällig im Band dist0..dist1 neben der Strecke verstreuen. */
@@ -116,6 +122,7 @@ export class Decor {
 
   /** Ring aus fernen Hügeln/Bergen um die Strecke. */
   hillsRing(color, color2, r0 = 260, n = 26, h0 = 30, h1 = 70) {
+    if (this.world) return; // die Insel hat echte Berge
     const b = this.track.bounds;
     const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
     const R = Math.max(b.maxX - b.minX, b.maxZ - b.minZ) / 2 + r0 * 0.5;
@@ -129,6 +136,7 @@ export class Decor {
 
   /** Stadt-Silhouette (Abendautobahn): Hochhäuser mit warm leuchtenden Fenstern (Vertexfarben-Streifen). */
   city(colors, windowColor, r0 = 140, n = 70) {
+    if (this.world) { this.worldCity(colors, windowColor, n); return; }
     const b = this.track.bounds;
     const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
     const R = Math.max(b.maxX - b.minX, b.maxZ - b.minZ) / 2 + r0;
@@ -147,6 +155,36 @@ export class Decor {
     }
     const geo = parts.geometry();
     const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, fog: true }));
+    m.name = 'stadt';
+    this.group.add(m);
+  }
+
+  /** Stadt in der Insel-Welt: Hochhäuser innerhalb und rund um die Autobahn, nie auf Straßen; Häuser sind Hindernisse. */
+  worldCity(colors, windowColor, n) {
+    const b = this.track.bounds, w = this.world;
+    const parts = new Build();
+    let placed = 0, tries = 0;
+    while (placed < n && tries < n * 30) {
+      tries++;
+      const x = b.minX - 60 + this.r() * (b.maxX - b.minX + 120), z = b.minZ - 60 + this.r() * (b.maxZ - b.minZ + 120);
+      const s = 10 + this.r() * 16, h = 18 + this.r() * 60;
+      if (!w.isFree(x, z, s * 0.75 + 4)) continue;
+      const gy = w.heightAt(x, z);
+      const col = colors[placed % colors.length];
+      parts.box(s, h, s, col, { p: [x, gy + h / 2 - 2, z] }, 0.5, 1);
+      for (let y = 5; y < h - 4; y += 6) {
+        if (this.r() < 0.35) continue;
+        parts.box(s * 1.01, 1.1, s * 1.01, windowColor, { p: [x, gy + y - 2, z] }, 0, 1);
+      }
+      parts.box(s * 0.5, 2, s * 0.5, 0x8a8aa0, { p: [x, gy + h - 1, z] }, 0.2, 1);
+      const hs = s / 2;
+      w.addSeg(x - hs, z - hs, x + hs, z - hs); w.addSeg(x + hs, z - hs, x + hs, z + hs);
+      w.addSeg(x + hs, z + hs, x - hs, z + hs); w.addSeg(x - hs, z + hs, x - hs, z - hs);
+      placed++;
+    }
+    const geo = parts.geometry();
+    const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, emissive: 0x2a1e3a, emissiveIntensity: 0.4 }));
+    m.castShadow = true; m.receiveShadow = true;
     m.name = 'stadt';
     this.group.add(m);
   }
@@ -239,14 +277,32 @@ export class Decor {
   }
 
   /** Zirkuszelt über der ganzen Strecke: gestreifte Wand, Kegeldach, Masten, Lichterketten, Scheinwerferkegel. */
-  buildTent() {
-    const b = this.track.bounds;
-    const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
-    let R = 0;
-    for (let i = 0; i < this.track.N; i += 4) R = Math.max(R, Math.hypot(this.track.px[i] - cx, this.track.pz[i] - cz) + this.track.wallAt(i));
-    R += 26;
-    const H = 18, roof = 34, seg = 48;
+  buildTent(at = null) {
+    let cx, cz, R, H = 18, roof = 34;
+    if (at) ({ x: cx, z: cz, r: R, h: H, roof } = at);
+    else {
+      const b = this.track.bounds;
+      cx = (b.minX + b.maxX) / 2; cz = (b.minZ + b.maxZ) / 2;
+      R = 0;
+      for (let i = 0; i < this.track.N; i += 4) R = Math.max(R, Math.hypot(this.track.px[i] - cx, this.track.pz[i] - cz) + this.track.wallAt(i));
+      R += 26;
+    }
+    const seg = 48;
+    const y0 = at?.y ?? 0;
+    const doors = at?.doors ?? [];
     const wall = new THREE.CylinderGeometry(R, R, H, seg, 1, true);
+    // Eingänge: Wandstücke an den Toren weglassen
+    if (doors.length) {
+      const P = wall.attributes.position, idx = wall.index.array, keep = [];
+      for (let t = 0; t < idx.length; t += 3) {
+        let ax = 0, az = 0;
+        for (let q = 0; q < 3; q++) { ax += P.getX(idx[t + q]); az += P.getZ(idx[t + q]); }
+        const a = Math.atan2(az / 3, ax / 3);
+        if (doors.some((d) => { let dd = Math.abs(a - d.a) % (Math.PI * 2); if (dd > Math.PI) dd = Math.PI * 2 - dd; return dd < d.half + 0.02; })) continue;
+        keep.push(idx[t], idx[t + 1], idx[t + 2]);
+      }
+      wall.setIndex(keep);
+    }
     const roofG = new THREE.ConeGeometry(R, roof, seg, 1, true);
     const stripe = (g, y0) => {
       const P = g.attributes.position, col = new Float32Array(P.count * 3);
@@ -262,13 +318,13 @@ export class Decor {
     };
     const mat = new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.8, flatShading: true });
     const w = new THREE.Mesh(stripe(wall), mat);
-    w.position.set(cx, H / 2 - 2, cz);
+    w.position.set(cx, y0 + H / 2 - 2, cz);
     const r = new THREE.Mesh(stripe(roofG), mat);
-    r.position.set(cx, H - 2 + roof / 2, cz);
+    r.position.set(cx, y0 + H - 2 + roof / 2, cz);
     this.group.add(w, r);
     // Mittelmast und Scheinwerferkegel
     const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, H + roof, 12), new THREE.MeshStandardMaterial({ color: 0xffc94a, roughness: 0.4 }));
-    mast.position.set(cx, (H + roof) / 2 - 2, cz);
+    mast.position.set(cx, y0 + (H + roof) / 2 - 2, cz);
     this.group.add(mast);
     const beamMat = new THREE.MeshBasicMaterial({ color: 0xfff1c0, transparent: true, opacity: 0.08, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
     this.beams = [];
@@ -276,7 +332,7 @@ export class Decor {
       const cone = new THREE.Mesh(new THREE.ConeGeometry(7, 36, 20, 1, true), beamMat);
       cone.geometry.translate(0, -18, 0);
       const holder = new THREE.Group();
-      holder.position.set(cx, H + roof * 0.4, cz);
+      holder.position.set(cx, y0 + H + roof * 0.4, cz);
       holder.add(cone);
       cone.rotation.z = 0.5;
       holder.rotation.y = (i / 6) * Math.PI * 2;
@@ -293,7 +349,7 @@ export class Decor {
       for (let j = 0; j < 22; j++) {
         const f = (j + 1) / 23;
         const x = cx + Math.cos(a) * R * f * 0.98, z = cz + Math.sin(a) * R * f * 0.98;
-        const y = H - 2 + roof * (1 - f) - 3 * Math.sin(f * Math.PI);
+        const y = y0 + H - 2 + roof * (1 - f) - 3 * Math.sin(f * Math.PI);
         m.makeTranslation(x, y, z);
         bulbs.setMatrixAt(k, m);
         bulbs.setColorAt(k, new THREE.Color(cols[(i + j) % 4]));
@@ -351,24 +407,44 @@ export class Decor {
   }
 
   build() {
-    if (this.tent) this.buildTent();
-    if (this.ceiling) this.buildCeiling();
+    if (!this.world) {
+      if (this.tent) this.buildTent();
+      if (this.ceiling) this.buildCeiling();
+    }
     if (this.signs) this.buildSigns(this.signs);
     for (const [kind, list] of this.batches) {
-      const im = new THREE.InstancedMesh(KINDS[kind](), vcol(kind === 'crystal' ? 0.2 : 0.55, kind === 'crystal' ? { emissive: 0x2a4a6a } : {}, kind === 'crystal' ? 'crystal' : ''), list.length);
-      list.forEach((e, i) => { im.setMatrixAt(i, e.m); im.setColorAt(i, e.c); });
-      im.castShadow = this.quality >= 2 ? !['hill', 'flower', 'building', 'stalactite'].includes(kind) : ['roundTree', 'pineTree', 'mushroom'].includes(kind);
-      im.receiveShadow = true;
-      im.computeBoundingSphere();
-      im.name = `kulisse:${kind}`;
-      this.group.add(im);
+      // in Kacheln aufteilen, damit nur Sichtbares gezeichnet wird
+      const tiles = new Map();
+      for (const e of list) {
+        const T = this.tile ?? 110;
+        const k = this.world ? `${Math.floor(e.x / T)},${Math.floor(e.z / T)}` : 'all';
+        let t = tiles.get(k);
+        if (!t) { t = []; tiles.set(k, t); }
+        t.push(e);
+      }
+      for (const part of tiles.values()) {
+        const im = new THREE.InstancedMesh(KINDS[kind](), vcol(kind === 'crystal' ? 0.2 : 0.55, kind === 'crystal' ? { emissive: 0x2a4a6a } : {}, kind === 'crystal' ? 'crystal' : ''), part.length);
+        part.forEach((e, i) => { im.setMatrixAt(i, e.m); im.setColorAt(i, e.c); });
+        im.castShadow = this.noShadow ? false : this.quality >= 2 ? !['hill', 'flower', 'building', 'stalactite'].includes(kind) : ['roundTree', 'pineTree', 'mushroom'].includes(kind);
+        im.receiveShadow = true;
+        im.computeBoundingSphere();
+        im.name = `kulisse:${kind}`;
+        this.group.add(im);
+      }
     }
-    this.race.scene.add(this.group);
+    (this.race.scene ?? this.race).add(this.group);
   }
 
-  update(dt, t) {
+  update(dt, t, cam = null) {
     if (this.beams) this.beams.forEach((b, i) => { b.rotation.y = (i / this.beams.length) * Math.PI * 2 + Math.sin(t * 0.4 + i) * 0.5; });
     for (const e of this.models) {
+      // ferne Modelle ausblenden und nicht animieren
+      if (cam) {
+        const p = e.model.root.position, d2 = (p.x - cam.x) ** 2 + (p.z - cam.z) ** 2;
+        const vis = d2 < 230 * 230;
+        if (e.model.root.visible !== vis) e.model.root.visible = vis;
+        if (!vis) continue;
+      }
       e.t += dt;
       if (e.tick) e.tick(e, dt, t);
       else e.model.update(dt, e.state);

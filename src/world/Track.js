@@ -13,13 +13,23 @@ const STEP = 1;              // Abtastabstand (m)
 const CELL = 16;             // Raster der Suchtabelle (m)
 
 export class Track {
-  constructor(def, theme) {
+  /**
+   * @param {object} def    Streckendefinition (ctrl = [[x, z, halbe Breite?], …])
+   * @param {object} theme  Farben
+   * @param {object} opts   { ox, oz (Verschiebung in die Welt), closed (Rundkurs, Standard true),
+   *                          heightFn (x, z) → Höhe (Welt-Gelände statt eigener Hügel) }
+   */
+  constructor(def, theme, opts = {}) {
     this.def = def;
     this.theme = theme;
+    this.closed = opts.closed ?? true;
+    this.ox = opts.ox ?? 0; this.oz = opts.oz ?? 0;
+    this.heightFn = opts.heightFn ?? null;
     this.hwDefault = def.hw ?? 7;
     this.margin = def.margin ?? 6;
     this.hills = def.hills ?? [];
     this.base = def.baseHeight ?? 0;
+    this.gaps = [];   // Lücken in den Banden: { side (−1/+1), s0, s1 } in Metern entlang der Strecke
     this.sample();
     this.buildIndex();
     this.group = new THREE.Group();
@@ -30,8 +40,8 @@ export class Track {
   // ------------------------------------------------------------------ Abtastung
   sample() {
     const def = this.def;
-    const pts = def.ctrl.map(([x, z]) => new THREE.Vector3(x, 0, z));
-    const curve = new THREE.CatmullRomCurve3(pts, true, 'centripetal');
+    const pts = def.ctrl.map(([x, z]) => new THREE.Vector3(x + this.ox, 0, z + this.oz));
+    const curve = new THREE.CatmullRomCurve3(pts, this.closed, 'centripetal');
     this.curve = curve;
     const L = curve.getLength();
     const N = Math.max(64, Math.round(L / STEP));
@@ -42,15 +52,15 @@ export class Track {
     const nC = def.ctrl.length;
     const p = new THREE.Vector3(), t = new THREE.Vector3();
     for (let i = 0; i < N; i++) {
-      const u = i / N;
+      const u = this.closed ? i / N : i / (N - 1);
       curve.getPointAt(u, p);
       curve.getTangentAt(u, t);
       this.px[i] = p.x; this.pz[i] = p.z;
       const l = Math.hypot(t.x, t.z) || 1;
       this.tx[i] = t.x / l; this.tz[i] = t.z / l;
       // Breite: zwischen den Kontrollpunkten weich übergeblendet
-      const ct = curve.getUtoTmapping(u) * nC;
-      const i0 = Math.floor(ct) % nC, i1 = (i0 + 1) % nC, f = ct - Math.floor(ct);
+      const ct = curve.getUtoTmapping(u) * (this.closed ? nC : nC - 1);
+      const i0 = Math.min(nC - 1, Math.floor(ct)) % nC, i1 = this.closed ? (i0 + 1) % nC : Math.min(nC - 1, i0 + 1), f = ct - Math.floor(ct);
       const w0 = def.ctrl[i0][2] ?? this.hwDefault, w1 = def.ctrl[i1][2] ?? this.hwDefault;
       const sf = f * f * (3 - 2 * f);
       this.hw[i] = w0 + (w1 - w0) * sf;
@@ -63,10 +73,11 @@ export class Track {
     }
   }
 
-  wrap(i) { const N = this.N; return ((i % N) + N) % N; }
+  wrap(i) { const N = this.N; if (!this.closed) return i < 0 ? 0 : i >= N ? N - 1 : i; return ((i % N) + N) % N; }
 
-  /** Geländehöhe (Hügel als Gauß-Glocken). */
+  /** Geländehöhe: Welt-Gelände, sonst eigene Hügel (Gauß-Glocken). */
   heightAt(x, z) {
+    if (this.heightFn) return this.heightFn(x, z);
     let h = this.base;
     for (const [hx, hz, r, hh] of this.hills) {
       const dx = x - hx, dz = z - hz;
@@ -145,8 +156,11 @@ export class Track {
 
   /** Punkt auf der Strecke: u (0..1 Rundenanteil) bzw. s (m), lat (m nach rechts). */
   pointAt(u, lat = 0, out = {}) {
-    let f = (((u % 1) + 1) % 1) * this.N;
-    const i0 = Math.floor(f) % this.N, i1 = (i0 + 1) % this.N; f -= Math.floor(f);
+    let f, i0, i1;
+    if (this.closed) { f = (((u % 1) + 1) % 1) * this.N; i0 = Math.floor(f) % this.N; i1 = (i0 + 1) % this.N; }
+    else { f = Math.min(1, Math.max(0, u)) * (this.N - 1); i0 = Math.min(this.N - 2, Math.floor(f)); i1 = i0 + 1; }
+    f -= Math.floor(f);
+    if (!this.closed && u >= 1) f = 1;
     const x = this.px[i0] + (this.px[i1] - this.px[i0]) * f, z = this.pz[i0] + (this.pz[i1] - this.pz[i0]) * f;
     let tx = this.tx[i0] + (this.tx[i1] - this.tx[i0]) * f, tz = this.tz[i0] + (this.tz[i1] - this.tz[i0]) * f;
     const l = Math.hypot(tx, tz) || 1; tx /= l; tz /= l;
@@ -227,6 +241,7 @@ export class Track {
     const pos = [], col = [];
     for (let i = 0; i < N; i += every) {
       const j = (i + every) % N;
+      if (!this.closed && i + every > N - 1) break;
       if (skipFn && skipFn(i)) continue;
       const c = colorFn(i);
       if (!c) continue;
@@ -287,10 +302,11 @@ export class Track {
       const inner = (i) => side * this.wallAt(i), outer = (i) => side * (this.wallAt(i) + T);
       const L = side < 0 ? outer : inner, R = side < 0 ? inner : outer;
       // Oberseite
-      parts.push(this.ribbon(L, R, () => H, () => cT));
+      const skip = (i) => this.inGap(side, i);
+      parts.push(this.ribbon(L, R, () => H, () => cT, 1, skip));
       // Innen- und Außenflächen als senkrechte Bänder (gleiche lat, unterschiedliche Höhe)
-      parts.push(this.wallFace(inner, H, (i) => (Math.floor(i / 4) % 2 ? cA : cB), side > 0));
-      parts.push(this.wallFace(outer, H, () => cA, side < 0));
+      parts.push(this.wallFace(inner, H, (i) => (Math.floor(i / 4) % 2 ? cA : cB), skip));
+      parts.push(this.wallFace(outer, H, () => cA, skip));
     }
     const geo = mergeAll(parts);
     const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, side: THREE.DoubleSide }));
@@ -298,10 +314,24 @@ export class Track {
     this.group.add(m);
   }
 
-  wallFace(latFn, H, colorFn) {
+  /** Liegt Abtastpunkt i auf Seite side in einer Banden-Lücke (Tor zu einer Verbindungsstraße)? */
+  inGap(side, i) {
+    const s = i * this.ds;
+    for (const g of this.gaps) {
+      if (g.side !== side) continue;
+      let d = s - g.s;
+      if (this.closed) { d = ((d % this.length) + this.length * 1.5) % this.length - this.length / 2; }
+      if (Math.abs(d) < g.half) return true;
+    }
+    return false;
+  }
+
+  wallFace(latFn, H, colorFn, skipFn = null) {
     const N = this.N, pos = [], col = [];
     for (let i = 0; i < N; i++) {
       const j = (i + 1) % N, c = colorFn(i);
+      if (!this.closed && i >= N - 1) break;
+      if (skipFn && skipFn(i)) continue;
       const P = (k, y) => {
         const lat = latFn(k), x = this.px[k] - this.tz[k] * lat, z = this.pz[k] + this.tx[k] * lat;
         return [x, this.heightAt(x, z) + y, z];

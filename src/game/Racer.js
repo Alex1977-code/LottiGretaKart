@@ -26,6 +26,7 @@ export class Racer {
     this.name = def.name;
     this.slot = slot;
     this.isPlayer = isPlayer;
+    this.path = race.track;    // Rennpfad (Freie Fahrt: eigener Rundkurs bzw. keiner für die Spielerin)
     this.phys = physicsOf(def, race.cc);
     // Zustand
     this.pos = new THREE.Vector3();
@@ -79,14 +80,20 @@ export class Racer {
   get fwdZ() { return -Math.sin(this.yaw); }
 
   /** Auf einen Startplatz stellen. */
-  placeAt(x, z, yaw) {
-    this.pos.set(x, this.race.track.heightAt(x, z), z);
+  /** Auf einen Platz stellen; hintI = ungefährer Pfad-Index (der Pfad kann dieselbe Stelle mehrfach passieren). */
+  placeAt(x, z, yaw, hintI = -1) {
+    this.pos.set(x, this.groundAt(x, z), z);
     this.yaw = yaw;
     this.speed = 0; this.vlat = 0; this.vy = 0; this.air = false;
     this.lastI = -1;
-    this.race.track.locate(x, z, -1, this.loc);
-    this.lastI = this.loc.i;
+    if (this.path) { this.path.locate(x, z, hintI, this.loc); this.lastI = this.loc.i; }
     this.syncVisual(0, 0);
+  }
+
+  /** Fahrbahn-Höhe: Gelände, auf Wasser die Wasseroberfläche (man schwimmt). */
+  groundAt(x, z) {
+    const h = this.race.world.heightAt(x, z);
+    return h < 0 ? 0 : h;
   }
 
   // ------------------------------------------------------------------ Ereignisse
@@ -118,18 +125,22 @@ export class Racer {
 
   // ------------------------------------------------------------------ Simulation
   update(dt, input) {
-    const P = this.phys, track = this.race.track;
+    const P = this.phys, track = this.path, world = this.race.world;
     const timers = ['boostT', 'starT', 'giantT', 'spinT', 'tumbleT', 'squishT', 'invulnT', 'throwT', 'bumpCooldown'];
     for (const k of timers) if (this[k] > 0) this[k] = Math.max(0, this[k] - dt);
 
-    const loc = track.locate(this.pos.x, this.pos.z, this.lastI, this.loc);
-    const absLat = Math.abs(loc.lat);
-    const offroad = absLat > loc.hw + 0.9 && !this.air;
+    const loc = track ? track.locate(this.pos.x, this.pos.z, this.lastI, this.loc) : this.loc;
+    const surface = world.surfaceAt(this.pos.x, this.pos.z);
+    this.surface = surface;
+    const offroad = surface === 'off' && !this.air && !this.grind;
+    const onWater = (surface === 'water' || surface === 'sea') && !this.air;
     this.offroad = offroad;
+    this.onWater = onWater;
 
     // --- Zielgeschwindigkeit
     let top = P.top * (1 + 0.006 * this.coins) * (this.race.rubber?.(this) ?? 1);
     if (offroad && this.boostT <= 0 && this.starT <= 0) top *= P.offroad;
+    if (onWater && this.boostT <= 0) top *= 0.9;
     if (this.boostT > 0) top *= 1.34;
     if (this.starT > 0) top *= 1.16;
     if (this.giantT > 0) top *= 1.1;
@@ -160,7 +171,12 @@ export class Racer {
     this.steer = damp(this.steer, steerIn, 12, dt);
     const d = this.drift;
     const driftPressed = !!input.drift && !this.prevInput.drift;
-    if (driftPressed && !this.air && !disabled && this.speed > 6) {
+    if (this.grind && driftPressed) {
+      // von der Schiene abspringen (seitlich nach Lenkung)
+      this.grind = null; this.air = true; this.vy = 6; this.vlat = -steerIn * 6;
+      this.trick.ready = true; this.trick.done = false;
+      if (this.isPlayer) this.race.audio.sfx('jump');
+    } else if (driftPressed && !this.air && !disabled && this.speed > 6) {
       this.vy = 3.4; this.air = true; d.hop = true; d.dir = 0;
       if (this.isPlayer) this.race.audio.sfx('jump');
     }
@@ -177,6 +193,21 @@ export class Racer {
         d.level = lv;
       }
     }
+    // Aufladesprung (wie in Mario Kart World): Drift-Taste geradeaus halten, loslassen = hoher Sprung
+    if (!this.air && !this.grind && !d.on && !disabled && input.drift && Math.abs(steerIn) < 0.3 && this.speed > 3) {
+      this.charge = (this.charge ?? 0) + dt;
+    } else if (this.charge > 0 && !this.air) {
+      if (input.drift && Math.abs(steerIn) >= 0.3 && this.speed > 6) {
+        // doch gelenkt: in einen Drift übergehen
+        d.on = true; d.dir = Math.sign(steerIn); d.charge = Math.min(this.charge, DRIFT_LEVELS[0] * 0.8); d.level = 0;
+      } else if (!input.drift && this.charge > 0.3) {
+        const k = clamp((this.charge - 0.3) / 0.9, 0, 1);
+        this.air = true; this.vy = 6 + 6 * k;
+        this.trick.ready = true; this.trick.done = false;
+        if (this.isPlayer) this.race.audio.sfx('jump2');
+      }
+      this.charge = 0;
+    }
     const sf = clamp(Math.abs(this.speed) / 7, 0, 1) * (1 - 0.22 * clamp((Math.abs(this.speed) - 16) / 14, 0, 1));
     let yawRate;
     if (d.on) yawRate = d.dir * P.turn * (0.62 + 0.48 * steerIn * d.dir) * clamp(Math.abs(this.speed) / 10, 0.5, 1);
@@ -191,24 +222,22 @@ export class Racer {
     // Drift: Kart rutscht leicht nach außen
     const slide = d.on ? -d.dir * Math.abs(this.speed) * 0.12 : 0;
     this.vlat = damp(this.vlat, slide, d.on ? 3 : P.grip, dt);
-    this.pos.x += (fx * this.speed + rx * this.vlat) * dt;
-    this.pos.z += (fz * this.speed + rz * this.vlat) * dt;
+    if (!this.grind) {
+      this.pos.x += (fx * this.speed + rx * this.vlat) * dt;
+      this.pos.z += (fz * this.speed + rz * this.vlat) * dt;
+    }
 
-    // --- Banden
-    track.locate(this.pos.x, this.pos.z, loc.i, loc);
-    const limit = track.wallAt(loc.i) - 0.7 * this.giantScale;
-    if (Math.abs(loc.lat) > limit) {
-      const sgn = Math.sign(loc.lat), pen = Math.abs(loc.lat) - limit;
-      const ntx = track.tx[loc.i], ntz = track.tz[loc.i];
-      // Normale der Bande (zur Mitte hin)
-      const nx = sgn * ntz, nz = -sgn * ntx;
-      this.pos.x += nx * pen; this.pos.z += nz * pen;
-      const into = -(fx * nx + fz * nz) * Math.sign(this.speed || 1); // > 0: fährt auf die Bande zu
+    // --- Banden, Wände, Bäume (Welt-Kollision)
+    const col = this.grind ? null : world.collide(this.pos.x, this.pos.z, 0.72 * this.giantScale, this._col ?? (this._col = {}));
+    if (col) {
+      const nx = col.nx, nz = col.nz;
+      this.pos.x += col.px; this.pos.z += col.pz;
+      const into = -(fx * nx + fz * nz) * Math.sign(this.speed || 1); // > 0: fährt auf die Wand zu
       if (into > 0.05) {
         this.speed *= 1 - 0.55 * into;
         this.vlat = Math.min(5, 2 + Math.abs(this.speed) * into * 0.3) * (nx * rx + nz * rz);
-        // Ausrichten an der Bande
-        const tYaw = Math.atan2(-ntz, ntx), back = Math.abs(wrapA(this.yaw - tYaw)) > Math.PI / 2;
+        // an der Wand ausrichten (die näher liegende der beiden Wandrichtungen)
+        const tYaw = Math.atan2(-nx, -nz), back = Math.abs(wrapA(this.yaw - tYaw)) > Math.PI / 2;
         const along = back ? wrapA(tYaw + Math.PI) : tYaw;
         this.yaw = wrapA(this.yaw + wrapA(along - this.yaw) * 0.35 * into);
         if (this.bumpCooldown <= 0 && Math.abs(this.speed) > 6) {
@@ -220,12 +249,15 @@ export class Racer {
     }
 
     // --- Höhe, Sprünge, Landung
-    const ground = track.heightAt(this.pos.x, this.pos.z);
-    if (this.air) {
+    const ground = this.groundAt(this.pos.x, this.pos.z);
+    if (this.grind) {
+      this.updateGrind(dt);
+    } else if (this.air) {
       this.vy -= GRAVITY * (d.hop ? 1.15 : 1) * dt;
       this.pos.y += this.vy * dt;
+      if (this.vy < 3 && this.tryRail()) { /* auf eine Schiene gesprungen */ }
       if (this.trick.ready && driftPressed && !this.trick.done) { this.trick.done = true; this.trick.t = 0; if (this.isPlayer) this.race.audio.sfx('backflip'); }
-      if (this.pos.y <= ground) {
+      if (!this.grind && this.pos.y <= ground) {
         this.pos.y = ground;
         const hard = this.vy < -7;
         this.vy = 0; this.air = false;
@@ -247,16 +279,68 @@ export class Racer {
     if (this.trick.done) this.trick.t += dt;
 
     // --- Fortschritt und Runden
-    this.updateProgress(loc);
-
-    // Falsche Richtung?
-    const trackDot = fx * track.tx[loc.i] + fz * track.tz[loc.i];
-    if (trackDot < -0.35 && Math.abs(this.speed) > 2 && !this.finished) this.wrongWayT += dt; else this.wrongWayT = Math.max(0, this.wrongWayT - dt * 2);
+    if (track) {
+      track.locate(this.pos.x, this.pos.z, loc.i, loc);
+      this.updateProgress(loc);
+      // Falsche Richtung?
+      const trackDot = fx * track.tx[loc.i] + fz * track.tz[loc.i];
+      if (trackDot < -0.35 && Math.abs(this.speed) > 2 && !this.finished) this.wrongWayT += dt; else this.wrongWayT = Math.max(0, this.wrongWayT - dt * 2);
+    }
 
     // --- Gegenstand
     if (input.item && !this.prevInput.item && !disabled) this.race.items.use(this);
     this.prevInput.drift = !!input.drift;
     this.prevInput.item = !!input.item;
+  }
+
+  /** In der Luft nah an einer Grind-Schiene und grob parallel? Dann aufsetzen und grinden. */
+  tryRail() {
+    const rails = this.race.app?.worldView?.rails;
+    if (!rails) return false;
+    const fx = Math.cos(this.yaw), fz = -Math.sin(this.yaw);
+    for (const rail of rails) {
+      const S = rail.samples;
+      for (let k = 0; k < S.length; k += 1) {
+        const [x, y, z] = S[k];
+        const dx = this.pos.x - x, dz = this.pos.z - z;
+        if (dx * dx + dz * dz > 1.6 * 1.6) continue;
+        if (this.pos.y < y - 0.8 || this.pos.y > y + 2.2) continue;
+        const n = S[Math.min(S.length - 1, k + 1)], p = S[Math.max(0, k - 1)];
+        let tx = n[0] - p[0], tz = n[2] - p[2];
+        const l = Math.hypot(tx, tz) || 1; tx /= l; tz /= l;
+        const dot = fx * tx + fz * tz;
+        if (Math.abs(dot) < 0.55) continue;
+        // im Rennen nur in Fahrtrichtung des Rennpfads grinden (nicht rückwärts zurück)
+        if (this.path) {
+          const i = this.loc.i, d2 = Math.sign(dot);
+          if ((tx * d2) * this.path.tx[i] + (tz * d2) * this.path.tz[i] < 0.3) continue;
+        }
+        this.grind = { rail, s: k, dir: Math.sign(dot) };
+        this.air = false; this.vy = 0;
+        this.cancelDrift();
+        this.speed = Math.max(this.speed, 20);
+        if (this.isPlayer) this.race.audio.sfx('switch');
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Grinden: entlang der Schiene gleiten (Tempo hoch), am Ende abspringen. */
+  updateGrind(dt) {
+    const g = this.grind, S = g.rail.samples;
+    this.speed = Math.min(Math.max(this.speed, 20), this.phys.top * 1.2);
+    g.s += g.dir * this.speed * dt;
+    if (g.s <= 0 || g.s >= S.length - 1) {
+      this.grind = null; this.air = true; this.vy = 5;
+      this.boost(0.6, 0x58b8ff, 1.05);
+      this.trick.ready = true; this.trick.done = false;
+      return;
+    }
+    const k = Math.floor(g.s), f = g.s - k, a = S[k], b = S[k + 1];
+    this.pos.set(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f + 0.15, a[2] + (b[2] - a[2]) * f);
+    this.yaw = Math.atan2(-(b[2] - a[2]) * g.dir, (b[0] - a[0]) * g.dir);
+    this.vlat = 0;
   }
 
   /** Sprungschanze / Trampolin: in die Luft, Trick per Drift-Taste in der Luft. */
@@ -269,33 +353,31 @@ export class Racer {
   }
 
   updateProgress(loc) {
-    const N = this.race.track.N, i = loc.i, prev = this.lastI;
-    if (prev >= 0) {
-      if (prev > N * 0.75 && i < N * 0.25) {
-        if (this.passedHalf) { this.passedHalf = false; this.lap++; this.race.onLap(this); }
-      } else if (prev < N * 0.25 && i > N * 0.75) {
-        this.lap--; this.passedHalf = true;
-      }
-    }
-    if (i > N * 0.4 && i < N * 0.6) this.passedHalf = true;
-    this.lastI = i;
-    // s passend zum Index (an der Ziellinie kann s schon/noch auf der anderen Seite liegen)
-    const L = this.race.track.length;
-    let s = loc.s;
-    if (i < N * 0.25 && s > L * 0.5) s -= L;
-    else if (i > N * 0.75 && s < L * 0.5) s += L;
-    this.progress = (this.lap - 1) * L + s;
+    this.lastI = loc.i;
+    this.progress = loc.s;
+    this.race.onProgress?.(this);
   }
 
   // ------------------------------------------------------------------ Darstellung
   syncVisual(dt, t) {
-    const track = this.race.track;
+    // weit entfernte Karts nicht zeichnen und nicht animieren (Nebel verdeckt sie ohnehin)
+    const f = this.race.focus;
+    if (f && !this.isPlayer) {
+      const far = (this.pos.x - f.x) ** 2 + (this.pos.z - f.z) ** 2 > 260 * 260;
+      this.root.visible = !far;
+      if (far) return;
+      // Schatten nur nah an der Kamera (der Schattenbereich ist ohnehin klein)
+      const near = (this.pos.x - f.x) ** 2 + (this.pos.z - f.z) ** 2 < 45 * 45;
+      if (near !== this.castsShadow) { this.castsShadow = near; this.root.traverse((o) => { if (o.isMesh) o.castShadow = near; }); }
+    }
     const fx = Math.cos(this.yaw), fz = -Math.sin(this.yaw);
-    // Neigung aus dem Gelände
-    const h0 = track.heightAt(this.pos.x - fx * 0.8, this.pos.z - fz * 0.8), h1 = track.heightAt(this.pos.x + fx * 0.8, this.pos.z + fz * 0.8);
-    const r0 = track.heightAt(this.pos.x + fz * 0.6, this.pos.z - fx * 0.6), r1 = track.heightAt(this.pos.x - fz * 0.6, this.pos.z + fx * 0.6);
+    // Neigung aus dem Gelände (auf dem Wasser: leichtes Schaukeln)
+    const g = (x, z) => this.groundAt(x, z);
+    const h0 = g(this.pos.x - fx * 0.8, this.pos.z - fz * 0.8), h1 = g(this.pos.x + fx * 0.8, this.pos.z + fz * 0.8);
+    const r0 = g(this.pos.x + fz * 0.6, this.pos.z - fx * 0.6), r1 = g(this.pos.x - fz * 0.6, this.pos.z + fx * 0.6);
     const pitch = Math.atan2(h1 - h0, 1.6), roll = Math.atan2(r0 - r1, 1.2);
     this.root.position.copy(this.pos);
+    if (this.onWater && !this.air) this.root.position.y += 0.06 * Math.sin(t * 5 + this.slot);
     // Drehungen: Drift (Kart zeigt nach innen), Schleudern, Überschlag, Trick
     const d = this.drift;
     this.visDrift = damp(this.visDrift ?? 0, d.on ? d.dir * 0.42 : 0, 9, dt || 1);
