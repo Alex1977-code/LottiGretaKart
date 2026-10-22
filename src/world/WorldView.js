@@ -338,6 +338,9 @@ export class WorldView {
       if (h > 22) d.add(pick < 0.6 ? 'pineTree' : 'rock', x, h, z, s * (pick < 0.6 ? 1.2 : 1.6), pick < 0.6 ? 0x2f6a3a : 0x8a8296, rnd.frac() * 6);
       else if (top === 'autumn') d.add(pick < 0.75 ? 'roundTree' : 'pineTree', x, h, z, s * 1.2, pick < 0.75 ? autumn[Math.floor(rnd.frac() * autumn.length)] : 0x2f7a3a, rnd.frac() * 6);
       else if (top === 'highway') d.add(pick < 0.5 ? 'pineTree' : 'bush', x, h, z, s, pick < 0.5 ? 0x2f6a50 : 0x4a7a4a, rnd.frac() * 6);
+      else if (top === 'snow') d.add(pick < 0.7 ? 'pineTree' : pick < 0.85 ? 'snowman' : 'rock', x, h, z, s * (pick < 0.7 ? 1.2 : 1), pick < 0.7 ? [0xe8f0f6, 0xd4e4ee, 0x2f6a4a][Math.floor(rnd.frac() * 3)] : pick < 0.85 ? 0xffffff : 0x9aa4b8, rnd.frac() * 6);
+      else if (top === 'beach') d.add(pick < 0.6 ? 'palm' : pick < 0.8 ? 'bush' : 'umbrella', x, h, z, s, pick < 0.6 ? green[Math.floor(rnd.frac() * green.length)] : pick < 0.8 ? 0x7ccf5a : [0xe8392d, 0x2fb8c8, 0xffc21a][Math.floor(rnd.frac() * 3)], rnd.frac() * 6);
+      else if (top === 'castle') d.add(pick < 0.7 ? 'pineTree' : 'rock', x, h, z, s * 1.2, pick < 0.7 ? [0x2a4a3a, 0x324e40][Math.floor(rnd.frac() * 2)] : 0x6a6478, rnd.frac() * 6);
       else if (pick < 0.55) d.add('roundTree', x, h, z, s * 1.1, green[Math.floor(rnd.frac() * green.length)], rnd.frac() * 6);
       else if (pick < 0.8) d.add('bush', x, h, z, s, green[Math.floor(rnd.frac() * green.length)], rnd.frac() * 6);
       else if (pick < 0.9) d.add('mushroom', x, h, z, s * 0.9, [0xe8392d, 0xff8a1a, 0x3b7cf0][Math.floor(rnd.frac() * 3)], rnd.frac() * 6);
@@ -349,6 +352,8 @@ export class WorldView {
       const x = b.minX + rnd.frac() * (b.maxX - b.minX), z = b.minZ + rnd.frac() * (b.maxZ - b.minZ);
       const h = w.heightAt(x, z);
       if (h < 1.5 || h > 18 || !w.isFree(x, z, 1)) continue;
+      const amb = w.ambienceAt(x, z);
+      if (amb.some((r) => (r.theme === 'snow' || r.theme === 'castle') && r.w > 0.4)) continue;
       d.add('flower', x, h, z, 1 + rnd.frac() * 0.5, [0xff6fa8, 0xffffff, 0xffd21f, 0xb47fe6, 0xff8a2a][Math.floor(rnd.frac() * 5)], rnd.frac() * 6);
       k++;
     }

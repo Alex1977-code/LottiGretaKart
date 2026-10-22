@@ -25,10 +25,10 @@ neue Sitzpose `kart` für die Heldinnen in `src/lgw/three/avatars/hero.js`).
 
 ## Die Insel (wie in Mario Kart World)
 
-Alle Strecken liegen auf **einer zusammenhängenden Insel** – der Grünen Blockinsel – und sind durch Landstraßen
+Alle acht Strecken liegen auf **einer zusammenhängenden Insel** – der Grünen Blockinsel – und sind durch Landstraßen
 verbunden. Man kann von Strecke zu Strecke fahren, über den See (auf dem Wasser), durch den Höhlenberg und ins
 Zirkuszelt. Himmel, Licht und Nebel blenden beim Fahren je Region über (Sonne über der Wiese, goldener Herbst,
-dunkle Höhle, Zirkus-Scheinwerfer, Abendrot über der Stadt).
+dunkle Höhle, Zirkus-Scheinwerfer, Abendrot über der Stadt, Strand, Schnee, Burg im Mondlicht).
 
 | Strecke | Region | Besonderheit |
 | --- | --- | --- |
@@ -37,15 +37,18 @@ dunkle Höhle, Zirkus-Scheinwerfer, Abendrot über der Stadt).
 | Laternengrotte | im Höhlenberg im Westen | Stampfsteine krachen von der Decke |
 | Kippfeld-Manege | im Zirkuszelt im Südwesten | Panzerkröten, stürmender Rammbock-Bulle, Trampoline |
 | Brummbärs Abendautobahn | Stadt im Osten | Bombenkanonen schießen Kickbomben (roter Ring = Einschlag) |
+| Funkelstrand | Südküste | Palmen, Sonnenschirme, Lagune, Strandkrabben, Schnappblumen, zwei Dünen-Schanzen |
+| Glitzergipfel | verschneites Hochplateau im Nordosten | Serpentinen, Bohnenranken, Riesenschneebälle rollen über die Bahn |
+| Brummbär-Burg | Festung auf der Nordklippe, im Mondlicht | Burgmauern und Türme, Bombenkanonen, Pilzlingsturm, Rammbock-Bulle, Schnappblumen |
 
 **Modi**
-- **Grand Prix** (Beeren-Cup, Brummbär-Cup): das erste Rennen sind Runden, ab dem zweiten startet man an der
+- **Grand Prix** (Beeren-Cup, Brummbär-Cup, Muschel-Cup, Kronen-Cup): das erste Rennen sind Runden, ab dem zweiten startet man an der
   vorigen Strecke und fährt über die Verbindungsstraße zur nächsten (Anfahrt + Runden). Punkte für 12 Fahrer,
   am Ende Siegerehrung mit Pokal.
-- **K.-o.-Tour** (Große Inseltour, Kleine Runde): eine Rallye quer über die Insel mit 12 Fahrern; an jedem
+- **K.-o.-Tour** (Große Inseltour, Kleine Runde, Küste und Gipfel): eine Rallye quer über die Insel mit 12 Fahrern; an jedem
   Checkpoint scheiden die Letzten aus.
 - **Einzelrennen** und **Zeitfahren** (mit drei Turbo-Beeren, Bestzeiten werden gespeichert).
-- **Freie Fahrt**: die ganze Insel erkunden und 30 versteckte Sternmünzen finden (werden gespeichert).
+- **Freie Fahrt**: die ganze Insel erkunden und 36 versteckte Sternmünzen finden (werden gespeichert).
 
 Klassen: Gemütlich (50 ccm), Flott (100 ccm), Rasant (150 ccm).
 

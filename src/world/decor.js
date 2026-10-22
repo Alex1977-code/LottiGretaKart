@@ -64,9 +64,46 @@ const hill = () => g('hill', () => new Build().sphere(1, 0xffffff, { s: [1, 1, 1
 const building = () => g('building', () => new Build().box(1, 1, 1, 0xffffff, { p: [0, 0.5, 0] }, 0.02, 1).geometry());
 const block = () => g('block', () => new Build().box(1, 1, 1, 0xffffff, { p: [0, 0.5, 0] }, 0.08).geometry());
 
-const KINDS = { roundTree, pineTree, bush, flower, mushroom, rock, crystal, stalactite, hill, building, block };
+const palm = () => g('palm', () => {
+  // gebogener Stamm aus Ringen, oben fünf hängende Wedel und Kokosnüsse
+  const b = new Build();
+  for (let k = 0; k < 7; k++) {
+    const f = k / 7;
+    b.cyl(0.26 - f * 0.08, 0.3 - f * 0.08, 0.85, 0xb08a5a, { p: [f * f * 1.6, 0.42 + k * 0.78, 0], r: [0, 0, -f * 0.5] }, 7);
+  }
+  const top = [1.6, 5.6, 0];
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    b.sphere(1, 0xffffff, { p: [top[0] + Math.cos(a) * 1.5, top[1] - 0.35, Math.sin(a) * 1.5], s: [1.7, 0.12, 0.45], r: [0, -a, -0.35] }, 8, 4);
+  }
+  for (let i = 0; i < 3; i++) { const a = i * 2.1; b.sphere(0.24, 0x7a4a24, { p: [top[0] + Math.cos(a) * 0.35, top[1] - 0.35, Math.sin(a) * 0.35] }, 6, 4); }
+  return b.geometry();
+});
+const umbrella = () => g('umbrella', () => new Build()
+  .cyl(0.06, 0.06, 2.6, 0xf8f6f0, { p: [0, 1.3, 0] }, 6)
+  .cone(1.7, 0.7, 0xffffff, { p: [0, 2.75, 0] }, 12)
+  .box(1.4, 0.12, 0.7, 0xfff8ee, { p: [1.3, 0.2, 0] }, 0.04)
+  .geometry());
+const starfish = () => g('starfish', () => {
+  const b = new Build();
+  for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; b.sphere(1, 0xffffff, { p: [Math.cos(a) * 0.28, 0.05, Math.sin(a) * 0.28], s: [0.32, 0.07, 0.11], r: [0, -a, 0] }, 6, 3); }
+  return b.geometry();
+});
+const snowman = () => g('snowman', () => new Build()
+  .sphere(0.9, 0xffffff, { p: [0, 0.8, 0] }, 12, 8)
+  .sphere(0.65, 0xffffff, { p: [0, 2.0, 0] }, 12, 8)
+  .sphere(0.45, 0xffffff, { p: [0, 2.9, 0] }, 10, 7)
+  .cone(0.1, 0.5, 0xff8a1a, { p: [0.62, 2.9, 0], r: [0, 0, -Math.PI / 2] }, 6)
+  .sphere(0.06, 0x222222, { p: [0.38, 3.05, 0.16] }, 5, 3)
+  .sphere(0.06, 0x222222, { p: [0.38, 3.05, -0.16] }, 5, 3)
+  .cyl(0.32, 0.32, 0.5, 0x2a2834, { p: [0, 3.45, 0] }, 10)
+  .cyl(0.5, 0.5, 0.06, 0x2a2834, { p: [0, 3.22, 0] }, 12)
+  .box(0.12, 0.12, 1.1, 0xe8392d, { p: [0, 2.48, 0] }, 0.03)
+  .geometry());
+
+const KINDS = { roundTree, pineTree, bush, flower, mushroom, rock, crystal, stalactite, hill, building, block, palm, umbrella, starfish, snowman };
 // Hindernis-Radius je Art (× Größe) in der offenen Welt
-const COLLIDE = { roundTree: 0.5, pineTree: 0.45, mushroom: 0.9, rock: 1.0, block: 0.6, crystal: 0.4 };
+const COLLIDE = { roundTree: 0.5, pineTree: 0.45, mushroom: 0.9, rock: 1.0, block: 0.6, crystal: 0.4, palm: 0.35, umbrella: 0.12, snowman: 0.85 };
 
 export class Decor {
   constructor(race, track, theme, seed = 1, quality = 2, world = null) {
@@ -276,6 +313,71 @@ export class Decor {
     return grp;
   }
 
+  /**
+   * Burg rund um die Strecke: Ringmauer mit Zinnen und Türmen (Fahnen in Brummbär-Rot), dort offen, wo Straßen
+   * hindurchführen; dazu ein Bergfried im Innenfeld. Mauern und Türme sind Hindernisse.
+   */
+  castle({ pad = 16, n = 40 } = {}) {
+    const tr = this.track, b = tr.bounds, w = this.world;
+    const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
+    // Mauerverlauf: je Richtung der äußerste Bandenpunkt + Abstand
+    const ring = [];
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+      let R = 0;
+      for (let i = 0; i < tr.N; i += 3) {
+        const dx = tr.px[i] - cx, dz = tr.pz[i] - cz, along = dx * ca + dz * sa, side = Math.abs(-dx * sa + dz * ca);
+        if (along > 0 && side < 40) R = Math.max(R, along + tr.wallAt(i));
+      }
+      ring.push([cx + ca * (R + pad), cz + sa * (R + pad)]);
+    }
+    // ausreißende Ecken glätten
+    for (let it = 0; it < 2; it++) for (let k = 0; k < n; k++) {
+      const p = ring[k], q = ring[(k + 1) % n], o = ring[(k + n - 1) % n];
+      const r0 = Math.hypot(p[0] - cx, p[1] - cz), rm = (Math.hypot(q[0] - cx, q[1] - cz) + Math.hypot(o[0] - cx, o[1] - cz)) / 2;
+      if (r0 < rm) { const f = (r0 * 0.4 + rm * 0.6) / r0; p[0] = cx + (p[0] - cx) * f; p[1] = cz + (p[1] - cz) * f; }
+    }
+    const stone = new Build(), H = 7;
+    const hy = (x, z) => tr.heightAt(x, z);
+    const free = (x, z, c) => (w ? w.isFree(x, z, c) : this.clear(x, z, c));
+    const towers = [];
+    for (let k = 0; k < n; k++) {
+      const [x1, z1] = ring[k], [x2, z2] = ring[(k + 1) % n];
+      const L = Math.hypot(x2 - x1, z2 - z1);
+      // Mauerstück nur, wenn es keine Straße schneidet
+      let ok = true;
+      for (let q = 0; q <= 4; q++) if (!free(x1 + (x2 - x1) * q / 4, z1 + (z2 - z1) * q / 4, 3)) { ok = false; break; }
+      if (!ok) continue;
+      const mx = (x1 + x2) / 2, mz = (z1 + z2) / 2, y = Math.min(hy(x1, z1), hy(x2, z2)), ang = -Math.atan2(z2 - z1, x2 - x1);
+      stone.box(L + 0.6, H, 2.4, 0x9a94a8, { p: [mx, y + H / 2 - 1, mz], r: [0, ang, 0] }, 0.1, 1);
+      for (let t = 0.5; t < L; t += 2.4) {
+        const f = t / L;
+        stone.box(1.2, 1.1, 2.6, 0x8a849a, { p: [x1 + (x2 - x1) * f, y + H - 0.45, z1 + (z2 - z1) * f], r: [0, ang, 0] }, 0.05, 1);
+      }
+      if (w) w.addSeg(x1, z1, x2, z2);
+      if (k % 4 === 0) towers.push([x1, z1, 3.4, 13]);
+    }
+    // Bergfried im Innenfeld (größter freier Platz nahe der Mitte)
+    let keep = null;
+    for (let r = 0; r < 60 && !keep; r += 6) for (let a = 0; a < 6.28 && !keep; a += 0.7) {
+      const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
+      if (free(x, z, 12)) keep = [x, z, 7.5, 26];
+    }
+    if (keep) towers.push(keep);
+    const roofs = new Build(), flags = new Build();
+    for (const [x, z, R, h] of towers) {
+      const y = hy(x, z) - 1;
+      stone.cyl(R, R * 1.08, h, 0x8a849a, { p: [x, y + h / 2, z] }, 14);
+      for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; stone.box(1.1, 1.2, 1.1, 0x9a94a8, { p: [x + Math.cos(a) * R * 0.92, y + h + 0.6, z + Math.sin(a) * R * 0.92] }, 0.05, 1); }
+      roofs.cone(R * 1.15, R * 1.6, 0xd8262e, { p: [x, y + h + R * 0.8 + 0.6, z] }, 14);
+      flags.cyl(0.08, 0.08, 3, 0x5a5468, { p: [x, y + h + R * 1.6 + 1.6, z] }, 5);
+      flags.box(1.8, 1.1, 0.08, 0xffc21a, { p: [x + 0.95, y + h + R * 1.6 + 2.5, z] }, 0, 1);
+      if (w) w.addCircle(x, z, R + 0.3);
+    }
+    const mk = (bld, rough) => { const m = new THREE.Mesh(bld.geometry(), vcol(rough)); m.castShadow = true; m.receiveShadow = true; this.group.add(m); return m; };
+    mk(stone, 0.9); mk(roofs, 0.6); mk(flags, 0.7);
+  }
+
   /** Zirkuszelt über der ganzen Strecke: gestreifte Wand, Kegeldach, Masten, Lichterketten, Scheinwerferkegel. */
   buildTent(at = null) {
     let cx, cz, R, H = 18, roof = 34;
@@ -425,7 +527,7 @@ export class Decor {
       for (const part of tiles.values()) {
         const im = new THREE.InstancedMesh(KINDS[kind](), vcol(kind === 'crystal' ? 0.2 : 0.55, kind === 'crystal' ? { emissive: 0x2a4a6a } : {}, kind === 'crystal' ? 'crystal' : ''), part.length);
         part.forEach((e, i) => { im.setMatrixAt(i, e.m); im.setColorAt(i, e.c); });
-        im.castShadow = this.noShadow ? false : this.quality >= 2 ? !['hill', 'flower', 'building', 'stalactite'].includes(kind) : ['roundTree', 'pineTree', 'mushroom'].includes(kind);
+        im.castShadow = this.noShadow ? false : this.quality >= 2 ? !['hill', 'flower', 'building', 'stalactite', 'starfish'].includes(kind) : ['roundTree', 'pineTree', 'mushroom', 'palm'].includes(kind);
         im.receiveShadow = true;
         im.computeBoundingSphere();
         im.name = `kulisse:${kind}`;

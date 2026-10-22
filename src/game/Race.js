@@ -430,7 +430,7 @@ export class Race {
     const f = this.focus ?? this.camera.position;
     const ws = this.world.ambienceAt(f.x, f.z).map((x) => ({ theme: getTheme(x.theme), w: x.w, name: x.theme }));
     this.app.sky.blend(ws);
-    const dark = ws.reduce((a, x) => a + ((x.name === 'cave' || x.name === 'circus') ? x.w : 0), 0);
+    const dark = ws.reduce((a, x) => a + ((x.name === 'cave' || x.name === 'circus') ? x.w : x.name === 'castle' ? x.w * 0.6 : 0), 0);
     this.playerLight.intensity = 26 * dark;
     this.darkness = dark;
   }

@@ -41,11 +41,14 @@ export function aiInput(racer, race, dt) {
   // Stampfsteine umfahren: freie Spur suchen, die der gewünschten am nächsten liegt
   const stones = [];
   for (const h of race.hazards?.list ?? []) {
-    if (h.kind !== 'stampfstein' || !h.p) continue;
+    // Stampfsteine immer, Schnappblumen und Schneebälle nur geschickte Fahrer
+    const snap = h.kind === 'snapper' || h.kind === 'roller';
+    if (h.kind !== 'stampfstein' && !(snap && ai.skill > 0.5) || !h.p) continue;
     if ((h.p.x - racer.pos.x) ** 2 + (h.p.z - racer.pos.z) ** 2 > 40 * 40) continue;
     const q = track.locate(h.p.x, h.p.z, i, ai._sl ?? (ai._sl = {}));
     if (Math.abs(q.lat) > q.hw + 3) continue; // liegt nicht an meinem Weg
-    stones.push({ ahead: (q.i - i) * track.ds, lat: q.lat, size: h.size });
+    if (h.kind === 'snapper') stones.push({ ahead: (q.i - i) * track.ds, lat: q.lat - Math.sign(q.lat) * 1.8, size: 4 });
+    else stones.push({ ahead: (q.i - i) * track.ds, lat: q.lat, size: h.size ?? h.R * 2 });
   }
   if (stones.length) {
     const hwHere = track.hw[i];

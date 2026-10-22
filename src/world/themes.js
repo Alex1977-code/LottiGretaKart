@@ -75,5 +75,47 @@ const CAVE = {
   lanternLight: { color: 0xffb44a, intensity: 40, distance: 26 },
 };
 
-export const THEMES = { grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE };
+const BEACH = {
+  ...GRASS,
+  label: 'Strand',
+  sky: [[1, 0x1f8fe0], [0.45, 0x3fb4f5], [0.15, 0x86dcff], [0.03, 0xd2f6ff], [0, 0xf0fcff], [-0.1, 0xb8e6f0], [-1, 0x7cc8dc]],
+  background: 0xc4ecfa,
+  fog: { color: 0xcdf0fb, near: 100, far: 460 },
+  hemi: { sky: 0xd4f2ff, ground: 0xd8c48a, intensity: 1.4 },
+  sun: { color: 0xfff4dc, intensity: 2.9, dir: [-0.3, 1, 0.55] },
+  hills: 0x7ccf5a, hills2: 0xe8d39a,
+  grass: 0x9ad65a, grass2: 0x8ecb50, grassFar: 0x86c24c, offroad: 0xf0dca0, offroad2: 0xe8d294,   // Sand
+  road: 0x9a96a6, road2: 0x938fa0, line: 0xfffaf0, curbA: 0x2fc4d0, curbB: 0xfffaf0,
+  wallA: 0xfff6e4, wallB: 0x2fb8c8, wallTop: 0xff8a5a, wallH: 0.7,
+};
+
+const SNOW = {
+  ...GRASS,
+  label: 'Schneegipfel',
+  sky: [[1, 0x2a6fd0], [0.45, 0x5ea2ec], [0.15, 0xa8d4f8], [0.03, 0xe4f2ff], [0, 0xf6fbff], [-0.1, 0xdce8f4], [-1, 0xb4c8dc]],
+  background: 0xdcecfa,
+  fog: { color: 0xe4f0fb, near: 80, far: 400 },
+  hemi: { sky: 0xe6f2ff, ground: 0xa8b8d0, intensity: 1.35 },
+  sun: { color: 0xfffaf0, intensity: 2.6, dir: [0.35, 1, 0.45] },
+  hills: 0xf4f6fb, hills2: 0xdfe8f4,
+  grass: 0xf2f6fc, grass2: 0xe8eff8, grassFar: 0xdde6f2, offroad: 0xdfe9f6, offroad2: 0xd4e0f0,   // Schnee
+  road: 0x7a8098, road2: 0x737990, line: 0xffffff, curbA: 0xe8392d, curbB: 0xffffff,
+  wallA: 0xcfe8ff, wallB: 0x8fc4f0, wallTop: 0xffffff, wallH: 0.9,
+};
+
+const CASTLE = {
+  ...GRASS,
+  label: 'Burg',
+  sky: [[1, 0x0e0a26], [0.45, 0x231a4a], [0.15, 0x4a2c66], [0.04, 0x8a3c5e], [0, 0xb8506a], [-0.1, 0x4a2a44], [-1, 0x1a1024]],
+  background: 0x3a2448,
+  fog: { color: 0x3a2850, near: 70, far: 330 },
+  hemi: { sky: 0xb8a8e8, ground: 0x4a3040, intensity: 1.1 },
+  sun: { color: 0xc8b8ff, intensity: 1.5, dir: [0.4, 0.9, -0.5] },
+  sunDisc: false, clouds: false, hills: 0x3a3450, hills2: 0x4a3e5c,
+  grass: 0x4a6a3e, grass2: 0x426238, grassFar: 0x3a4a3a, offroad: 0x6a5e66, offroad2: 0x62565e,   // Burghof-Pflaster
+  road: 0x6e6a7c, road2: 0x666274, line: 0xffd36a, curbA: 0xd8262e, curbB: 0x2a2434,
+  wallA: 0x9a94a8, wallB: 0x7e788e, wallTop: 0xd8262e, wallH: 1.1,
+};
+
+export const THEMES = { grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE };
 export const getTheme = (n) => THEMES[n] ?? GRASS;

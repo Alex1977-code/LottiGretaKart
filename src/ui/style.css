@@ -119,6 +119,7 @@ button.opt small { font-size: 12px; opacity: 0.7; }
 button.opt.on { background: var(--blue); color: #fff; }
 .grid { display: grid; gap: 10px; grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .grid.tracks, .grid.cups { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.grid.tracks { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; border-radius: 22px; background: #fff; }
 .card img { width: 100%; max-width: 130px; aspect-ratio: 1; object-fit: contain; border-radius: 16px; background: radial-gradient(circle at 50% 40%, #fff, #e6f2ff); }
 .card.racer { border-color: var(--c); box-shadow: 0 5px 0 var(--c); }
@@ -194,9 +195,11 @@ body.touch-on .hud-place b { font-size: 64px; }
   button.big { font-size: 20px; padding: 9px 18px; }
   .grid { gap: 6px; grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .grid.tracks, .grid.cups { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+  .grid.tracks { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .card { padding: 5px; border-radius: 16px; }
   .card img { width: 100%; max-width: 76px; }
-  .card.track img { max-width: 160px; }
+  .card.track img { max-width: 112px; }
+  .card.track small { display: none; }
   .card span { font-size: 12px; line-height: 1.1; text-align: center; hyphens: auto; overflow-wrap: break-word; }
   .card small { font-size: 11px; }
   .trophy { font-size: 40px; }

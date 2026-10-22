@@ -2,7 +2,9 @@
 //   walker      Pilzling / Panzerkröte / Krabbelkäfer / Rammbock-Bulle laufen quer über die Fahrbahn
 //   stampfstein Steinquader schwebt über der Fahrbahn und kracht herunter, wenn ein Kart kommt
 //   cannon      Bombenkanone des Barons neben der Strecke schießt Kickbomben (Landeanzeige am Boden)
-//   brummer     dicke Hummel fliegt quer über die Strecke
+//   brummer     dicke Hummel (oder Flatterkäfer, model) fliegt quer über die Strecke
+//   snapper     Riesen-Schnappblume am Fahrbahnrand schnappt nach Karts, die vorbeifahren
+//   roller      Riesenschneeball rollt quer über die Fahrbahn und plättet, wen er erwischt
 // Definition in der Strecke: hazards: [{ kind, u, model?, speed?, lat?, side?, every? }]
 
 import * as THREE from 'three';
@@ -40,11 +42,40 @@ export class Hazards {
           break;
         }
         case 'brummer': {
-          h.model = getModel('brummer');
+          h.model = getModel(d.model ?? 'brummer', d.opts ?? {});
           h.holder = new THREE.Group();
           h.holder.add(h.model.root);
           h.holder.scale.setScalar(1.6);
           h.lat = 0; h.dir = 1; h.speed = d.speed ?? 4; h.radius = 0.9; h.down = 0;
+          break;
+        }
+        case 'snapper': {
+          h.model = getModel('riesenschnappblume');
+          h.holder = new THREE.Group();
+          h.holder.add(h.model.root);
+          h.holder.scale.setScalar(d.scale ?? 0.9);
+          h.lat = (d.lat ?? 0.6) * base.hw;
+          h.phase = 'idle'; h.pt = 0; h.cool = Math.random(); h.down = 0;
+          break;
+        }
+        case 'roller': {
+          const R = d.size ?? 2.2;
+          const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(R, 2), new THREE.MeshStandardMaterial({ color: 0xf6f9ff, roughness: 0.9, flatShading: true }));
+          // ein paar eingerollte Zweige und Steine, damit man das Rollen sieht
+          for (let k = 0; k < 5; k++) {
+            const bit = new THREE.Mesh(new THREE.BoxGeometry(R * 0.5, R * 0.12, R * 0.12), new THREE.MeshStandardMaterial({ color: k % 2 ? 0x7a5a3a : 0x8a94a8 }));
+            const a = k * 2.4, e = (k / 5 - 0.4) * 2;
+            bit.position.set(Math.cos(a) * Math.cos(e) * R * 0.95, Math.sin(e) * R * 0.95, Math.sin(a) * Math.cos(e) * R * 0.95);
+            bit.lookAt(0, 0, 0);
+            ball.add(bit);
+          }
+          h.model = { root: ball, update() {}, dispose() { ball.geometry.dispose(); } };
+          h.holder = new THREE.Group();
+          h.holder.add(ball);
+          h.R = R; h.radius = R * 0.85;
+          h.lat = (Math.random() * 2 - 1) * base.hw;
+          h.dir = Math.random() < 0.5 ? -1 : 1;
+          h.speed = d.speed ?? 6;
           break;
         }
         case 'stampfstein': {
@@ -116,6 +147,69 @@ export class Hazards {
               else if (r.hit('spin', null)) { /* Gegner läuft weiter */ }
             }
           }
+          break;
+        }
+        case 'snapper': {
+          const p = track.pointAt(h.u, h.lat, h.p ?? (h.p = {}));
+          h.holder.position.set(p.x, p.y, p.z);
+          // Blick zur Fahrbahnmitte (Modelle schauen nach +X)
+          h.holder.rotation.y = p.yaw + (h.lat > 0 ? Math.PI / 2 : -Math.PI / 2);
+          h.cool -= dt;
+          if (h.down > 0) { h.down -= dt; h.model.update(dt, { anim: 'retreat' }); break; }
+          if (h.phase === 'idle') {
+            if (h.cool <= 0) {
+              for (const r of race.racers) {
+                if (r.out) continue;
+                if ((r.pos.x - p.x) ** 2 + (r.pos.z - p.z) ** 2 < 7 * 7) { h.phase = 'snap'; h.pt = 0; h.bit = false; break; }
+              }
+            }
+            h.model.update(dt, { anim: 'idle' });
+          } else {
+            h.pt += dt;
+            const k = Math.min(1, h.pt / 0.8);
+            h.model.update(dt, { anim: 'snap', progress: k });
+            if (!h.bit && k > 0.42) {
+              h.bit = true;
+              // Biss: vor der Blume, Richtung Fahrbahnmitte
+              const side = h.lat > 0 ? -1 : 1, bx = p.x - track.tz[p.i] * side * 1.8, bz = p.z + track.tx[p.i] * side * 1.8;
+              for (const r of race.racers) {
+                if (r.out) continue;
+                if ((r.pos.x - bx) ** 2 + (r.pos.z - bz) ** 2 < (1.9 + r.radius) ** 2 && Math.abs(r.pos.y - p.y) < 2.5) {
+                  if (r.invincible) { h.down = 4; race.effects.sparkle(h.holder.position, 0xffffff, 12, 3); if (r.isPlayer) race.audio.sfx('stomp'); }
+                  else r.hit('spin', null);
+                }
+              }
+              const pl = race.player;
+              if (pl && Math.hypot(pl.pos.x - p.x, pl.pos.z - p.z) < 25) race.audio.sfx('stomp');
+            }
+            if (k >= 1) { h.phase = 'idle'; h.cool = 1.4 + Math.random(); }
+          }
+          // der Stiel ist ein Hindernis
+          for (const r of race.racers) {
+            if (r.out) continue;
+            const dx = r.pos.x - p.x, dz = r.pos.z - p.z, d = Math.hypot(dx, dz), R = r.radius + 0.9;
+            if (d < R && d > 1e-4) { r.pos.x += (dx / d) * (R - d); r.pos.z += (dz / d) * (R - d); if (r.bumpCooldown <= 0) { r.speed *= 0.6; r.bumpCooldown = 0.4; } }
+          }
+          break;
+        }
+        case 'roller': {
+          const hw = h.base.hw + 1;
+          h.lat += h.dir * h.speed * dt;
+          if (Math.abs(h.lat) > hw) { h.lat = clamp(h.lat, -hw, hw); h.dir *= -1; }
+          const p = track.pointAt(h.u, h.lat, h.p ?? (h.p = {}));
+          h.holder.position.set(p.x, p.y + h.R * 0.92, p.z);
+          h.holder.rotation.y = p.yaw;
+          // rollen: Drehung um die Fahrtrichtung der Strecke
+          h.model.root.rotation.x -= h.dir * h.speed * dt / h.R;
+          for (const r of race.racers) {
+            if (r.out) continue;
+            const dx = r.pos.x - p.x, dz = r.pos.z - p.z, rr = r.radius + h.radius;
+            if (dx * dx + dz * dz < rr * rr && r.pos.y - p.y < h.R * 1.6) {
+              if (r.invincible) { if (!(h.cool > 0)) { race.effects.dust(p.x, p.y + 1, p.z, 0xffffff, 4); h.dir *= -1; h.cool = 1; } }
+              else if (r.hit('squish', null)) race.effects.dust(p.x, p.y + 1, p.z, 0xffffff, 4);
+            }
+          }
+          if (h.cool > 0) h.cool -= dt;
           break;
         }
         case 'stampfstein': {
