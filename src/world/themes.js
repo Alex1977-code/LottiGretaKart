@@ -25,7 +25,7 @@ const AUTUMN = {
   fog: { color: 0xf1d7b8, near: 80, far: 380 },
   hemi: { sky: 0xffe2c0, ground: 0x9a6a3a, intensity: 1.35 },
   sun: { color: 0xffd8a8, intensity: 2.8, dir: [-0.6, 0.9, 0.35] },
-  hills: 0xc9702a, hills2: 0xe0a040,
+  hills: 0x8a9a3a, hills2: 0xb0823a,
   grass: 0x9cc83a, grass2: 0x8eb934, grassFar: 0xb9a040, offroad: 0xd8a24a, offroad2: 0xcc9640,
   road: 0x9a8a84, road2: 0x92837e, curbA: 0xff8a1a, curbB: 0xfff3df,
   wallA: 0x8a5a32, wallB: 0xc9863e, wallTop: 0x5cbf3a,
