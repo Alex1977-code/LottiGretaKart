@@ -1,0 +1,19 @@
+{
+  "name": "lotti-greta-kart",
+  "version": "0.1.0",
+  "description": "LOTTI & GRETA KART – Funracer im Stil von Mario Kart mit den Figuren aus Lotti & Greta (Browser/PWA)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "test": "npm run build && node tests/race.mjs"
+  },
+  "dependencies": {
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "vite": "^8.3.3"
+  }
+}

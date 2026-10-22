@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#2b8de8" />
+  <title>Lotti &amp; Greta Kart</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="/src/ui/style.css" />
+</head>
+<body>
+  <div id="app">
+    <div id="ui"></div>
+    <div id="touch"></div>
+  </div>
+  <div id="rotate-hint" aria-live="polite">
+    <div class="phone"></div>
+    <p>Bitte das Gerät ins Querformat drehen</p>
+    <small>Lotti &amp; Greta Kart fährt sich am besten quer.</small>
+  </div>
+  <div id="err-box" role="alert"></div>
+  <script>
+    // Fehler-Anzeige: erster Laufzeitfehler wird eingeblendet (Tippen blendet aus) – hilft am Handy ohne Konsole
+    (function () {
+      var shown = 0;
+      function show(msg) {
+        if (shown++ > 2) return;
+        var box = document.getElementById('err-box');
+        box.textContent += (box.textContent ? '\n' : '') + 'Fehler: ' + msg;
+        box.classList.add('visible');
+        box.onclick = function () { box.classList.remove('visible'); };
+      }
+      window.addEventListener('error', function (e) { show((e.message || 'unbekannt') + (e.filename ? ' @ ' + e.filename.split('/').pop() + ':' + e.lineno : '')); });
+      window.addEventListener('unhandledrejection', function (e) { show(String(e.reason && (e.reason.message || e.reason))); });
+    })();
+  </script>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
