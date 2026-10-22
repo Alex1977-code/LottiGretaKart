@@ -21,9 +21,9 @@ const damp = (c, t, r, dt) => c + (t - c) * (1 - Math.exp(-r * dt));
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 export const CC = {
-  50: { label: 'Gemütlich', mult: 0.86, skill: 0.25, rubber: 0.06 },
-  100: { label: 'Flott', mult: 1.0, skill: 0.55, rubber: 0.08 },
-  150: { label: 'Rasant', mult: 1.14, skill: 0.85, rubber: 0.1 },
+  50: { label: 'Gemütlich', mult: 0.86, skill: 0.25, rubber: 0.06, ai: 0.93 },
+  100: { label: 'Flott', mult: 1.0, skill: 0.55, rubber: 0.08, ai: 0.98 },
+  150: { label: 'Rasant', mult: 1.14, skill: 0.85, rubber: 0.1, ai: 1.02 },
 };
 
 function mulberry(seed) {
@@ -74,6 +74,7 @@ export class Race {
     this.def.scenery?.(this.decor, this);
     this.decor.build();
     this.trial = !!o.trial;
+    this.assist = !!o.assist;
     this.items = new Items(this);
     // Zeitfahren: keine Kisten, dafür drei Turbo-Beeren
     this.items.build(this.trial ? { ...this.def, items: [] } : this.def);
@@ -129,7 +130,7 @@ export class Race {
     if (r.isPlayer || !this.player || r.finished) return 1;
     const d = r.progress - this.player.progress;
     const k = this.ccDef.rubber;
-    const skill = 0.95 + 0.07 * (r.ai?.skill ?? 0.5);
+    const skill = this.ccDef.ai + 0.05 * ((r.ai?.skill ?? 0.5) - 0.5);
     if (d > 0) return skill * (1 - clamp(d / 160, 0, 1) * k);
     return skill * (1 + clamp(-d / 120, 0, 1) * k * 1.4);
   }
@@ -189,6 +190,25 @@ export class Race {
     this.audio.play(this.def.music ?? 'course_grass');
   }
 
+  /**
+   * Lenkhilfe (für Kinder, abschaltbar): hält die Spielerin auf der Fahrbahn – nahe am Rand lenkt sie sanft zur
+   * Mitte zurück, solange nicht bewusst nach innen gelenkt wird; fährt sie verkehrt herum, dreht sie mit.
+   */
+  steerAssist(r, inp) {
+    const tr = this.track, i = r.loc.i, hw = tr.hw[i];
+    const k = Math.abs(r.loc.lat) / hw;
+    const ahead = tr.pointAt(tr.wrap(i + Math.round((6 + Math.abs(r.speed) * 0.45) / tr.ds)) / tr.N, r.loc.lat * 0.6);
+    const want = Math.atan2(-(ahead.z - r.pos.z), ahead.x - r.pos.x);
+    const diff = wrapA(want - r.yaw);
+    const auto = clamp(diff * 2.2, -1, 1);
+    if (k > 0.7) {
+      const w = clamp((k - 0.7) / 0.5, 0, 1) * 0.7;
+      inp.steer = clamp(inp.steer * (1 - w) + auto * w, -1, 1);
+    }
+    if (Math.abs(diff) > 2.2 && !r.drift.on) inp.steer = auto;
+    return inp;
+  }
+
   /** Touch: Tippen während des Countdowns zählt als Gasgeben für den Startturbo. */
   startTap() {
     if (this.state !== 'countdown' || this.startGas) return;
@@ -238,7 +258,7 @@ export class Race {
     for (const r of this.racers) {
       let inp;
       if (!running) inp = { steer: 0, throttle: 0, brake: 0 };
-      else if (r.isPlayer && !r.finished) inp = readDrive();
+      else if (r.isPlayer && !r.finished) inp = this.assist ? this.steerAssist(r, readDrive()) : readDrive();
       else inp = aiInput(r, this, dt);
       if (r.finished && !r.isPlayer) inp.item = false;
       r.update(dt, inp);

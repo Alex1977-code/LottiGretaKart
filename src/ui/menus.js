@@ -27,7 +27,7 @@ export class Menus {
     this.el = document.createElement('div');
     this.el.className = 'menus';
     this.root.appendChild(this.el);
-    this.settings = load(SAVE_KEY, { cc: 100, laps: 3, autoGas: true, racer: 'lotti' });
+    this.settings = load(SAVE_KEY, { cc: 100, laps: 3, autoGas: true, assist: true, racer: 'lotti' });
     this.best = load(BEST_KEY, {});
     this.cups = load(CUP_KEY, {});
     ctx.touch.setAutoGas(this.settings.autoGas);
@@ -157,6 +157,10 @@ export class Menus {
         <h2>Einstellungen</h2>
         <h3>Klasse</h3><div class="row">${ccBtns}</div>
         <h3>Runden</h3><div class="row">${lapBtns}</div>
+        <h3>Lenkhilfe</h3><div class="row">
+          <button class="opt ${s.assist ? 'on' : ''}" data-assist="1">an<small>bleibt auf der Strecke</small></button>
+          <button class="opt ${!s.assist ? 'on' : ''}" data-assist="0">aus</button>
+        </div>
         <h3>Handy: Gas</h3><div class="row">
           <button class="opt ${s.autoGas ? 'on' : ''}" data-gas="1">automatisch</button>
           <button class="opt ${!s.autoGas ? 'on' : ''}" data-gas="0">Knopf</button>
@@ -166,6 +170,7 @@ export class Menus {
       </div>`, 'center');
     this.on('[data-cc]', (b) => { s.cc = Number(b.dataset.cc); save(SAVE_KEY, s); this.showSettings(); });
     this.on('[data-laps]', (b) => { s.laps = Number(b.dataset.laps); save(SAVE_KEY, s); this.showSettings(); });
+    this.on('[data-assist]', (b) => { s.assist = b.dataset.assist === '1'; save(SAVE_KEY, s); this.showSettings(); });
     this.on('[data-gas]', (b) => { s.autoGas = b.dataset.gas === '1'; this.ctx.touch.setAutoGas(s.autoGas); save(SAVE_KEY, s); this.showSettings(); });
     this.on('[data-act="reset"]', (b) => {
       if (b.dataset.sure) { this.best = {}; save(BEST_KEY, this.best); b.textContent = 'gelöscht ✓'; }
@@ -285,7 +290,7 @@ export class Menus {
     const roster = trial ? [RACER_BY_ID[s.racer]] : this.roster(s.racer);
     this.hideAll();
     this.ctx.startRace({
-      trackDef, roster, playerId: s.racer, cc: s.cc, laps: s.laps, trial,
+      trackDef, roster, playerId: s.racer, cc: s.cc, laps: s.laps, trial, assist: s.assist,
       onDone: (res) => this.showResults(res, { trackDef, single: true }),
       onEvent: (e, v) => this.onRaceEvent(e, v),
     });
@@ -302,7 +307,7 @@ export class Menus {
     const trackDef = TRACK_BY_ID[g.cup.tracks[g.index]];
     this.hideAll();
     const race = this.ctx.startRace({
-      trackDef, roster: this.roster(s.racer, g.order), playerId: s.racer, cc: s.cc, laps: s.laps,
+      trackDef, roster: this.roster(s.racer, g.order), playerId: s.racer, cc: s.cc, laps: s.laps, assist: s.assist,
       onDone: (res) => this.showResults(res, { trackDef, gp: true }),
       onEvent: (e, v) => this.onRaceEvent(e, v),
     });

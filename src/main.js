@@ -100,7 +100,7 @@ if (params.has('race')) {
   const roster = [...RACERS].sort((a, b) => (a.id === playerId ? 1 : 0) - (b.id === playerId ? 1 : 0));
   ctx.startRace({
     trackDef, roster, playerId, cc: Number(params.get('cc') ?? 100), laps: Number(params.get('laps') ?? 3),
-    demo: params.get('demo') === '1', seed: 7,
+    demo: params.get('demo') === '1', seed: 7, assist: params.get('assist') === '1',
     onDone: (res) => menus.showResults(res, { trackDef, single: true }),
     onEvent: (e, v) => menus.onRaceEvent(e, v),
   });
