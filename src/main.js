@@ -20,6 +20,7 @@ import { WorldView } from './world/WorldView.js';
 import { Sky } from './world/Sky.js';
 import { getTheme } from './world/themes.js';
 import { KO_TOURS } from './world/worldDef.js';
+import { logoHTML } from './ui/logo.js';
 
 const params = new URLSearchParams(location.search);
 const app = document.getElementById('app');
@@ -61,9 +62,25 @@ function resize() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   ctx.viewH = h * ratio;
-  document.getElementById('rotate-hint').classList.toggle('visible', isTouch() && h > w * 1.05);
+  // Hochformat am Handy: Hinweis zum Drehen und das Rennen pausieren (wie in der Lotti-&-Greta-Welt)
+  const portrait = (isTouch() || w < 700) && h > w * 1.05;
+  document.getElementById('rotate-hint').classList.toggle('visible', portrait);
+  if (portrait && ctx.race && !ctx.race.demo && !ctx.paused && ctx.menus) ctx.menus.pause();
 }
 window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 120));
+// iPhone/iPad im Browser (nicht vom Home-Bildschirm): Tipp für Vollbild anzeigen
+if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone) document.body.classList.add('ios-browser');
+// Android: beim ersten Tippen Vollbild und Querformat anfordern (iOS kennt das nicht → zum Home-Bildschirm hinzufügen)
+{
+  const standalone = window.matchMedia?.('(display-mode: standalone)').matches || window.matchMedia?.('(display-mode: fullscreen)').matches || navigator.standalone;
+  if (/Android/i.test(navigator.userAgent) && document.documentElement.requestFullscreen && !standalone) {
+    window.addEventListener('pointerdown', () => {
+      if (document.fullscreenElement) return;
+      document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
+    }, { once: true });
+  }
+}
 resize();
 
 // ------------------------------------------------------------------ Rennen starten/beenden
@@ -106,7 +123,7 @@ document.addEventListener('visibilitychange', () => {
 // ------------------------------------------------------------------ Welt bauen (einmal), dann Menü oder Direktstart
 const loading = document.createElement('div');
 loading.id = 'loading';
-loading.innerHTML = `<div class="logo"><span class="l1">Lotti</span><span class="amp">&amp;</span><span class="l2">Greta</span><span class="kart">KART</span></div>
+loading.innerHTML = `${logoHTML()}
   <div class="bar"><i></i></div><p>Die Insel wird gebaut …</p>`;
 document.body.appendChild(loading);
 const setProgress = (k, text) => { loading.querySelector('i').style.width = `${Math.round(k * 100)}%`; loading.querySelector('p').textContent = text; };

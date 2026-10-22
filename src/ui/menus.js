@@ -9,6 +9,7 @@ import { Ceremony } from '../game/Ceremony.js';
 import { Track } from '../world/Track.js';
 import { getTheme } from '../world/themes.js';
 import { racerIcon, preloadIcons } from './icons.js';
+import { logoHTML } from './logo.js';
 import { fmtTime } from './hud.js';
 import { touch, isTouch } from './input.js';
 
@@ -112,7 +113,7 @@ export class Menus {
     const el = this.show('title', `
       <div class="mscreen title">
         <div class="mside">
-          <h1 class="logo"><span class="l1">Lotti</span><span class="amp">&amp;</span><span class="l2">Greta</span><span class="kart">KART</span></h1>
+          ${logoHTML('h1')}
           <nav class="mlist">
             ${item('gp', '🏆', '#ffb800', 'Grand Prix', `${CUPS.length} Cups · von Strecke zu Strecke`, true)}
             ${item('ko', '💥', '#e60012', 'K.-o.-Tour', 'Rallye über die Insel – die Letzten fliegen raus')}
@@ -125,6 +126,7 @@ export class Menus {
             <button class="small" data-act="help">❓ Steuerung</button>
             <button class="small btn-mute" data-act="mute">${this.ctx.audio.muted ? '🔇' : '🔊'}</button>
           </div>
+          <p class="mtip ios-tip">📲 Vollbild: Teilen → „Zum Home-Bildschirm“</p>
         </div>
       </div>${this.hints(false)}`);
     this.on('[data-mode]', (b) => { this.mode = b.dataset.mode; this.showRacers(); });
