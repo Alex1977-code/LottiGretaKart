@@ -4,7 +4,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [master, main]
+    branches: [master, main, claude/mario-kart-racing-game-xmp5b7]
   workflow_dispatch:
 
 permissions:
