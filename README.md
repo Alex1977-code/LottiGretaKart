@@ -4,6 +4,8 @@ Ein Funrennen im Stil von Mario Kart – mit den Figuren und der Welt aus **Lott
 ([LottiGretaWorld](https://github.com/Alex1977-code/LottiGretaWorld)). Läuft im Browser (PC und Handy im
 Querformat), installierbar als PWA. Alle Grafiken und Töne entstehen per Code – keine externen Assets.
 
+**Spielen (immer die neueste Version):** https://claude.ai/artifact/1vGX9FKhPnW2eDyYtmeHSJ
+
 ## Fahrerinnen und Fahrer
 
 | Figur | Stärke |
