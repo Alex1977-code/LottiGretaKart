@@ -11,7 +11,6 @@ import { getTheme } from '../world/themes.js';
 import { racerIcon, preloadIcons } from './icons.js';
 import { logoHTML } from './logo.js';
 import { NetSession } from '../net/session.js';
-import { getIosSound, setIosSound } from '../game/audio.js';
 import { qrSVG, scanQR } from '../net/qr.js';
 import { fmtTime } from './hud.js';
 import { touch, isTouch, readJoin, deviceLabel, rumble } from './input.js';
@@ -209,15 +208,10 @@ export class Menus {
               <button class="opt ${s.autoGas ? 'on' : ''}" data-gas="1">automatisch</button>
             </div>
             <h3>Grafik</h3><div class="row">${qBtns}</div>
-            <h3>Ton (iPhone)</h3><div class="row">
-              <button class="opt ${getIosSound() === 'always' ? 'on' : ''}" data-ios="always">immer an<small>auch bei Stummschalter</small></button>
-              <button class="opt ${getIosSound() === 'switch' ? 'on' : ''}" data-ios="switch">Stummschalter beachten</button>
-            </div>
           </div>
           <div class="row"><button class="small" data-act="reset">Bestzeiten löschen</button><button class="go" data-back data-focus>Fertig</button></div>
         </div></div>
       </div>${this.hints()}`, 'full');
-    this.on('[data-ios]', (b) => { setIosSound(b.dataset.ios); location.reload(); });
     this.on('[data-q]', (b) => {
       const v = Number(b.dataset.q);
       if (v === q) return;

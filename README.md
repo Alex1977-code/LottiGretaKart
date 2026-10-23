@@ -71,7 +71,7 @@ Klassen: Gemütlich (50 ccm), Flott (100 ccm), Rasant (150 ccm).
 **Karte**: Die Nahkarte dreht mit (vorn ist oben), der Weg voraus ist gelb mit Pfeilen; Antippen/Klicken wechselt
 zur ganzen Insel. Kommt eine Kurve oder ist man abseits, zeigt ein gelber Pfeil „Hier entlang“.
 
-**Ton am iPhone**: standardmäßig auch bei Stummschalter (Einstellung „Stummschalter beachten“ möglich).
+**Ton am iPhone**: wie gewohnt – Stummschalter auf lautlos = kein Ton, auf laut = Ton (Freischaltung beim ersten Antippen).
 
 **Offline / Flugzeug**: Beim ersten Besuch speichert der Service Worker das ganze Spiel (inklusive Schriften); danach
 läuft es ohne Netz. Auf dem Handy am besten „Zum Home-Bildschirm“ hinzufügen.
