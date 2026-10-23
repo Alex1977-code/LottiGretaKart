@@ -32,7 +32,7 @@ window.addEventListener('blur', () => KEYS.clear());
 const any = (codes) => codes.some((c) => KEYS.has(c) || LATCH.has(c));
 const tapped = (...codes) => codes.some((c) => PRESSED.has(c));
 
-export const touch = { active: false, steer: 0, drift: false, item: false, brake: false, gas: false, autoGas: false, itemTap: false, driftTap: false };
+export const touch = { active: false, steer: 0, drift: false, item: false, brake: false, gas: false, autoGas: false, itemTap: false, driftTap: false, driftHold: false, coastUntil: 0 };
 let usingTouch = false;
 window.addEventListener('touchstart', () => { usingTouch = true; }, { passive: true });
 
@@ -70,10 +70,12 @@ export function readDrive(src = 'auto') {
   else if (src.startsWith('pad')) { const gp = pads()[Number(src.slice(3))]; if (gp) padInto(gp, inp); }
   if ((src === 'auto' || src === 'touch') && touch.active) {
     if (touch.steer !== 0) inp.steer = touch.steer;
-    // Gas: Knopf GAS oder DRIFT (Driften ohne Gas geht nicht), oder Automatik; BREMSE hat Vorrang (dann rückwärts)
-    if (touch.autoGas || touch.gas || touch.drift) inp.throttle = Math.max(inp.throttle, touch.brake ? 0 : 1);
+    // Gas: Knopf GAS (kurz nach dem Loslassen rollt das Kart weiter) oder DRIFT oder Automatik; BREMSE hat Vorrang
+    const coast = (touch.coastUntil ?? 0) > performance.now() / 1000;
+    if (touch.autoGas || touch.gas || touch.drift || coast) inp.throttle = Math.max(inp.throttle, touch.brake ? 0 : 1);
     if (touch.brake) inp.brake = 1;
-    if (touch.drift || touch.driftTap) inp.drift = true;
+    // Driften: DRIFT-Knopf (Automatik-Gas) oder Gas kurz loslassen und wieder drücken (solange gehalten)
+    if (touch.drift || touch.driftTap || touch.driftHold) inp.drift = true;
     if (touch.item || touch.itemTap) inp.item = true;
   }
   inp.steer = Math.max(-1, Math.min(1, inp.steer));

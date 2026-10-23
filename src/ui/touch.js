@@ -1,6 +1,9 @@
 // Touch-Steuerung (Querformat): linke Bildschirmhälfte = Lenkrad, rechte Hälfte = Knöpfe.
-//   GAS (groß, unten rechts) · DRIFT (gibt auch Gas) · ★ Gegenstand · BREMSE/ZURÜCK (halten = bremsen, dann rückwärts)
-// Der rechte Daumen darf zwischen den Knöpfen gleiten (z. B. von Gas auf Drift) – es zählt der Knopf unter dem Finger.
+//   GAS (groß, unten rechts) · ★ Gegenstand · BREMSE/ZURÜCK (halten = bremsen, dann rückwärts)
+//   Driften mit dem Gas-Knopf: kurz loslassen und sofort wieder drücken = Hüpfer und Drift, solange Gas gehalten
+//   wird; Loslassen beendet den Drift (Mini-Turbo), das Kart rollt dabei kurz weiter.
+//   Mit Automatik-Gas gibt es stattdessen einen DRIFT-Knopf.
+// Der rechte Daumen darf zwischen den Knöpfen gleiten – es zählt der Knopf unter dem Finger.
 // Schreibt in das gemeinsame `touch`-Objekt aus input.js.
 
 import { touch } from './input.js';
@@ -11,7 +14,7 @@ export class TouchControls {
     root.innerHTML = `
       <div class="t-steer"><div class="t-wheel"><div class="t-wheel-in"></div></div></div>
       <div class="t-pad">
-        <button class="t-btn t-gas" data-k="gas"><span>GAS</span></button>
+        <button class="t-btn t-gas" data-k="gas"><span>GAS<small>2× = Drift</small></span></button>
         <button class="t-btn t-drift" data-k="drift"><span>DRIFT</span></button>
         <button class="t-btn t-item" data-k="item"><span>★</span></button>
         <button class="t-btn t-brake" data-k="brake"><span>BREMSE<br/>ZURÜCK</span></button>
@@ -68,15 +71,31 @@ export class TouchControls {
       }
       return best;
     };
+    const REPRESS = 0.32;   // s: so schnell wieder drücken = Drift
     const sync = () => {
       const held = new Set(this.fingers.values());
+      const now = performance.now() / 1000;
       for (const b of this.btns) {
         const k = b.dataset.k, on = held.has(k);
-        if (on && !touch[k]) { if (k === 'item') touch.itemTap = true; if (k === 'drift') touch.driftTap = true; }
+        if (on && !touch[k]) {
+          if (k === 'item') touch.itemTap = true;
+          if (k === 'drift') touch.driftTap = true;
+          // Gas wieder gedrückt: kurz nach dem Loslassen → Drift (Hüpfer), solange gehalten
+          if (k === 'gas' && now - this.gasUp < REPRESS && this.gasHeldFor > 0.12) { touch.driftHold = true; touch.driftTap = true; b.classList.add('drifting'); }
+          if (k === 'gas') this.gasDownAt = now;
+        }
+        if (!on && touch[k] && k === 'gas') {
+          this.gasUp = now;
+          this.gasHeldFor = now - (this.gasDownAt ?? now);
+          // beim Loslassen kurz weiterrollen (sonst bremst das Kart zwischen Loslassen und Wiederdrücken)
+          touch.coastUntil = now + (touch.driftHold ? 0.45 : REPRESS);
+          if (touch.driftHold) { touch.driftHold = false; this.gasHeldFor = 0; b.classList.remove('drifting'); }
+        }
         touch[k] = on;
         b.classList.toggle('down', on);
       }
     };
+    this.gasUp = -1; this.gasHeldFor = 0;
     const down = (e) => {
       e.preventDefault(); touch.active = true;
       for (const t of e.changedTouches) this.fingers.set(t.identifier, hit(t.clientX, t.clientY));
@@ -102,6 +121,6 @@ export class TouchControls {
 
   show(on) {
     this.root.classList.toggle('visible', on);
-    if (!on) { touch.steer = 0; touch.drift = touch.item = touch.brake = touch.gas = false; this.fingers?.clear(); for (const b of this.btns ?? []) b.classList.remove('down'); }
+    if (!on) { touch.steer = 0; touch.drift = touch.item = touch.brake = touch.gas = touch.driftHold = false; touch.coastUntil = 0; this.fingers?.clear(); for (const b of this.btns ?? []) b.classList.remove('down'); }
   }
 }

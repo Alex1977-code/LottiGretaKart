@@ -377,10 +377,15 @@ kbd { display: inline-block; background: #fff; border: 2px solid var(--ink); bor
 .t-btn { position: absolute; pointer-events: none; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-family: var(--font-title); line-height: 1;
   font-size: 18px; text-shadow: 0 2px 0 rgba(0,0,0,0.3); border: 5px solid rgba(255, 248, 238, 0.95); box-shadow: 0 5px 0 rgba(42,30,62,0.5); opacity: 0.8; transition: transform 0.06s; }
 .t-btn.down { transform: scale(0.9); opacity: 1; filter: brightness(1.15); }
-.t-gas { right: max(18px, env(safe-area-inset-right)); bottom: 22px; width: 124px; height: 124px; background: radial-gradient(circle at 40% 30%, #6ee05a, #1c9a34); font-size: 24px; }
-.t-drift { right: calc(max(18px, env(safe-area-inset-right)) + 134px); bottom: 26px; width: 108px; height: 108px; background: radial-gradient(circle at 40% 30%, #6aa8ff, #1554d0); font-size: 20px; }
-.t-item { right: calc(max(18px, env(safe-area-inset-right)) + 146px); bottom: 146px; width: 84px; height: 84px; background: radial-gradient(circle at 40% 30%, #ffe56a, #e8a400); font-size: 38px; }
-.t-brake { right: calc(max(18px, env(safe-area-inset-right)) + 22px); bottom: 158px; width: 82px; height: 82px; background: radial-gradient(circle at 40% 30%, #ff7a6a, #c8101a); font-size: 13px; text-align: center; }
+.t-gas { right: max(18px, env(safe-area-inset-right)); bottom: 22px; width: 132px; height: 132px; background: radial-gradient(circle at 40% 30%, #6ee05a, #1c9a34); font-size: 26px; flex-direction: column; }
+.t-gas span { display: flex; flex-direction: column; align-items: center; }
+.t-gas small { font-family: var(--font-body); font-weight: 900; font-size: 11px; opacity: 0.9; margin-top: 3px; }
+.t-gas.drifting { background: radial-gradient(circle at 40% 30%, #6aa8ff, #1554d0); box-shadow: 0 5px 0 rgba(42,30,62,0.5), 0 0 22px #58b8ff; }
+/* mit Gas-Knopf kein eigener Drift-Knopf (Driften = Gas kurz loslassen und wieder drücken) */
+#touch.manual-gas .t-drift { display: none; }
+.t-item { right: calc(max(18px, env(safe-area-inset-right)) + 146px); bottom: 34px; width: 92px; height: 92px; background: radial-gradient(circle at 40% 30%, #ffe56a, #e8a400); font-size: 40px; }
+.t-brake { right: calc(max(18px, env(safe-area-inset-right)) + 26px); bottom: 168px; width: 82px; height: 82px; background: radial-gradient(circle at 40% 30%, #ff7a6a, #c8101a); font-size: 13px; text-align: center; }
+.t-drift { right: max(18px, env(safe-area-inset-right)); bottom: 22px; width: 124px; height: 124px; background: radial-gradient(circle at 40% 30%, #6aa8ff, #1554d0); font-size: 20px; }
 /* Automatik-Gas: GAS-Knopf weg, Drift rückt nach rechts unten */
 #touch:not(.manual-gas) .t-gas { display: none; }
 #touch:not(.manual-gas) .t-drift { right: max(18px, env(safe-area-inset-right)); bottom: 22px; width: 124px; height: 124px; }
