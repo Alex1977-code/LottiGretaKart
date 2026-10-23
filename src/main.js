@@ -71,7 +71,7 @@ function resize() {
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 120));
 // iPhone/iPad im Browser (nicht vom Home-Bildschirm): Tipp für Vollbild anzeigen
-if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone) document.body.classList.add('ios-browser');
+if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone && !window.Capacitor?.isNativePlatform?.()) document.body.classList.add('ios-browser');
 // Android: beim ersten Tippen Vollbild und Querformat anfordern (iOS kennt das nicht → zum Home-Bildschirm hinzufügen)
 {
   const standalone = window.matchMedia?.('(display-mode: standalone)').matches || window.matchMedia?.('(display-mode: fullscreen)').matches || navigator.standalone;

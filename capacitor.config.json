@@ -1,0 +1,10 @@
+{
+  "appId": "de.lottigreta.kart",
+  "appName": "Lotti & Greta Kart",
+  "webDir": "dist",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#2b8de8",
+    "scrollEnabled": false
+  }
+}

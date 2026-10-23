@@ -59,8 +59,12 @@ dunkle Höhle, Zirkus-Scheinwerfer, Abendrot über der Stadt, Strand, Schnee, Bu
   - **Übers Internet, beliebig weit weg**: Gastgeber bekommt einen vierstelligen Raumcode (auch als QR-Code/Link
     `?join=CODE`), Gäste geben ihn unter „Beitreten“ ein (Vermittlung über den öffentlichen PeerJS-Server, danach
     direkte WebRTC-Verbindung).
-  - **Ohne Internet** (Flugzeug, Zug): alle Handys im selben WLAN oder Hotspot; der Gastgeber zeigt einen QR-Code,
-    der Gast scannt ihn und zeigt seinen Antwort-Code, den der Gastgeber scannt – fertig, kein Server nötig.
+  - **In der Nähe, ganz ohne Netz** (Flugzeug): in der **iPhone-App** finden sich die Handys direkt per Bluetooth/WLAN
+    (Apple MultipeerConnectivity) – Flugmodus an, WLAN und Bluetooth wieder einschalten, Spiel in der Liste antippen.
+    Bauen und installieren: [ios/README.md](ios/README.md).
+  - **Ohne Internet im Browser**: alle Handys im selben WLAN; der Gastgeber zeigt einen QR-Code, der Gast scannt ihn
+    und zeigt seinen Antwort-Code, den der Gastgeber scannt – kein Server nötig. Achtung: das iPhone kann im
+    Flugmodus keinen Hotspot öffnen (viele Android-Handys schon).
 - **Mehrspieler** für 2–4 Spieler im geteilten Bildschirm (zwei Spieler oben/unten, drei oder vier in vier Feldern):
   Beitreten in der Lobby mit A am Controller, Leertaste (Tastatur links) oder Enter (Tastatur rechts); jeder wählt
   seine Figur. Grand Prix, Rennen, K.-o.-Tour und Freie Fahrt gehen zusammen. Läuft komplett auf einem Gerät –

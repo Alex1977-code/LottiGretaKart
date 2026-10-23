@@ -275,6 +275,12 @@ em.ptag { position: static; font-style: normal; font-size: 13px; padding: 0 6px;
 /* Mehrere Handys */
 .netwrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 14px; align-items: start; }
 .netcode { text-align: center; font-weight: 800; }
+.netcol { display: grid; gap: 14px; }
+.menus [hidden] { display: none !important; }
+.netcode.near { border: 3px solid #22b03c; }
+.bigcode.small { font-size: 26px; letter-spacing: 0; margin: 6px 0; }
+.nearlist { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.menus .nearbtn { width: 100%; font-size: 17px; }
 .netcode p { margin: 4px 0; }
 .bigcode { font-family: var(--font-title); font-size: 64px; letter-spacing: 10px; color: #1554d0; line-height: 1; }
 .qr { width: 150px; margin: 6px auto; background: #fff; border-radius: 10px; padding: 4px; }

@@ -1,0 +1,87 @@
+# Baut die iPhone-App (Capacitor) auf einem Mac von GitHub.
+#  - Immer: Prüf-Build für den iOS-Simulator (ohne Signatur) – zeigt, dass App und Nahbereichs-Plugin übersetzen.
+#  - Mit Apple-Entwicklerkonto: signierter Build und Upload zu TestFlight. Dafür unter
+#    Settings → Secrets and variables → Actions anlegen:
+#      Secrets:   APPLE_TEAM_ID        Team-ID (10 Zeichen, developer.apple.com → Membership)
+#                 APPSTORE_KEY_ID      App-Store-Connect-API-Schlüssel (Rolle „App Manager“): Key ID
+#                 APPSTORE_ISSUER_ID   … Issuer ID
+#                 APPSTORE_KEY_P8      … Inhalt der .p8-Datei
+#      Variable:  IOS_BUNDLE_ID        (optional) eigene Bundle-ID, Standard de.lottigreta.kart
+#    Die App muss in App Store Connect mit dieser Bundle-ID angelegt sein. Anleitung: ios/README.md
+name: iPhone-App bauen
+
+on:
+  push:
+    branches: [master, main, claude/mario-kart-racing-game-xmp5b7]
+    paths:
+      - 'ios/**'
+      - 'native/**'
+      - 'src/**'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    env:
+      HAS_SIGNING: ${{ secrets.APPLE_TEAM_ID != '' && secrets.APPSTORE_KEY_ID != '' && secrets.APPSTORE_ISSUER_ID != '' && secrets.APPSTORE_KEY_P8 != '' }}
+      BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID || 'de.lottigreta.kart' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Neuestes Xcode wählen
+        run: |
+          X=$(ls -d /Applications/Xcode_*.app 2>/dev/null | grep -vi beta | sort -V | tail -1)
+          if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
+          xcodebuild -version
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync ios
+      - name: Prüf-Build (Simulator, ohne Signatur)
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/sim CODE_SIGNING_ALLOWED=NO build | tail -n 40
+          test "${PIPESTATUS[0]}" -eq 0
+      - name: Signieren und zu TestFlight hochladen
+        if: env.HAS_SIGNING == 'true'
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          KEY_P8: ${{ secrets.APPSTORE_KEY_P8 }}
+        run: |
+          KEY_PATH="$RUNNER_TEMP/AuthKey_$KEY_ID.p8"
+          printf '%s' "$KEY_P8" > "$KEY_PATH"
+          AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY_PATH" -authenticationKeyID "$KEY_ID" -authenticationKeyIssuerID "$ISSUER_ID")
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath build/App.xcarchive archive "${AUTH[@]}" \
+            DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" | tail -n 40
+          test "${PIPESTATUS[0]}" -eq 0
+          cat > build/export.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive -archivePath build/App.xcarchive -exportOptionsPlist build/export.plist \
+            -exportPath build/export "${AUTH[@]}"
+          rm -f "$KEY_PATH"
+      - name: Hinweis ohne Apple-Konto
+        if: env.HAS_SIGNING != 'true'
+        run: echo "Prüf-Build erfolgreich. Für TestFlight die Apple-Secrets anlegen (siehe ios/README.md)."

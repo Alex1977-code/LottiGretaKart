@@ -2,6 +2,8 @@
 // Ansichten (iframe ohne Service Worker) wird er still übergangen.
 export function registerSW() {
   if (import.meta.env.DEV) return;
+  // iPhone-App: alle Dateien liegen ohnehin im App-Paket
+  if (window.Capacitor?.isNativePlatform?.()) return;
   window.addEventListener('load', () => {
     try {
       if (!('serviceWorker' in navigator)) return;

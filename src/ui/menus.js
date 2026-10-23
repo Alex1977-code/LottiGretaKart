@@ -11,6 +11,7 @@ import { getTheme } from '../world/themes.js';
 import { racerIcon, preloadIcons } from './icons.js';
 import { logoHTML } from './logo.js';
 import { NetSession } from '../net/session.js';
+import { nearbyAvailable } from '../net/nearby.js';
 import { qrSVG, scanQR } from '../net/qr.js';
 import { fmtTime } from './hud.js';
 import { touch, isTouch, readJoin, deviceLabel, rumble } from './input.js';
@@ -23,6 +24,7 @@ const SAVE_KEY = 'lgkart.settings.v1';
 const BEST_KEY = 'lgkart.best.v1';
 const CUP_KEY = 'lgkart.cups.v1';
 const STAR_KEY = 'lgkart.starcoins.v1';
+const PUBLIC_URL = 'https://alex1977-code.github.io/LottiGretaKart/';   // Beitritts-Link (auch aus der App heraus)
 
 function load(key, def) { try { return { ...def, ...JSON.parse(localStorage.getItem(key) ?? '{}') }; } catch (_) { return { ...def }; } }
 function save(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch (_) { /* egal */ } }
@@ -134,7 +136,7 @@ export class Menus {
             <button class="small" data-act="tv">📺 Auf den TV</button>
             <button class="small btn-mute" data-act="mute">${this.ctx.audio.muted ? '🔇' : '🔊'}</button>
           </div>
-          <p class="mtip offline-chip">${navigator.serviceWorker?.controller ? '✈️ Offline bereit – läuft auch im Flugmodus' : ''}</p>
+          <p class="mtip offline-chip">${navigator.serviceWorker?.controller || nearbyAvailable() ? '✈️ Offline bereit – läuft auch im Flugmodus' : ''}</p>
           <p class="mtip ios-tip">📲 Vollbild: Teilen → „Zum Home-Bildschirm“</p>
         </div>
       </div>${this.hints(false)}`);
@@ -177,7 +179,7 @@ export class Menus {
           <p class="items-help">Turbo-Beere · Panzer · Goldpanzer (sucht sich ein Ziel) · Krabbelkäfer (hinten ablegen) · Kickbombe · Funkenblüte (3 Funkenbälle) · Funkelstern (unverwundbar) · Riesentrank · Zauberkugel (trifft die Spitze)</p>
           <p class="items-help">Bitcoins machen dein Kart schneller (bis zu 10). Turbo-Pfeile und Schanzen nutzen – in der Luft Drift drücken für einen Trick-Turbo! Über den See fährst du einfach auf dem Wasser.</p>
           <h3>Mehrere Handys</h3>
-          <p class="items-help"><b>Über das Internet</b> (beliebig weit weg): einer wählt „Spiel erstellen“ und nennt den Raumcode, die anderen „Beitreten“ und tippen ihn ein. <b>Ohne Internet</b> (z. B. im Flugzeug): alle im selben WLAN oder Hotspot – Gastgeber zeigt einen QR-Code, Gast scannt ihn und zeigt seinen Antwort-Code zurück.</p>
+          <p class="items-help"><b>Über das Internet</b> (beliebig weit weg): einer wählt „Spiel erstellen“ und nennt den Raumcode, die anderen „Beitreten“ und tippen ihn ein. <b>Ohne Internet</b>: in der iPhone-App findet man Spiele „in der Nähe“ direkt (Bluetooth/WLAN, auch im Flugmodus). Im Browser: alle im selben WLAN – Gastgeber zeigt einen QR-Code, Gast scannt ihn und zeigt seinen Antwort-Code zurück (das iPhone kann im Flugmodus keinen Hotspot öffnen).</p>
           <h3>Die Insel</h3>
           <p class="items-help"><b>Grand Prix</b>: ab dem zweiten Rennen fährst du über die Landstraße zur nächsten Strecke. <b>K.-o.-Tour</b>: quer über die Insel, an jedem Checkpoint scheiden die Letzten aus. <b>Freie Fahrt</b>: erkunde alles und finde die 42 Sternmünzen.</p>
           <div class="row"><button data-back data-focus>Zurück</button></div>
@@ -285,15 +287,18 @@ export class Menus {
   showMultiChoice() {
     this.ensureDemo();
     const card = (k, ic, name, sub) => `<button class="card cup" data-mc="${k}"><div class="trophy won">${ic}</div><span>${name}</span><small>${sub}</small></button>`;
+    const app = nearbyAvailable();
     this.show('multichoice', `
       <div class="mscreen">
         ${this.head('Mehrspieler', 'wie wollt ihr spielen?')}
         <div class="mbody"><div class="grid cups">
           ${card('couch', '🎮', 'Ein Bildschirm', '2–4 Spieler mit Controllern oder geteilter Tastatur')}
-          ${card('host', '📡', 'Mehrere Handys: Spiel erstellen', 'du bist Gastgeber – über Internet oder im selben WLAN')}
-          ${card('join', '📲', 'Mehrere Handys: Beitreten', 'mit Raumcode oder QR-Code')}
+          ${card('host', '📡', 'Mehrere Handys: Spiel erstellen', app ? 'du bist Gastgeber – Handys in der Nähe (auch Flugmodus) oder übers Internet' : 'du bist Gastgeber – über Internet oder im selben WLAN')}
+          ${card('join', '📲', 'Mehrere Handys: Beitreten', app ? 'Spiel in der Nähe antippen oder Raumcode' : 'mit Raumcode oder QR-Code')}
         </div>
-        <p class="lobby-tip">✈️ Im Flugzeug: ein Bildschirm geht immer – mehrere Handys über ein gemeinsames WLAN/Hotspot mit QR-Kopplung (ohne Internet).</p>
+        <p class="lobby-tip">${app
+    ? '✈️ Im Flugzeug: Flugmodus an, dann <b>WLAN und Bluetooth wieder einschalten</b> – die Handys mit der App finden sich direkt, ganz ohne Internet.'
+    : '✈️ Im Flugzeug: ein Bildschirm geht immer (Controller per Bluetooth). Mehrere Handys brauchen ein gemeinsames WLAN – das iPhone kann im Flugmodus keinen Hotspot öffnen, viele Android-Handys schon. Direkt per Bluetooth geht es nur in der iPhone-App.'}</p>
         <div class="row"><button data-back>Zurück</button></div></div>
       </div>${this.hints()}`, 'full');
     this.on('[data-mc="couch"]', () => this.showLobby());
@@ -330,10 +335,18 @@ export class Menus {
       this.net = new NetSession('host', this.netHandlers());
       this.net.racerIds = RACERS.map((r) => r.id);
       this.net.myRacer = this.settings.racer;
-      this.netStatus = navigator.onLine ? 'Raum wird geöffnet …' : 'Kein Internet – koppelt die Handys per QR-Code im selben WLAN/Hotspot.';
+      this.netStatus = navigator.onLine ? 'Raum wird geöffnet …' : nearbyAvailable() ? '' : 'Kein Internet – koppelt die Handys per QR-Code im selben WLAN.';
+      if (nearbyAvailable()) {
+        const name = `Spiel von ${RACER_BY_ID[this.net.myRacer]?.name ?? 'Lotti'} (${10 + Math.floor(Math.random() * 90)})`;
+        this.nearbyStatus = 'wird sichtbar …';
+        const n = this.net;
+        n.openNearby(name, (msg) => { this.nearbyStatus = msg; if (this.screen === 'nethost') this.renderNetHost(); })
+          .then(() => { this.nearbyStatus = ''; if (this.screen === 'nethost' && this.net === n) this.renderNetHost(); })
+          .catch((e) => { this.nearbyStatus = `nicht möglich: ${e.message ?? e}`; if (this.screen === 'nethost' && this.net === n) this.renderNetHost(); });
+      }
       if (navigator.onLine) {
         this.net.openOnline().then((code) => { this.netStatus = ''; this.net.code = code; this.renderNetHost(); })
-          .catch(() => { this.netStatus = 'Raumcode nicht möglich (kein Internet?) – koppelt per QR-Code im selben WLAN.'; this.renderNetHost(); });
+          .catch(() => { this.netStatus = nearbyAvailable() ? 'Kein Internet – Raumcode nicht möglich.' : 'Raumcode nicht möglich (kein Internet?) – koppelt per QR-Code im selben WLAN.'; this.renderNetHost(); });
       }
     }
     this.renderNetHost();
@@ -342,7 +355,7 @@ export class Menus {
   renderNetHost() {
     this.ensureDemo();
     const n = this.net, r = this.ctx.renderer;
-    const url = `${location.origin}${location.pathname}?join=${n.code ?? ''}`;
+    const url = `${nearbyAvailable() ? PUBLIC_URL : location.origin + location.pathname}?join=${n.code ?? ''}`;
     const me = RACER_BY_ID[n.myRacer];
     const rows = [`<div class="pslot" style="--pc:${PCOL[0]}"><div class="ptag">P1</div><img src="${racerIcon(r, me)}" alt="" /><b style="color:${me.color}">${me.name}</b><small>Gastgeber (dieses Handy)</small>
         <div class="row"><button class="small" data-me="-1">◀</button><button class="small" data-me="1">▶</button></div></div>`,
@@ -350,11 +363,14 @@ export class Menus {
     this.show('nethost', `
       <div class="mscreen">
         ${this.head('Spiel erstellen', 'Gastgeber · mehrere Handys')}
-        <div class="mbody"><div class="netwrap">
-          <div class="glass netcode">
+        <div class="mbody"><div class="netwrap"><div class="netcol">
+          ${nearbyAvailable() ? `<div class="glass netcode near"><p>📶 <b>In der Nähe</b> – auch im Flugmodus</p>
+            ${n.nearbyName && !this.nearbyStatus ? `<div class="bigcode small">${n.nearbyName}</div><small>Andere tippen in ihrer App auf „Beitreten“ und wählen dieses Spiel. WLAN und Bluetooth müssen an sein (geht auch im Flugmodus).</small>` : `<small>${this.nearbyStatus ?? ''}</small>`}
+          </div>` : ''}
+          <div class="glass netcode" ${nearbyAvailable() && !n.code && !this.netStatus ? 'hidden' : ''}>
             ${n.code ? `<p>Raumcode</p><div class="bigcode">${n.code}</div><div class="qr">${qrSVG(url, 3)}</div><small>Mit dem Handy scannen oder den Code unter „Beitreten“ eingeben – klappt über beliebige Entfernungen.</small>` : `<p>${this.netStatus || ''}</p>`}
-            <div class="row"><button class="small" data-offline>📶 Ohne Internet koppeln (QR)</button></div>
-          </div>
+            ${nearbyAvailable() ? '' : '<div class="row"><button class="small" data-offline>📶 Ohne Internet koppeln (QR)</button></div>'}
+          </div></div>
           <div class="lobby">${rows}</div>
         </div>
         <div class="row"><button data-back>Zurück</button><button class="go" data-next ${n.guests.some((g) => g.racer) ? 'data-focus' : 'disabled'}>Weiter</button></div></div>
@@ -404,15 +420,17 @@ export class Menus {
     this.show('netjoin', `
       <div class="mscreen">
         ${this.head('Beitreten', 'mehrere Handys')}
-        <div class="mbody"><div class="netwrap">
+        <div class="mbody"><div class="netwrap"><div class="netcol">
+          ${nearbyAvailable() ? `<div class="glass netcode near"><p>📶 <b>In der Nähe</b> (auch im Flugmodus) – Spiel antippen:</p>
+            <div class="nearlist"><small>Suche … (WLAN und Bluetooth an?)</small></div></div>` : ''}
           <div class="glass netcode"><p><b>Mit Internet</b> – Raumcode vom Gastgeber eingeben:</p>
             <input class="codein" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="z. B. K7P2" value="${code}" />
             <div class="row"><button class="go" data-join>Beitreten</button></div></div>
-          <div class="glass netcode"><p><b>Ohne Internet</b> (gleiches WLAN/Hotspot) – QR-Code vom Gastgeber scannen:</p>
+          ${nearbyAvailable() ? '' : `<div class="glass netcode"><p><b>Ohne Internet</b> (gleiches WLAN) – QR-Code vom Gastgeber scannen:</p>
             <video class="scan" playsinline muted></video>
             <div class="row"><button class="small" data-cam>📷 Kamera starten</button></div>
             <details><summary>Code als Text einfügen</summary><textarea class="off" placeholder="LGK1O…"></textarea><button class="small" data-paste>Übernehmen</button></details>
-            <div class="answer"></div></div>
+            <div class="answer"></div></div>`}
         </div>
         <p class="lobby-tip netinfo"></p>
         <div class="row"><button data-back>Zurück</button></div></div>
@@ -433,10 +451,33 @@ export class Menus {
       } catch (e) { info.textContent = e.message; }
     };
     this.on('[data-join]', join);
+    if (nearbyAvailable()) this.findNearby(info);
     this.on('[data-cam]', async () => { try { this.stopScan = await scanQR(this.el.querySelector('video.scan'), (t) => { if (t.startsWith('LGK1O')) offer(t); else if (/[?&]join=/.test(t)) { this.el.querySelector('.codein').value = t.split('join=')[1].slice(0, 4); join(); } }); } catch (e) { info.textContent = 'Kamera nicht verfügbar – Code als Text einfügen.'; } });
     this.on('[data-paste]', () => offer(this.el.querySelector('textarea.off').value));
     this.on('[data-back]', () => { this.stopScan?.(); this.leaveNet(); this.showMultiChoice(); });
     if (code && code.length === 4) join();
+  }
+
+  /** Gast in der App: Spiele in der Nähe auflisten; Antippen tritt bei. */
+  findNearby(info) {
+    const n = this.net;
+    const box = () => (this.screen === 'netjoin' && this.net === n ? this.el.querySelector('.nearlist') : null);
+    const render = (list) => {
+      n.nearList = list;
+      const el = box();
+      if (!el) return;
+      el.innerHTML = list.length ? list.map((p) => `<button class="small nearbtn" data-near="${p.id}">🏁 ${p.name.replace(/[<>&"]/g, '')}</button>`).join('') : '<small>Suche … (WLAN und Bluetooth an?)</small>';
+      for (const b of el.querySelectorAll('[data-near]')) {
+        b.addEventListener('click', async () => {
+          this.ctx.audio.sfx('select');
+          info.textContent = 'Verbinde …';
+          try { await n.joinNearby(b.dataset.near); this.renderNetGuest(); } catch (e) { info.textContent = e.message ?? String(e); }
+        });
+      }
+    };
+    if (n.finder) { render(n.nearList ?? []); return; }
+    n.findNearby(RACER_BY_ID[n.myRacer]?.name ?? 'Gast', render, (msg) => { info.textContent = msg; })
+      .catch((e) => { info.textContent = `Suche nicht möglich: ${e.message ?? e}`; });
   }
 
   /** Gast: verbunden – Figur wählen und auf den Start warten. */
@@ -448,7 +489,7 @@ export class Menus {
     const slots = lob.map((p, i) => { const d = RACER_BY_ID[p.racer]; if (!d) return ''; const me = p.id === n.myId; return `<div class="pslot ${me ? '' : 'ready'}" style="--pc:${PCOL[i % 4]}"><div class="ptag">P${i + 1}</div><img src="${racerIcon(r, d)}" alt="" /><b style="color:${d.color}">${d.name}</b><small>${i === 0 ? 'Gastgeber' : me ? 'Du' : 'Gast'}</small>${me ? '<div class="row"><button class="small" data-pick="-1">◀</button><button class="small" data-pick="1">▶</button></div>' : ''}</div>`; }).join('');
     this.show('netlobby', `
       <div class="mscreen">
-        ${this.head('Verbunden!', n.lobby?.code ? `Raum ${n.lobby.code}` : 'ohne Internet')}
+        ${this.head('Verbunden!', n.lobby?.code ? `Raum ${n.lobby.code}` : n.finder ? 'in der Nähe' : 'ohne Internet')}
         <div class="mbody"><div class="lobby">${slots}</div>
           <p class="lobby-tip">Wähle deine Figur – der Gastgeber sucht die Strecke aus und startet.</p>
           <div class="row"><button data-back>Verlassen</button></div></div>
@@ -585,7 +626,7 @@ export class Menus {
               <h3>🎮 Controller</h3>
               <p>Xbox-, PlayStation- oder Switch-Controller per <b>Bluetooth</b> mit dem Gerät koppeln, auf dem das Spiel läuft. Bis zu vier Spieler.</p>
               <h3>✈️ Im Flugzeug</h3>
-              <p>Spiel vorher einmal online öffnen – danach läuft es ohne Internet. Mehrspieler auf einem iPad/Laptop mit Controllern oder geteilter Tastatur.</p>
+              <p>Spiel vorher einmal online öffnen – danach läuft es ohne Internet. Mehrspieler auf einem iPad/Laptop mit Controllern (Bluetooth darf im Flugmodus an sein) oder geteilter Tastatur. Mehrere iPhones: mit der iPhone-App direkt in der Nähe.</p>
             </div>
           </div>
           <div class="row"><button data-full>⛶ Vollbild</button><button class="go" data-back data-focus>Fertig</button></div>

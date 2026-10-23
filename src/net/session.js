@@ -4,6 +4,7 @@
 // Nachrichten (JSON): hello/pick (Gast → Gastgeber), lobby/start/s/done/menu/bye (Gastgeber → Gast), u (Gast-Lage).
 
 import { hostOnline, joinOnline, offerLocal, answerLocal } from './transport.js';
+import { hostNearby, findNearby } from './nearby.js';
 
 export class NetSession {
   constructor(role, { onChange = null, onStart = null, onDone = null, onMenu = null, onLost = null } = {}) {
@@ -26,6 +27,12 @@ export class NetSession {
     this.room = room;
     this.code = room.code;
     return room.code;
+  }
+
+  /** iPhone-App: Spiel in der Nähe sichtbar machen (Bluetooth/WLAN direkt, auch im Flugmodus). */
+  async openNearby(name, onError) {
+    this.nearbyName = name;
+    this.nearby = await hostNearby(name, (link) => this.addGuest(link), onError);
   }
 
   /** Ohne Internet: Angebot für einen weiteren Gast (QR). */
@@ -114,6 +121,16 @@ export class NetSession {
     this.bindHost();
   }
 
+  /** iPhone-App: Spiele in der Nähe suchen; onList([{ id, name }]). */
+  async findNearby(name, onList, onError) {
+    this.finder = await findNearby(name, onList, onError);
+  }
+
+  async joinNearby(id) {
+    this.link = await this.finder.join(id);
+    this.bindHost();
+  }
+
   /** Ohne Internet: Angebot des Gastgebers einlesen; liefert den Antwort-Code (QR) und verbindet im Hintergrund. */
   async answer(offerText) {
     const a = await answerLocal(offerText, false);
@@ -148,5 +165,7 @@ export class NetSession {
 
   close() {
     try { if (this.isHost) { this.broadcast({ t: 'menu' }); for (const g of this.guests) g.link.close(); this.room?.close(); this.offer?.close?.(); } else { this.link?.send({ t: 'bye' }); this.link?.close(); this.link?.peer?.destroy?.(); } } catch (_) { /* egal */ }
+    // Nahbereich zuletzt beenden (die Abschiedsnachricht soll noch rausgehen)
+    if (this.nearby || this.finder) setTimeout(() => { this.nearby?.close(); this.finder?.close(); }, 150);
   }
 }

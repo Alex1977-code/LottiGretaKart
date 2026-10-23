@@ -1,0 +1,10 @@
+{
+  "name": "lgk-nearby",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Capacitor-Plugin: iPhones direkt verbinden (MultipeerConnectivity – Bluetooth/WLAN von Gerät zu Gerät, auch im Flugmodus)",
+  "files": ["ios/Sources", "Package.swift"],
+  "capacitor": {
+    "ios": { "src": "ios" }
+  }
+}

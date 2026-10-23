@@ -8,15 +8,20 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview --host",
-    "test": "npm run build && node tests/race.mjs"
+    "test": "npm run build && node tests/race.mjs",
+    "ios": "npm run build && cap sync ios"
   },
   "dependencies": {
+    "@capacitor/core": "^8.5.3",
     "jsqr": "^1.4.0",
+    "lgk-nearby": "file:native/lgk-nearby",
     "peerjs": "^1.5.5",
     "qrcode-generator": "^2.0.4",
     "three": "^0.186.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/ios": "^8.5.3",
     "vite": "^8.3.3"
   }
 }
