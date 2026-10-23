@@ -1,4 +1,4 @@
-// Die Grüne Blockinsel als zusammenhängende Welt (wie Mario Kart World): elf Rennstrecken als Regionen, verbunden
+// Die Grüne Blockinsel als zusammenhängende Welt (wie Mario Kart World): zwölf Rennstrecken als Regionen, verbunden
 // durch Landstraßen, ein See (darauf fährt man über das Wasser), Berge, Küste. Koordinaten in Metern, x = Osten,
 // z = Süden, Meeresspiegel y = 0.
 //
@@ -20,6 +20,7 @@ import burg from '../tracks/burg.js';
 import wueste from '../tracks/wueste.js';
 import vulkan from '../tracks/vulkan.js';
 import bonbon from '../tracks/bonbon.js';
+import loroparque from '../tracks/loroparque.js';
 
 export const WORLD = {
   name: 'Grüne Blockinsel',
@@ -38,6 +39,7 @@ export const WORLD = {
     { def: wueste, ox: 880, oz: 60 },
     { def: vulkan, ox: -700, oz: 380 },
     { def: bonbon, ox: -690, oz: -340 },
+    { def: loroparque, ox: 600, oz: 410 },
   ],
   connectors: [
     { id: 'wiese-wald', a: ['kraxelwiese', 0.075, -1], b: ['herbstwald', 0.045, 1], via: [[40, -140], [10, -190]], hw: 6.5, items: [0.5], coins: [[0.3, 0.4]] },
@@ -58,6 +60,8 @@ export const WORLD = {
     { id: 'grotte-vulkan', a: ['laternengrotte', 0.85, 1], b: ['vulkan', 0.9, -1], via: [[-600, 120], [-700, 260]], hw: 6.5, items: [0.35, 0.7], coins: [[0.5, 0.6]] },
     { id: 'burg-bonbon', a: ['burg', 0.7, -1], b: ['bonbon', 0.2, 1], via: [[-430, -440]], hw: 6.5, items: [0.5], coins: [[0.4, 0.5]] },
     { id: 'grotte-bonbon', a: ['laternengrotte', 0.75, 1], b: ['bonbon', 0.9, 1], via: [[-650, -110], [-730, -240]], hw: 6.5, items: [0.4, 0.75] },
+    { id: 'strand-zoo', a: ['strand', 0.3, -1], b: ['loroparque', 0.82, -1], via: [[400, 500]], hw: 6.5, items: [0.5], coins: [[0.3, 0.4]] },
+    { id: 'stadt-zoo', a: ['autobahn', 0.33, -1], b: ['loroparque', 0.15, -1], via: [[740, 330]], hw: 6.5, items: [0.5], coins: [[0.6, 0.7]] },
   ],
   lakes: [
     { x: -40, z: 205, r: 95, depth: 4 },
@@ -78,6 +82,7 @@ export const WORLD = {
     { x: 925, z: 0, r: 190, h: 3 },          // Sonnenschlucht
     { x: -700, z: 428, r: 145, h: 5 },       // Feuerberg
     { x: -690, z: -398, r: 150, h: 8 },      // Zuckerwatten-Allee
+    { x: 645, z: 488, r: 200, h: 3 },        // Loro Parque
   ],
   hills: [
     [180, -120, 70, 14], [-200, -200, 80, 18], [330, -540, 80, 22], [-460, -580, 70, 30], [-650, -300, 120, 45],
@@ -104,6 +109,7 @@ export const WORLD = {
     { theme: 'desert', x: 950, z: 0, r: 200, fade: 90 },
     { theme: 'volcano', x: -700, z: 428, r: 150, fade: 80 },
     { theme: 'candy', x: -690, z: -398, r: 150, fade: 80 },
+    { theme: 'zoo', x: 645, z: 488, r: 190, fade: 80 },
   ],
   // Grind-Schienen: über den See (Abkürzung) und neben der Waldstraße
   rails: [
@@ -120,6 +126,7 @@ export const WORLD = {
     [200, 330], [-560, -220], [330, -430], [-260, 120],
     [100, 497], [420, 470], [610, -225], [450, -440], [-330, -430], [0, -500],
     [1000, -130], [700, 40], [-700, 432], [-560, 300], [-690, -400], [-840, -250],
+    [880, 440], [520, 600],
   ],
 };
 
@@ -131,6 +138,7 @@ export const WORLD_CUPS = [
   { id: 'kronen', name: 'Kronen-Cup', tracks: ['autobahn', 'gipfel', 'herbstwald', 'burg'] },
   { id: 'bonbon', name: 'Bonbon-Cup', tracks: ['burg', 'bonbon', 'laternengrotte', 'vulkan'] },
   { id: 'wuesten', name: 'Wüsten-Cup', tracks: ['gipfel', 'wueste', 'autobahn', 'strand'] },
+  { id: 'tierpark', name: 'Tierpark-Cup', tracks: ['strand', 'loroparque', 'autobahn', 'wueste'] },
 ];
 
 /** K.-o.-Tour: Rallye quer über die Insel; an jedem Checkpoint scheiden die Letzten aus. */
@@ -155,5 +163,10 @@ export const KO_TOURS = [
     id: 'wild', name: 'Wilde Weltreise',
     stops: ['wueste', 'gipfel', 'herbstwald', 'burg', 'bonbon', 'laternengrotte', 'vulkan'],
     survivors: [10, 8, 6, 5, 4],
+  },
+  {
+    id: 'safari', name: 'Tierpark-Safari',
+    stops: ['kraxelwiese', 'strand', 'loroparque', 'autobahn', 'herbstwald'],
+    survivors: [9, 6, 4],
   },
 ];

@@ -10,6 +10,7 @@ import burg from './burg.js';
 import wueste from './wueste.js';
 import vulkan from './vulkan.js';
 import bonbon from './bonbon.js';
+import loroparque from './loroparque.js';
 
-export const TRACKS = [kraxelwiese, herbstwald, laternengrotte, manege, autobahn, strand, gipfel, burg, wueste, vulkan, bonbon];
+export const TRACKS = [kraxelwiese, herbstwald, laternengrotte, manege, autobahn, strand, gipfel, burg, wueste, vulkan, bonbon, loroparque];
 export const TRACK_BY_ID = Object.fromEntries(TRACKS.map((t) => [t.id, t]));

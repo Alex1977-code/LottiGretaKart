@@ -159,5 +159,20 @@ const CANDY = {
   wallA: 0xfff4fa, wallB: 0xff3a6a, wallTop: 0x8fe0c0, wallH: 0.8,
 };
 
-export const THEMES = { grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
+// Tierpark: sonnig-tropisch (Kanaren), sattes Grün, Fahrbahn warmgrau, Ränder in Papageien-Farben
+const ZOO = {
+  ...GRASS,
+  label: 'Tierpark',
+  sky: [[1, 0x1f8fe8], [0.45, 0x3fb2f8], [0.15, 0x8ad6ff], [0.03, 0xd6f4ff], [0, 0xf2fcff], [-0.1, 0xbfe6f2], [-1, 0x8ac8dc]],
+  background: 0xc8ecfa,
+  fog: { color: 0xd0eefa, near: 100, far: 460 },
+  hemi: { sky: 0xd8f2ff, ground: 0x6aa84a, intensity: 1.4 },
+  sun: { color: 0xfff2d6, intensity: 2.9, dir: [-0.35, 1, 0.45] },
+  hills: 0x5cb83a, hills2: 0x7ccf5a,
+  grass: 0x5cc83a, grass2: 0x52bc34, grassFar: 0x4aa830, offroad: 0xc8b48a, offroad2: 0xbca87e,
+  road: 0x9c948e, road2: 0x958d88, line: 0xfffaf0, curbA: 0xe8241e, curbB: 0xffd21a,
+  wallA: 0x2fa84a, wallB: 0xffd21a, wallTop: 0xe8241e, wallH: 0.75,
+};
+
+export const THEMES = { zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
 export const getTheme = (n) => THEMES[n] ?? GRASS;

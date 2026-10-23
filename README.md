@@ -26,7 +26,7 @@ neue Sitzpose `kart` für die Heldinnen in `src/lgw/three/avatars/hero.js`).
 
 ## Die Insel (wie in Mario Kart World)
 
-Alle elf Strecken liegen auf **einer zusammenhängenden Insel** – der Grünen Blockinsel – und sind durch Landstraßen
+Alle zwölf Strecken liegen auf **einer zusammenhängenden Insel** – der Grünen Blockinsel – und sind durch Landstraßen
 verbunden. Man kann von Strecke zu Strecke fahren, über den See (auf dem Wasser), durch den Höhlenberg und ins
 Zirkuszelt. Himmel, Licht und Nebel blenden beim Fahren je Region über (Sonne über der Wiese, goldener Herbst,
 dunkle Höhle, Zirkus-Scheinwerfer, Abendrot über der Stadt, Strand, Schnee, Burg im Mondlicht).
@@ -44,15 +44,16 @@ dunkle Höhle, Zirkus-Scheinwerfer, Abendrot über der Stadt, Strand, Schnee, Bu
 | Sonnenschlucht | Wüste im fernen Osten | Tafelberge, Kakteen, Oase, Steppenläufer rollen über die Bahn, Skorpion-Käfer |
 | Feuerberg | Vulkan im Südwesten | Lava-Seen (hineinfahren = zurückgesetzt), Feuer-Geysire (roter Ring = Warnung), Stampfsteine |
 | Zuckerwatten-Allee | Bonbonland im Nordwesten | Schokoladen-Fahrbahn, Zuckerstangen, Lutscher, Donuts, rollende Kaugummikugeln |
+| Loro Parque | Tierpark an der Ostküste | Thai-Tor, Papageien-Volieren, Flamingos, Gorillas, Tiger, Planet Penguin (Pinguine watscheln über die Straße), gläserner Hai-Tunnel, Delfin-Lagune, Seelöwen – und die **Orca-Show**: der Wal springt und spritzt eine Welle über die Fahrbahn (blauer Ring = gleich! nass = langsamer, „PLATSCH!“) |
 
 **Modi**
-- **Grand Prix** (Beeren-, Brummbär-, Muschel-, Kronen-, Bonbon- und Wüsten-Cup): das erste Rennen sind Runden, ab dem zweiten startet man an der
+- **Grand Prix** (Beeren-, Brummbär-, Muschel-, Kronen-, Bonbon-, Wüsten- und Tierpark-Cup): das erste Rennen sind Runden, ab dem zweiten startet man an der
   vorigen Strecke und fährt über die Verbindungsstraße zur nächsten (Anfahrt + Runden). Punkte für 12 Fahrer,
   am Ende Siegerehrung mit Pokal.
-- **K.-o.-Tour** (Große Inseltour, Kleine Runde, Küste und Gipfel, Wilde Weltreise): eine Rallye quer über die Insel mit 12 Fahrern; an jedem
+- **K.-o.-Tour** (Große Inseltour, Kleine Runde, Küste und Gipfel, Wilde Weltreise, Tierpark-Safari): eine Rallye quer über die Insel mit 12 Fahrern; an jedem
   Checkpoint scheiden die Letzten aus.
 - **Einzelrennen** und **Zeitfahren** (mit drei Turbo-Beeren, Bestzeiten werden gespeichert).
-- **Freie Fahrt**: die ganze Insel erkunden und 42 versteckte Sternmünzen finden (werden gespeichert).
+- **Freie Fahrt**: die ganze Insel erkunden und 44 versteckte Sternmünzen finden (werden gespeichert).
 
 - **Mehrere Handys** (bis zu 12 Fahrer, Rest Computer): ein Handy ist Gastgeber und rechnet das Rennen, jeder Gast
   fährt sein eigenes Kart direkt (keine Eingabeverzögerung) und sieht die anderen nach Schnappschüssen des Gastgebers.
@@ -96,7 +97,7 @@ Wer vorn liegt, bekommt eher Verteidigung, wer hinten liegt, eher starke Gegenst
 
 **Bitcoins** auf der Strecke machen das Kart schneller (bis 10). **Driften** in Kurven lädt einen Mini-Turbo
 (blau → orange → pink). **Schanzen**: in der Luft Drift drücken = Trick mit Turbo bei der Landung.
-**Startturbo**: Gas genau bei der „2“ drücken.
+**Start**: Erst stellt sich die Strecke vor, dann hängt oben eine Ampel – bei 3, 2, 1 geht je eine rote Lampe an, bei LOS leuchten alle grün. **Startturbo**: Gas genau bei der „2“ drücken (am Handy zählt nur der Gas-Knopf, nicht das Lenkrad).
 
 ## Steuerung
 

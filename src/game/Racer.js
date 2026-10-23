@@ -121,12 +121,22 @@ export class Racer {
     return true;
   }
 
+  /** Nass gespritzt (Orca-Welle): kein Treffer, aber langsamer und tropfnass; der eigene Bildschirm wird nass. */
+  soak(sec = 2.6) {
+    if (this.invincible || this.out || this.finished) return false;
+    this.cancelDrift();
+    this.speed *= 0.55;
+    this.wetT = sec;
+    if (this.isPlayer) { this.race.hudOf?.(this)?.wet(sec); this.race.audio.sfx('splash'); }
+    return true;
+  }
+
   cancelDrift() { this.drift.on = false; this.drift.dir = 0; this.drift.charge = 0; this.drift.level = 0; this.drift.hop = false; }
 
   // ------------------------------------------------------------------ Simulation
   update(dt, input) {
     const P = this.phys, track = this.path, world = this.race.world;
-    const timers = ['boostT', 'starT', 'giantT', 'spinT', 'tumbleT', 'squishT', 'invulnT', 'throwT', 'bumpCooldown'];
+    const timers = ['boostT', 'starT', 'giantT', 'spinT', 'tumbleT', 'squishT', 'invulnT', 'throwT', 'bumpCooldown', 'wetT'];
     for (const k of timers) if (this[k] > 0) this[k] = Math.max(0, this[k] - dt);
 
     const loc = track ? track.locate(this.pos.x, this.pos.z, this.lastI, this.loc) : this.loc;
@@ -373,6 +383,7 @@ export class Racer {
 
   // ------------------------------------------------------------------ Darstellung
   syncVisual(dt, t) {
+    if (this.wetT > 0 && Math.random() < 0.5) this.race.effects?.drip(this.pos.x, this.pos.y, this.pos.z);
     // weit entfernte Karts nicht zeichnen und nicht animieren (Nebel verdeckt sie ohnehin)
     if (this.race.focus && !this.isPlayer) {
       const d2 = this.race.focusDist2(this.pos.x, this.pos.z);

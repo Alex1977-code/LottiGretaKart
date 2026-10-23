@@ -161,6 +161,25 @@ export class Effects {
     }
   }
 
+  /** Wasserwelle: Tropfen und Gischt fliegen in Richtung (dx, dz) und fallen herab (Orca-Show). */
+  splash(pos, dx = 0, dz = 0, n = 70, reach = 14) {
+    const drop = rgb(0x9ad8ff), foam = rgb(0xeaf8ff), deep = rgb(0x3a9ae8);
+    for (let i = 0; i < n; i++) {
+      const s = R(0.3, 1) * reach, a = R(-0.5, 0.5);
+      const vx = (dx * Math.cos(a) - dz * Math.sin(a)) * s * 0.75, vz = (dz * Math.cos(a) + dx * Math.sin(a)) * s * 0.75;
+      const c = i % 4 === 0 ? foam : i % 4 === 1 ? drop : deep;
+      this.soft.spawn({ x: pos.x + R(-1.5, 1.5), y: pos.y + R(0, 2), z: pos.z + R(-1.5, 1.5), vx, vy: R(6, 13), vz, life: R(1.0, 1.6), size: R(0.5, 1.2), size1: R(0.2, 0.6), grav: 16, a: 0.85, floor: pos.y - 1.2, ...c });
+    }
+    // aufsteigende Gischtwolke
+    for (let i = 0; i < 14; i++) this.soft.spawn({ x: pos.x + R(-2, 2), y: pos.y + R(0.5, 3), z: pos.z + R(-2, 2), vx: dx * R(1, 4), vy: R(1, 3), vz: dz * R(1, 4), life: R(0.8, 1.3), size: R(1.2, 2), size1: R(2.5, 3.5), drag: 1.8, a: 0.3, ...foam });
+  }
+
+  /** Tropfen von einem nassen Kart. */
+  drip(x, y, z) {
+    const c = rgb(0xaee0ff);
+    this.soft.spawn({ x: x + R(-0.5, 0.5), y: y + R(0.3, 1), z: z + R(-0.5, 0.5), vx: R(-0.4, 0.4), vy: R(-0.5, 0.8), vz: R(-0.4, 0.4), life: R(0.3, 0.5), size: R(0.15, 0.3), size1: 0.08, grav: 12, a: 0.8, ...c });
+  }
+
   /** Konfetti (Zieleinlauf, Siegerehrung). */
   confetti(pos, n = 60, spread = 6) {
     const cols = [0xe83a30, 0x3b7cf0, 0x4fb833, 0xffc21a, 0xf0609f, 0xb47fe6];

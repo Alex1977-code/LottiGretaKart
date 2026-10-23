@@ -57,6 +57,9 @@ const SFX = {
   hardLand: (e) => { e.noise({ duration: 0.12, filterFreq: 600, volume: 0.3 }); e.tone({ type: 'sine', freq: 110, freqEnd: 45, duration: 0.16, volume: 0.35 }); },
   glideOpen: (e) => e.noise({ duration: 0.22, filterType: 'bandpass', filterFreq: 600, filterEnd: 2400, volume: 0.2 }),
   dive: (e) => { e.noise({ duration: 0.3, filterType: 'bandpass', filterFreq: 2500, filterEnd: 500, volume: 0.16 }); e.tone({ type: 'sawtooth', freq: 260, freqEnd: 90, duration: 0.3, volume: 0.08 }); },
+  // Wasser: großer Platscher (Orca-Welle) und kleines Plätschern
+  splash: (e) => { e.noise({ duration: 0.9, filterType: 'lowpass', filterFreq: 2400, filterEnd: 300, volume: 0.42 }); e.noise({ duration: 0.35, filterType: 'bandpass', filterFreq: 4000, filterEnd: 1200, volume: 0.2, at: e.now + 0.05 }); e.tone({ type: 'sine', freq: 140, freqEnd: 50, duration: 0.4, volume: 0.3 }); },
+  plop: (e) => { e.tone({ type: 'sine', freq: 300, freqEnd: 900, duration: 0.12, volume: 0.2 }); e.noise({ duration: 0.2, filterType: 'bandpass', filterFreq: 1800, filterEnd: 600, volume: 0.12 }); },
   swoop: (e) => { e.tone({ type: 'triangle', freq: 220, freqEnd: 980, duration: 0.28, volume: 0.22 }); e.noise({ duration: 0.2, filterType: 'bandpass', filterFreq: 800, filterEnd: 3000, volume: 0.12 }); },
   stomp: (e) => { e.tone({ type: 'square', freq: 520, freqEnd: 110, duration: 0.13, volume: 0.25 }); e.noise({ duration: 0.08, filterFreq: 1500, volume: 0.15 }); },
   hurt: (e) => { e.tone({ type: 'sawtooth', freq: 330, freqEnd: 110, duration: 0.3, volume: 0.22 }); e.tone({ type: 'square', freq: 165, freqEnd: 60, duration: 0.3, volume: 0.12, at: e.now + 0.05 }); },

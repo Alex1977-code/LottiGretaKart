@@ -3,7 +3,7 @@
 
 import { RACERS, RACER_BY_ID } from '../game/racers.js';
 import { TRACKS, TRACK_BY_ID } from '../tracks/index.js';
-import { WORLD_CUPS as CUPS, KO_TOURS } from '../world/worldDef.js';
+import { WORLD_CUPS as CUPS, KO_TOURS, WORLD } from '../world/worldDef.js';
 import { CC } from '../game/Race.js';
 import { Ceremony } from '../game/Ceremony.js';
 import { Track } from '../world/Track.js';
@@ -15,6 +15,7 @@ import { nearbyAvailable } from '../net/nearby.js';
 import { qrSVG, scanQR } from '../net/qr.js';
 import { fmtTime } from './hud.js';
 import { touch, isTouch, readJoin, deviceLabel, rumble } from './input.js';
+const WORLD_STARS = WORLD.starCoins.length;
 
 const POINTS = [15, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
 const STAT_NAMES = { speed: 'Tempo', accel: 'Beschleunigung', weight: 'Gewicht', handling: 'Lenkung', offroad: 'Gelände' };
@@ -181,7 +182,7 @@ export class Menus {
           <h3>Mehrere Handys</h3>
           <p class="items-help"><b>Über das Internet</b> (beliebig weit weg): einer wählt „Spiel erstellen“ und nennt den Raumcode, die anderen „Beitreten“ und tippen ihn ein. <b>Ohne Internet</b>: in der iPhone-App findet man Spiele „in der Nähe“ direkt (Bluetooth/WLAN, auch im Flugmodus). Im Browser: alle im selben WLAN – Gastgeber zeigt einen QR-Code, Gast scannt ihn und zeigt seinen Antwort-Code zurück (das iPhone kann im Flugmodus keinen Hotspot öffnen).</p>
           <h3>Die Insel</h3>
-          <p class="items-help"><b>Grand Prix</b>: ab dem zweiten Rennen fährst du über die Landstraße zur nächsten Strecke. <b>K.-o.-Tour</b>: quer über die Insel, an jedem Checkpoint scheiden die Letzten aus. <b>Freie Fahrt</b>: erkunde alles und finde die 42 Sternmünzen.</p>
+          <p class="items-help"><b>Grand Prix</b>: ab dem zweiten Rennen fährst du über die Landstraße zur nächsten Strecke. <b>K.-o.-Tour</b>: quer über die Insel, an jedem Checkpoint scheiden die Letzten aus. <b>Freie Fahrt</b>: erkunde alles und finde die ${WORLD_STARS} Sternmünzen.</p>
           <div class="row"><button data-back data-focus>Zurück</button></div>
         </div></div>
       </div>${this.hints()}`, 'full');

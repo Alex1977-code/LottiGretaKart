@@ -5,6 +5,9 @@
 //   brummer     dicke Hummel (oder Flatterkäfer, model) fliegt quer über die Strecke
 //   snapper     Riesen-Schnappblume am Fahrbahnrand schnappt nach Karts, die vorbeifahren
 //   roller      Riesenschneeball rollt quer über die Fahrbahn und plättet, wen er erwischt
+//   orca        Orca-Show (Loro Parque): der Schwertwal springt aus dem Becken neben der Strecke und spritzt eine
+//               Riesenwelle über die Fahrbahn (blauer Ring = gleich!) – wer nass wird, wird langsamer.
+//               { u, side (Beckenseite), dist (Becken-Mitte hinter der Bande), r (Beckenradius), every }
 // Definition in der Strecke: hazards: [{ kind, u, model?, speed?, lat?, side?, every? }]
 
 import * as THREE from 'three';
@@ -102,6 +105,37 @@ export class Hazards {
           h.holder.position.copy(h.pos);
           h.every = d.every ?? 3.2; h.timer = Math.random() * h.every; h.phase = 'idle';
           h.radius = 1.6;
+          break;
+        }
+        case 'orca': {
+          const side = d.side ?? 1, R = d.r ?? 18;
+          const wall = track.wallAt(base.i);
+          const c = track.pointAt(d.u, side * (wall + (d.dist ?? 22)));
+          h.center = new THREE.Vector3(c.x, track.heightAt(c.x, c.z), c.z);
+          h.waterY = h.center.y + 0.95;
+          h.R = R;
+          // Richtung vom Becken zur Strecke, Spritz-Zone auf der Fahrbahn (zur Beckenseite hin)
+          const dx = base.x - c.x, dz = base.z - c.z, L = Math.hypot(dx, dz) || 1;
+          h.dir = { x: dx / L, z: dz / L };
+          const zp = track.pointAt(d.u, side * base.hw * 0.3);
+          h.zone = new THREE.Vector3(zp.x, zp.y, zp.z);
+          h.zoneR = base.hw + 1.5;
+          h.pos = h.zone;
+          h.model = getModel('orca');
+          h.holder = new THREE.Group();
+          h.orca = new THREE.Group();
+          h.orca.add(h.model.root);
+          // Warnring auf der Fahrbahn
+          const ringMat = new THREE.MeshBasicMaterial({ color: 0x3ac8ff, transparent: true, opacity: 0.0, depthWrite: false });
+          h.ring = new THREE.Mesh(new THREE.RingGeometry(h.zoneR - 0.7, h.zoneR, 48), ringMat);
+          h.ring.rotation.x = -Math.PI / 2;
+          h.ring.position.set(zp.x, zp.y + 0.1, zp.z);
+          h.ringIn = new THREE.Mesh(new THREE.CircleGeometry(h.zoneR - 0.7, 40), new THREE.MeshBasicMaterial({ color: 0x8adcff, transparent: true, opacity: 0, depthWrite: false }));
+          h.ringIn.rotation.x = -Math.PI / 2;
+          h.ringIn.position.set(zp.x, zp.y + 0.09, zp.z);
+          h.holder.add(h.orca, h.ring, h.ringIn);
+          h.every = d.every ?? 6.5; h.timer = 2 + Math.random() * 2; h.phase = 'swim'; h.ang = Math.random() * Math.PI * 2; h.pt = 0;
+          h.base = base;
           break;
         }
         case 'stampfstein': {
@@ -260,6 +294,7 @@ export class Hazards {
           }
           break;
         }
+        case 'orca': this.updateOrca(h, dt); break;
         case 'stampfstein': {
           const p = track.pointAt(h.u, h.lat, h.p ?? (h.p = {}));
           h.cool -= dt;
@@ -353,6 +388,71 @@ export class Hazards {
       }
     }
     this.bombs = this.bombs.filter((b) => !b.dead);
+  }
+
+  /** Orca-Show: schwimmen → Anlauf (Warnring) → Sprung → Welle über die Fahrbahn → abtauchen. */
+  updateOrca(h, dt) {
+    const race = this.race, o = h.orca, c = h.center, R = h.R, dir = h.dir;
+    const running = race.state === 'race' || race.state === 'finish' || race.state === 'free' || race.state === 'demo';
+    if (running) h.timer -= dt;
+    h.pt += dt;
+    const near = race.focusDist2(h.zone.x, h.zone.z) < 70 * 70;
+    const swimTo = (x, z, y, yaw) => { o.position.set(x, y, z); o.rotation.set(0, yaw, 0); };
+    const launch = { x: c.x - dir.x * R * 0.3, z: c.z - dir.z * R * 0.3 };
+    const land = { x: c.x + dir.x * R * 0.85, z: c.z + dir.z * R * 0.85 };
+    const toTrack = Math.atan2(-dir.z, dir.x);
+    let ringK = 0;
+    if (h.phase === 'swim') {
+      h.ang += dt * 0.55;
+      swimTo(c.x + Math.cos(h.ang) * R * 0.55, c.z + Math.sin(h.ang) * R * 0.55, h.waterY - 1.15 + 0.12 * Math.sin(h.pt * 2), -h.ang - Math.PI / 2);
+      h.model.update(dt, 'swim');
+      if (h.timer <= 1.6) { h.phase = 'warn'; h.pt = 0; h.from = o.position.clone(); h.fromYaw = o.rotation.y; }
+    } else if (h.phase === 'warn') {
+      // zum Absprungpunkt schwimmen, Warnring pulsiert
+      const k = Math.min(1, h.pt / 1.2), e = k * k * (3 - 2 * k);
+      let dy = toTrack - h.fromYaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+      swimTo(h.from.x + (launch.x - h.from.x) * e, h.from.z + (launch.z - h.from.z) * e, h.waterY - 1.15 - 0.4 * e, h.fromYaw + dy * e);
+      h.model.update(dt, 'swim');
+      ringK = 0.4 + 0.4 * Math.sin(h.pt * 14);
+      if (h.timer <= 0) { h.phase = 'jump'; h.pt = 0; if (near) race.audio.sfx('swoop'); }
+    } else if (h.phase === 'jump') {
+      const T = 1.35, k = Math.min(1, h.pt / T);
+      const x = launch.x + (land.x - launch.x) * k, z = launch.z + (land.z - launch.z) * k;
+      const y = h.waterY - 1.4 + Math.sin(k * Math.PI) * 9.5;
+      o.position.set(x, y, z);
+      // Neigung entlang der Flugbahn (Nase hoch beim Absprung, runter bei der Landung)
+      o.rotation.set(0, toTrack, Math.cos(k * Math.PI) * 0.85);
+      h.model.update(dt, 'swim');
+      ringK = 0.8;
+      if (k > 0.05 && k < 0.2 && Math.random() < 0.6) race.effects.drip(launch.x, h.waterY, launch.z);
+      if (k >= 1) {
+        h.phase = 'splash'; h.pt = 0; h.soaked = false;
+        race.effects.splash(new THREE.Vector3(land.x, h.waterY, land.z), dir.x, dir.z, 90, 19);
+        race.effects.splash(new THREE.Vector3(land.x, h.waterY, land.z), -dir.x * 0.3, -dir.z * 0.3, 30, 6);
+        if (near) race.audio.sfx('splash');
+        race.shake = Math.max(race.shake ?? 0, near ? 0.25 : 0);
+      }
+    } else if (h.phase === 'splash') {
+      // Wal taucht ab, die Welle erreicht die Fahrbahn
+      o.position.set(land.x + dir.x * h.pt * 2, h.waterY - 1.4 - h.pt * 1.5, land.z + dir.z * h.pt * 2);
+      o.rotation.set(0, toTrack, -0.9);
+      h.model.update(dt, 'swim');
+      ringK = Math.max(0, 1 - h.pt / 0.8);
+      if (!h.soaked && h.pt > 0.45) {
+        h.soaked = true;
+        for (const r of race.racers) {
+          if (r.out || r.remote || r.puppet) continue;
+          if ((r.pos.x - h.zone.x) ** 2 + (r.pos.z - h.zone.z) ** 2 < h.zoneR * h.zoneR && r.pos.y - h.zone.y < 5) r.soak();
+        }
+        // Wasser auf der Fahrbahn plätschert auf
+        for (let i = 0; i < 3; i++) race.effects.splash(new THREE.Vector3(h.zone.x + (Math.random() - 0.5) * 8, h.zone.y, h.zone.z + (Math.random() - 0.5) * 8), 0, 0, 12, 3);
+      }
+      if (h.pt > 1.1) { h.phase = 'swim'; h.pt = 0; h.ang = Math.atan2(o.position.z - c.z, o.position.x - c.x); h.timer = h.every + Math.random() * 1.5; }
+    }
+    o.visible = h.phase === 'jump' || o.position.y > h.waterY - 2.3;
+    h.ring.material.opacity = ringK * 0.85;
+    h.ringIn.material.opacity = ringK * 0.25;
+    h.ring.visible = h.ringIn.visible = ringK > 0.01;
   }
 
   fireBomb(h) {
