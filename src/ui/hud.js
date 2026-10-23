@@ -28,14 +28,19 @@ export class Hud {
       <div class="hud-bl"><div class="hud-coins"><span class="coin-ic">₿</span> <b class="coins">0</b></div></div>
       <div class="hud-br"><canvas class="minimap" width="300" height="300"></canvas><div class="hud-place"><b>8</b><small>.</small></div></div>
       <div class="hud-dir"><i></i><span>Hier entlang</span></div>
-      <div class="hud-center"><div class="countdown"></div><div class="message"></div></div>
-      <div class="hud-wrong">FALSCHE RICHTUNG!</div>`;
+      <div class="hud-intro"><small class="cup"></small><b class="name"></b><span class="laps-info"></span></div>
+      <div class="hud-center"><div class="hud-lights"><i></i><i></i><i></i></div><div class="countdown"></div><div class="message"></div><div class="hud-tip"></div></div>
+      <div class="hud-wrong">FALSCHE RICHTUNG!</div>
+      <div class="hud-wet">${'<i></i>'.repeat(22)}<b>PLATSCH!</b></div>`;
     root.appendChild(this.el);
     this.q = (s) => this.el.querySelector(s);
     this.lapEl = this.q('.lap'); this.lapsEl = this.q('.laps'); this.timeEl = this.q('.hud-time');
     this.itemImg = this.q('.hud-item img'); this.badge = this.q('.hud-item .badge'); this.slot = this.q('.hud-item .slot');
     this.coinsEl = this.q('.coins'); this.placeEl = this.q('.hud-place');
     this.countEl = this.q('.countdown'); this.msgEl = this.q('.message'); this.wrongEl = this.q('.hud-wrong');
+    this.lightsEl = this.q('.hud-lights'); this.lamps = [...this.lightsEl.children]; this.tipEl = this.q('.hud-tip');
+    this.introEl = this.q('.hud-intro');
+    this.wetEl = this.q('.hud-wet');
     this.map = this.q('.minimap'); this.mctx = this.map.getContext('2d');
     this.dirEl = this.q('.hud-dir'); this.dirArrow = this.q('.hud-dir i');
     // Antippen/Klicken der Karte: zwischen Nahkarte (dreht mit) und ganzer Insel wechseln
@@ -119,6 +124,43 @@ export class Hud {
     this.countEl.className = `countdown ${text ? 'show' : ''} ${cls}`;
     // Animation neu starten
     void this.countEl.offsetWidth;
+  }
+
+  /**
+   * Start-Ampel oben in der Mitte (wie Lakitus Ampel): phase 3/2/1 = eine, zwei, drei rote Lampen, 0 = alle grün,
+   * -1 = Ampel erscheint (alle aus), null = ausblenden. tip: kleiner Hinweis darunter (Turbostart).
+   */
+  lights(phase, tip = '') {
+    this.el.classList.toggle('counting', phase !== null);
+    if (phase === null) { this.lightsEl.className = 'hud-lights'; this.tipEl.classList.remove('show'); return; }
+    const on = phase === 0 ? 3 : phase > 0 ? 4 - phase : 0;
+    this.lamps.forEach((l, i) => { l.className = i < on ? (phase === 0 ? 'go' : 'red') : ''; });
+    this.lightsEl.className = `hud-lights show ${phase === 0 ? 'go' : ''}`;
+    if (tip) this.tipEl.textContent = tip;
+    this.tipEl.classList.toggle('show', !!tip && phase !== 0);
+  }
+
+  /** Nass gespritzt: Wassertropfen auf dem Bildschirm, die langsam herunterlaufen und verblassen. */
+  wet(sec = 2.6) {
+    for (const d of this.wetEl.querySelectorAll('i')) {
+      const s = 26 + Math.random() * 70;
+      d.style.cssText = `left:${Math.random() * 96}%;top:${Math.random() * 80}%;width:${s}px;height:${s * (1 + Math.random() * 0.35)}px;animation-delay:${(Math.random() * 0.25).toFixed(2)}s;animation-duration:${(sec * (0.7 + Math.random() * 0.4)).toFixed(2)}s`;
+    }
+    this.wetEl.classList.remove('show');
+    void this.wetEl.offsetWidth;
+    this.wetEl.classList.add('show');
+    clearTimeout(this.wetTimer);
+    this.wetTimer = setTimeout(() => this.wetEl.classList.remove('show'), sec * 1000 + 400);
+  }
+
+  /** Vorstellung vor dem Start: übrige Anzeigen ausblenden, Streckenname groß zeigen. */
+  intro(on, { name = '', cup = '', laps = '' } = {}) {
+    this.el.classList.toggle('intro', on);
+    if (on) {
+      this.introEl.querySelector('.name').textContent = name;
+      this.introEl.querySelector('.cup').textContent = cup;
+      this.introEl.querySelector('.laps-info').textContent = laps;
+    }
   }
 
   /** p = der Fahrer dieser Anzeige (im geteilten Bildschirm je Spieler eine Anzeige). */

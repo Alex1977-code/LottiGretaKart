@@ -376,6 +376,13 @@ export class Race {
     if (this.free) { this.state = 'free'; this.audio.play('course_map'); for (const h of this.huds()) h.message('Freie Fahrt – erkunde die Insel!', 3, 'intro'); return; }
     this.state = 'intro';
     this.audio.play(this.def.music ?? 'course_grass');
+    const MODE = { gp: 'Grand Prix', ko: 'K.-o.-Tour', trial: 'Zeitfahren' };
+    const info = {
+      name: this.ko ? this.tour?.name ?? this.label : this.label || this.def.name || '',
+      cup: [MODE[this.mode] ?? 'Rennen', this.ccDef.label].filter(Boolean).join(' · '),
+      laps: this.ko ? 'die Letzten scheiden aus' : this.laps > 1 ? `${this.laps} Runden` : '1 Runde',
+    };
+    for (const h of this.huds()) h.intro(true, info);
   }
 
   /**
@@ -409,14 +416,14 @@ export class Race {
     }
   }
 
-  skipIntro() { if (this.state === 'intro') { this.state = 'countdown'; this.stateT = 0; } }
+  skipIntro() { if (this.state === 'intro') { this.state = 'countdown'; this.stateT = 0; for (const h of this.huds()) h.intro(false); } }
 
   update(dt) {
     dt = Math.min(dt, 1 / 20);
     this.stateT += dt;
     const t = (this.clock += dt);
 
-    if (this.state === 'intro' && this.stateT > 3.2) { this.state = 'countdown'; this.stateT = 0; }
+    if (this.state === 'intro' && this.stateT > 3.2) { this.state = 'countdown'; this.stateT = 0; for (const h of this.huds()) h.intro(false); }
     if (this.state === 'countdown') this.countdown();
     const running = ['race', 'finish', 'demo', 'free'].includes(this.state);
     if (running) this.time += dt;
@@ -471,7 +478,8 @@ export class Race {
     const phase = c < 0.6 ? -1 : c < 1.6 ? 3 : c < 2.6 ? 2 : c < 3.6 ? 1 : 0;
     if (phase !== this.cdPhase) {
       this.cdPhase = phase;
-      if (phase > 0) { for (const h of this.huds()) h.countdown(String(phase)); this.audio.beep(520, 0.2); }
+      if (phase > 0) { for (const h of this.huds()) h.countdown(String(phase), `n${phase}`); this.audio.beep(520, 0.2); }
+      for (const h of this.huds()) h.lights(phase, this.locals.length ? 'Turbostart: Gas genau bei „2“ drücken!' : '');
       if (this.trafficLight) this.trafficLight.state = phase === 3 || phase === 2 ? 'red' : phase === 1 ? 'yellow' : phase === 0 ? 'green' : 'off';
       if (phase === 0) {
         const huds = this.huds();
@@ -480,6 +488,7 @@ export class Race {
         this.state = 'race'; this.stateT = 0; this.time = 0;
         for (const r of this.racers) r.lapStart = 0;
         setTimeout(() => { for (const h of huds) h.countdown(''); }, 900);
+        setTimeout(() => { for (const h of huds) h.lights(null); }, 1300);
         // Startturbo: Gas genau beim „2“ gedrückt (nicht vorher)
         for (const r of this.racers) {
           const good = r.isPlayer ? r.startGas === 2 : r.ai && this.rnd() < r.ai.skill * 0.7;

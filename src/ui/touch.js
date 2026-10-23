@@ -37,6 +37,7 @@ export class TouchControls {
     const ev = (fn) => (e) => { if (e.cancelable) e.preventDefault(); fn(e); };
     root.addEventListener('touchstart', ev((e) => {
       touch.active = true;
+      let pad = false;
       for (const t of e.changedTouches) {
         if (t.clientX < window.innerWidth / 2) {
           this.steerId = t.identifier; this.x0 = t.clientX;
@@ -45,10 +46,12 @@ export class TouchControls {
           this.steerTo(t.clientX);
         } else {
           this.fingers.set(t.identifier, null);
+          pad = true;
         }
       }
       this.read(e);
-      this.onStartTap?.();
+      // Startturbo zählt nur ein Druck auf die Knöpfe (Gas/Drift), nicht das Lenkrad
+      if (pad) this.onStartTap?.();
     }), { passive: false });
     root.addEventListener('touchmove', ev((e) => this.read(e)), { passive: false });
     const end = ev((e) => {
