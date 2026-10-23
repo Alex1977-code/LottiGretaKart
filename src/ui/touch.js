@@ -13,7 +13,7 @@ import { touch } from './input.js';
 
 const PUMP_GAP = 0.36;   // s: so kurz loslassen und wieder drücken = Pumpen
 const PUMP_HOLD = 0.55;  // s: länger gedrückt halten beendet den Drift
-const STEER_MAX = 78;    // px Daumenweg für vollen Lenkausschlag
+const STEER_MAX = 92;    // px Daumenweg für vollen Lenkausschlag
 
 export class TouchControls {
   constructor(root) {
@@ -85,7 +85,7 @@ export class TouchControls {
     if (Math.abs(dx) > STEER_MAX) { this.x0 = x - Math.sign(dx) * STEER_MAX; dx = Math.sign(dx) * STEER_MAX; }
     // kleine Totzone und weiche Kurve: kleine Daumenbewegungen lenken fein, voller Ausschlag voll
     const n = Math.max(0, Math.abs(dx) / STEER_MAX - 0.06) / 0.94;
-    touch.steer = -Math.sign(dx) * Math.pow(n, 1.35);
+    touch.steer = -Math.sign(dx) * Math.pow(n, 1.6);
     this.wheel.style.left = `${this.x0}px`;
     this.wheel.firstElementChild.style.transform = `rotate(${dx * 1.3}deg)`;
   }

@@ -217,7 +217,11 @@ export class Racer {
     }
     const sf = clamp(Math.abs(this.speed) / 7, 0, 1) * (1 - 0.22 * clamp((Math.abs(this.speed) - 16) / 14, 0, 1));
     let yawRate;
-    if (d.on) yawRate = d.dir * P.turn * (0.62 + 0.48 * steerIn * d.dir) * clamp(Math.abs(this.speed) / 10, 0.5, 1);
+    if (d.on) {
+      // Drift-Bogen: ohne Lenken ein mittlerer Bogen, nach innen enger, nach außen fast geradeaus
+      const s = steerIn * d.dir;
+      yawRate = d.dir * P.turn * (s >= 0 ? 0.42 + 0.68 * s : 0.42 + 0.34 * s) * clamp(Math.abs(this.speed) / 10, 0.5, 1);
+    }
     else yawRate = this.steer * P.turn * sf * Math.sign(this.speed || 1);
     if (this.air && !d.hop) yawRate *= 0.35;
     if (this.giantT > 0) yawRate *= 0.9;
@@ -227,7 +231,7 @@ export class Racer {
     const fx = Math.cos(this.yaw), fz = -Math.sin(this.yaw);
     const rx = -fz, rz = fx; // rechts
     // Drift: Kart rutscht leicht nach außen
-    const slide = d.on ? -d.dir * Math.abs(this.speed) * 0.12 : 0;
+    const slide = d.on ? -d.dir * Math.abs(this.speed) * 0.08 : 0;
     this.vlat = damp(this.vlat, slide, d.on ? 3 : P.grip, dt);
     if (!this.grind) {
       this.pos.x += (fx * this.speed + rx * this.vlat) * dt;
@@ -242,6 +246,8 @@ export class Racer {
       const into = -(fx * nx + fz * nz) * Math.sign(this.speed || 1); // > 0: fährt auf die Wand zu
       if (into > 0.05) {
         this.speed *= 1 - 0.55 * into;
+        // gegen die Bande gedriftet: Drift ist vorbei (kein Turbo), sonst dreht das Kart weiter in die Wand
+        if (d.on && into > 0.25) this.cancelDrift();
         this.vlat = Math.min(5, 2 + Math.abs(this.speed) * into * 0.3) * (nx * rx + nz * rz);
         // an der Wand ausrichten (die näher liegende der beiden Wandrichtungen)
         const tYaw = Math.atan2(-nx, -nz), back = Math.abs(wrapA(this.yaw - tYaw)) > Math.PI / 2;
