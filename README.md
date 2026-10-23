@@ -101,7 +101,7 @@ Wer vorn liegt, bekommt eher Verteidigung, wer hinten liegt, eher starke Gegenst
 | Lenken | ← → / A D | linker Stick | Daumen links nach links/rechts ziehen |
 | Gas | ↑ / W | A oder RT | Knopf **GAS** halten (Automatik in den Einstellungen) |
 | Bremse / rückwärts | ↓ / S | B | Knopf **BREMSE/ZURÜCK** halten |
-| Hüpfer & Driften | Leertaste / Shift (geradeaus halten = Aufladesprung) | R | **GAS** kurz loslassen und sofort wieder drücken, solange halten (Automatik-Gas: Knopf **DRIFT**) |
+| Hüpfer & Driften | Leertaste / Shift (geradeaus halten = Aufladesprung) | R | **GAS pumpen** (Gas – los – Gas – los …), aufhören = Mini-Turbo (Automatik-Gas: Knopf **DRIFT**) |
 | Gegenstand | X / E / Strg | L / LT | Knopf **★** |
 | Pause | Esc / P | Start | – (pausiert automatisch, wenn die App in den Hintergrund geht) |
 | Ton | M | | Knopf im Menü |

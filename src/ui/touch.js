@@ -1,12 +1,19 @@
-// Touch-Steuerung (Querformat): linke Bildschirmhälfte = Lenkrad, rechte Hälfte = Knöpfe.
+// Touch-Steuerung (Querformat): linke Bildschirmhälfte = Lenkrad, rechte Hälfte = Knöpfe – mit mehreren Fingern
+// gleichzeitig (links lenken, rechts Gas/Gegenstand/Bremse).
 //   GAS (groß, unten rechts) · ★ Gegenstand · BREMSE/ZURÜCK (halten = bremsen, dann rückwärts)
-//   Driften mit dem Gas-Knopf: kurz loslassen und sofort wieder drücken = Hüpfer und Drift, solange Gas gehalten
-//   wird; Loslassen beendet den Drift (Mini-Turbo), das Kart rollt dabei kurz weiter.
+//   Driften durch „Pumpen“: Gas – loslassen – Gas – loslassen … in schneller Folge. Der zweite schnelle Druck lässt
+//   das Kart hüpfen und driften; der Drift hält, solange weiter gepumpt wird (das Gas bleibt dabei an). Aufhören –
+//   Gas länger halten oder länger loslassen – beendet den Drift mit Mini-Turbo.
 //   Mit Automatik-Gas gibt es stattdessen einen DRIFT-Knopf.
-// Der rechte Daumen darf zwischen den Knöpfen gleiten – es zählt der Knopf unter dem Finger.
+// Ein Finger gehört der Hälfte, in der er aufgesetzt wurde. Alle Finger werden bei jedem Touch-Ereignis aus
+// e.touches neu gelesen – so bremst kein Finger den anderen aus und kein Finger bleibt „hängen“.
 // Schreibt in das gemeinsame `touch`-Objekt aus input.js.
 
 import { touch } from './input.js';
+
+const PUMP_GAP = 0.36;   // s: so kurz loslassen und wieder drücken = Pumpen
+const PUMP_HOLD = 0.55;  // s: länger gedrückt halten beendet den Drift
+const STEER_MAX = 78;    // px Daumenweg für vollen Lenkausschlag
 
 export class TouchControls {
   constructor(root) {
@@ -14,104 +21,135 @@ export class TouchControls {
     root.innerHTML = `
       <div class="t-steer"><div class="t-wheel"><div class="t-wheel-in"></div></div></div>
       <div class="t-pad">
-        <button class="t-btn t-gas" data-k="gas"><span>GAS<small>2× = Drift</small></span></button>
+        <button class="t-btn t-gas" data-k="gas"><span>GAS<small>pumpen = Drift</small></span></button>
         <button class="t-btn t-drift" data-k="drift"><span>DRIFT</span></button>
         <button class="t-btn t-item" data-k="item"><span>★</span></button>
         <button class="t-btn t-brake" data-k="brake"><span>BREMSE<br/>ZURÜCK</span></button>
       </div>`;
-    this.zone = root.querySelector('.t-steer');
     this.wheel = root.querySelector('.t-wheel');
-    this.steerId = null; this.x0 = 0;
-    this.onStartTap = null;
-    const zone = this.zone;
-    zone.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      touch.active = true;
-      const t = e.changedTouches[0];
-      this.steerId = t.identifier; this.x0 = t.clientX;
-      this.wheel.style.left = `${t.clientX}px`; this.wheel.style.top = `${t.clientY}px`;
-      this.wheel.classList.add('on');
-      this.onStartTap?.();
-    }, { passive: false });
-    zone.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      for (const t of e.changedTouches) {
-        if (t.identifier !== this.steerId) continue;
-        let dx = t.clientX - this.x0;
-        const max = 78;
-        if (Math.abs(dx) > max) { this.x0 = t.clientX - Math.sign(dx) * max; dx = Math.sign(dx) * max; }
-        // kleine Totzone und weiche Kurve: kleine Daumenbewegungen lenken fein, voller Ausschlag voll
-        const n = Math.max(0, Math.abs(dx) / max - 0.06) / 0.94;
-        touch.steer = -Math.sign(dx) * Math.pow(n, 1.35);
-        this.wheel.style.left = `${this.x0}px`;
-        this.wheel.firstElementChild.style.transform = `rotate(${dx * 1.3}deg)`;
-      }
-    }, { passive: false });
-    const endSteer = (e) => {
-      for (const t of e.changedTouches) {
-        if (t.identifier !== this.steerId) continue;
-        this.steerId = null; touch.steer = 0;
-        this.wheel.classList.remove('on');
-        this.wheel.firstElementChild.style.transform = '';
-      }
-    };
-    zone.addEventListener('touchend', endSteer);
-    zone.addEventListener('touchcancel', endSteer);
-    // Rechte Hälfte: jeder Finger drückt den Knopf, über dem er gerade ist (mit etwas Spielraum)
-    this.pad = root.querySelector('.t-pad');
     this.btns = [...root.querySelectorAll('.t-btn')];
-    this.fingers = new Map();   // touch-id → Knopf-Schlüssel
-    const hit = (x, y) => {
-      let best = null, bd = Infinity;
-      for (const b of this.btns) {
-        if (b.offsetParent === null) continue;   // ausgeblendet (z. B. GAS bei Automatik)
-        const r = b.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-        const d = Math.hypot(x - cx, y - cy) - r.width / 2;
-        if (d < 26 && d < bd) { bd = d; best = b.dataset.k; }
-      }
-      return best;
-    };
-    const REPRESS = 0.32;   // s: so schnell wieder drücken = Drift
-    const sync = () => {
-      const held = new Set(this.fingers.values());
-      const now = performance.now() / 1000;
-      for (const b of this.btns) {
-        const k = b.dataset.k, on = held.has(k);
-        if (on && !touch[k]) {
-          if (k === 'item') touch.itemTap = true;
-          if (k === 'drift') touch.driftTap = true;
-          // Gas wieder gedrückt: kurz nach dem Loslassen → Drift (Hüpfer), solange gehalten
-          if (k === 'gas' && now - this.gasUp < REPRESS && this.gasHeldFor > 0.12) { touch.driftHold = true; touch.driftTap = true; b.classList.add('drifting'); }
-          if (k === 'gas') this.gasDownAt = now;
+    this.gasBtn = root.querySelector('.t-gas');
+    this.onStartTap = null;
+    this.steerId = null; this.x0 = 0;
+    this.fingers = new Map();   // touch-id → Knopf-Schlüssel (rechte Hälfte)
+    this.gasUp = -1;
+
+    const ev = (fn) => (e) => { if (e.cancelable) e.preventDefault(); fn(e); };
+    root.addEventListener('touchstart', ev((e) => {
+      touch.active = true;
+      for (const t of e.changedTouches) {
+        if (t.clientX < window.innerWidth / 2) {
+          this.steerId = t.identifier; this.x0 = t.clientX;
+          this.wheel.style.left = `${t.clientX}px`; this.wheel.style.top = `${t.clientY}px`;
+          this.wheel.classList.add('on');
+          this.steerTo(t.clientX);
+        } else {
+          this.fingers.set(t.identifier, null);
         }
-        if (!on && touch[k] && k === 'gas') {
-          this.gasUp = now;
-          this.gasHeldFor = now - (this.gasDownAt ?? now);
-          // beim Loslassen kurz weiterrollen (sonst bremst das Kart zwischen Loslassen und Wiederdrücken)
-          touch.coastUntil = now + (touch.driftHold ? 0.45 : REPRESS);
-          if (touch.driftHold) { touch.driftHold = false; this.gasHeldFor = 0; b.classList.remove('drifting'); }
-        }
-        touch[k] = on;
-        b.classList.toggle('down', on);
       }
-    };
-    this.gasUp = -1; this.gasHeldFor = 0;
-    const down = (e) => {
-      e.preventDefault(); touch.active = true;
-      for (const t of e.changedTouches) this.fingers.set(t.identifier, hit(t.clientX, t.clientY));
-      sync(); this.onStartTap?.();
-    };
-    const move = (e) => {
-      e.preventDefault();
-      for (const t of e.changedTouches) if (this.fingers.has(t.identifier)) this.fingers.set(t.identifier, hit(t.clientX, t.clientY));
-      sync();
-    };
-    const up = (e) => { e.preventDefault(); for (const t of e.changedTouches) this.fingers.delete(t.identifier); sync(); };
-    this.pad.addEventListener('touchstart', down, { passive: false });
-    this.pad.addEventListener('touchmove', move, { passive: false });
-    this.pad.addEventListener('touchend', up, { passive: false });
-    this.pad.addEventListener('touchcancel', up, { passive: false });
+      this.read(e);
+      this.onStartTap?.();
+    }), { passive: false });
+    root.addEventListener('touchmove', ev((e) => this.read(e)), { passive: false });
+    const end = ev((e) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier === this.steerId) this.releaseSteer();
+        this.fingers.delete(t.identifier);
+      }
+      this.read(e);
+    });
+    root.addEventListener('touchend', end, { passive: false });
+    root.addEventListener('touchcancel', end, { passive: false });
+    // iOS: keine Zoom-Geste, wenn zwei Daumen gleichzeitig drücken
+    for (const g of ['gesturestart', 'gesturechange']) root.addEventListener(g, (e) => e.preventDefault(), { passive: false });
     this.setAutoGas(touch.autoGas);
+  }
+
+  /** Alle Finger aus e.touches übernehmen (auch die, die sich in diesem Ereignis nicht bewegt haben). */
+  read(e) {
+    const live = new Map();
+    for (const t of e.touches) live.set(t.identifier, t);
+    if (this.steerId !== null) {
+      const t = live.get(this.steerId);
+      if (t) this.steerTo(t.clientX); else this.releaseSteer();
+    }
+    for (const id of [...this.fingers.keys()]) {
+      const t = live.get(id);
+      if (t) this.fingers.set(id, this.hit(t.clientX, t.clientY)); else this.fingers.delete(id);
+    }
+    this.sync();
+  }
+
+  steerTo(x) {
+    let dx = x - this.x0;
+    if (Math.abs(dx) > STEER_MAX) { this.x0 = x - Math.sign(dx) * STEER_MAX; dx = Math.sign(dx) * STEER_MAX; }
+    // kleine Totzone und weiche Kurve: kleine Daumenbewegungen lenken fein, voller Ausschlag voll
+    const n = Math.max(0, Math.abs(dx) / STEER_MAX - 0.06) / 0.94;
+    touch.steer = -Math.sign(dx) * Math.pow(n, 1.35);
+    this.wheel.style.left = `${this.x0}px`;
+    this.wheel.firstElementChild.style.transform = `rotate(${dx * 1.3}deg)`;
+  }
+
+  releaseSteer() {
+    this.steerId = null; touch.steer = 0;
+    this.wheel.classList.remove('on');
+    this.wheel.firstElementChild.style.transform = '';
+  }
+
+  /** Knopf unter dem Finger (mit etwas Spielraum) – der Daumen darf zwischen den Knöpfen gleiten. */
+  hit(x, y) {
+    let best = null, bd = Infinity;
+    for (const b of this.btns) {
+      if (b.offsetParent === null) continue;   // ausgeblendet (z. B. GAS bei Automatik)
+      const r = b.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const d = Math.hypot(x - cx, y - cy) - r.width / 2;
+      if (d < 26 && d < bd) { bd = d; best = b.dataset.k; }
+    }
+    return best;
+  }
+
+  sync() {
+    const held = new Set(this.fingers.values());
+    const now = performance.now() / 1000;
+    for (const b of this.btns) {
+      const k = b.dataset.k, on = held.has(k);
+      if (on && !touch[k]) {
+        if (k === 'item') touch.itemTap = true;
+        if (k === 'drift') touch.driftTap = true;
+        if (k === 'gas') this.gasDown(now);
+      }
+      if (!on && touch[k] && k === 'gas') this.gasRelease(now);
+      touch[k] = on;
+      b.classList.toggle('down', on);
+    }
+  }
+
+  gasDown(now) {
+    const pumped = now - this.gasUp < PUMP_GAP;
+    if (touch.driftUntil > now || pumped) {
+      // schnell wieder gedrückt: Drift beginnt (Hüpfer) bzw. geht weiter
+      if (!(touch.driftUntil > now)) touch.driftTap = true;
+      touch.driftUntil = now + PUMP_HOLD;
+      this.watchDrift();
+    }
+  }
+
+  gasRelease(now) {
+    this.gasUp = now;
+    // beim Loslassen kurz weiterrollen (sonst bremst das Kart zwischen zwei Gas-Stößen)
+    touch.coastUntil = now + PUMP_GAP;
+    if (touch.driftUntil > now) touch.driftUntil = now + PUMP_GAP;
+  }
+
+  /** Gas-Knopf blau, solange gedriftet wird. */
+  watchDrift() {
+    this.gasBtn.classList.add('drifting');
+    if (this.driftRaf) return;
+    const tick = () => {
+      if (touch.driftUntil > performance.now() / 1000) { this.driftRaf = requestAnimationFrame(tick); return; }
+      this.driftRaf = 0; this.gasBtn.classList.remove('drifting');
+    };
+    this.driftRaf = requestAnimationFrame(tick);
   }
 
   setAutoGas(on) {
@@ -121,6 +159,12 @@ export class TouchControls {
 
   show(on) {
     this.root.classList.toggle('visible', on);
-    if (!on) { touch.steer = 0; touch.drift = touch.item = touch.brake = touch.gas = touch.driftHold = false; touch.coastUntil = 0; this.fingers?.clear(); for (const b of this.btns ?? []) b.classList.remove('down'); }
+    if (!on) {
+      this.releaseSteer();
+      touch.drift = touch.item = touch.brake = touch.gas = false;
+      touch.coastUntil = touch.driftUntil = 0;
+      this.fingers.clear();
+      for (const b of this.btns) b.classList.remove('down', 'drifting');
+    }
   }
 }
