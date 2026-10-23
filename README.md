@@ -68,6 +68,11 @@ dunkle Höhle, Zirkus-Scheinwerfer, Abendrot über der Stadt, Strand, Schnee, Bu
 
 Klassen: Gemütlich (50 ccm), Flott (100 ccm), Rasant (150 ccm).
 
+**Karte**: Die Nahkarte dreht mit (vorn ist oben), der Weg voraus ist gelb mit Pfeilen; Antippen/Klicken wechselt
+zur ganzen Insel. Kommt eine Kurve oder ist man abseits, zeigt ein gelber Pfeil „Hier entlang“.
+
+**Ton am iPhone**: standardmäßig auch bei Stummschalter (Einstellung „Stummschalter beachten“ möglich).
+
 **Offline / Flugzeug**: Beim ersten Besuch speichert der Service Worker das ganze Spiel (inklusive Schriften); danach
 läuft es ohne Netz. Auf dem Handy am besten „Zum Home-Bildschirm“ hinzufügen.
 
@@ -94,9 +99,9 @@ Wer vorn liegt, bekommt eher Verteidigung, wer hinten liegt, eher starke Gegenst
 | | Tastatur | Controller (Xbox, PlayStation, Switch) | Handy (quer) |
 | --- | --- | --- | --- |
 | Lenken | ← → / A D | linker Stick | Daumen links nach links/rechts ziehen |
-| Gas | ↑ / W | A oder RT | automatisch (in den Einstellungen abschaltbar) |
-| Bremse / rückwärts | ↓ / S | B | Knopf **BREMSE** |
-| Hüpfer & Driften | Leertaste / Shift (geradeaus halten = Aufladesprung) | R | Knopf **DRIFT** halten |
+| Gas | ↑ / W | A oder RT | Knopf **GAS** halten (Automatik in den Einstellungen) |
+| Bremse / rückwärts | ↓ / S | B | Knopf **BREMSE/ZURÜCK** halten |
+| Hüpfer & Driften | Leertaste / Shift (geradeaus halten = Aufladesprung) | R | Daumen von **GAS** auf **DRIFT** gleiten lassen (gibt weiter Gas) |
 | Gegenstand | X / E / Strg | L / LT | Knopf **★** |
 | Pause | Esc / P | Start | – (pausiert automatisch, wenn die App in den Hintergrund geht) |
 | Ton | M | | Knopf im Menü |

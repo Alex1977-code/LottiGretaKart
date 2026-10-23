@@ -385,7 +385,7 @@ export class Racer {
     const pitch = Math.atan2(h1 - h0, 1.6), roll = Math.atan2(r0 - r1, 1.2);
     this.root.position.copy(this.pos);
     // Fahrbahn und Curbs liegen ein paar Zentimeter über dem Gelände: Räder darauf stellen statt hinein
-    this.visLift = damp(this.visLift ?? 0.07, this.surface === 'road' ? 0.075 : 0.02, 14, dt || 1);
+    this.visLift = damp(this.visLift ?? 0.04, this.surface === 'road' ? 0.045 : this.surface === 'off' ? -0.035 : 0, 14, dt || 1);
     this.root.position.y += this.visLift;
     if (this.onWater && !this.air) this.root.position.y += 0.06 * Math.sin(t * 5 + this.slot);
     // Drehungen: Drift (Kart zeigt nach innen), Schleudern, Überschlag, Trick

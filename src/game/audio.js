@@ -1,7 +1,9 @@
 // Ton: Effekte und Eurodance-Musik aus der Lotti-&-Greta-Welt (Web-Audio-Synth, src/lgw/audio), dazu ein
 // synthetischer Kart-Motor (zwei Oszillatoren, Tiefpass) für die Spielerin und die Start-Ampel-Töne.
 
-import { engine, sfx as playSfx, music, installAudioUnlock } from '../lgw/audio/index.js';
+import { engine, sfx as playSfx, music, installAudioUnlock, getIosSound, setIosSound } from '../lgw/audio/index.js';
+
+export { getIosSound, setIosSound };
 
 class GameAudio {
   constructor() {

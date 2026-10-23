@@ -11,6 +11,7 @@ import { getTheme } from '../world/themes.js';
 import { racerIcon, preloadIcons } from './icons.js';
 import { logoHTML } from './logo.js';
 import { NetSession } from '../net/session.js';
+import { getIosSound, setIosSound } from '../game/audio.js';
 import { qrSVG, scanQR } from '../net/qr.js';
 import { fmtTime } from './hud.js';
 import { touch, isTouch, readJoin, deviceLabel, rumble } from './input.js';
@@ -34,7 +35,9 @@ export class Menus {
     this.el = document.createElement('div');
     this.el.className = 'menus';
     this.root.appendChild(this.el);
-    this.settings = load(SAVE_KEY, { cc: 100, laps: 3, autoGas: true, assist: true, racer: 'lotti' });
+    this.settings = load(SAVE_KEY, { cc: 100, laps: 3, autoGas: false, assist: false, racer: 'lotti' });
+    // Version 2: Gas am Handy jetzt standardmäßig per Knopf (flexibler, mit Rückwärtsgang)
+    if ((this.settings.v ?? 1) < 2) { this.settings.autoGas = false; this.settings.assist = false; this.settings.v = 2; save(SAVE_KEY, this.settings); }
     this.best = load(BEST_KEY, {});
     this.cups = load(CUP_KEY, {});
     ctx.touch.setAutoGas(this.settings.autoGas);
@@ -163,8 +166,8 @@ export class Menus {
             </div>
             <div>
               <h3>Handy (quer)</h3>
-              <p>Linke Hälfte: Daumen nach links/rechts ziehen = lenken (wenig ziehen = fein lenken). Gas gibt das Kart von selbst.</p>
-              <p>Rechts: <b>DRIFT</b> halten, <b>★</b> Gegenstand, <b>BREMSE</b>.</p>
+              <p>Linke Hälfte: Daumen nach links/rechts ziehen = lenken (wenig ziehen = fein lenken).</p>
+              <p>Rechts: <b>GAS</b> halten, zum Driften den Daumen auf <b>DRIFT</b> gleiten lassen (gibt weiter Gas), <b>★</b> Gegenstand, <b>BREMSE/ZURÜCK</b> halten = bremsen und rückwärts fahren. Automatik-Gas in den Einstellungen.</p>
               <h3>Controller (Xbox, PlayStation, Switch)</h3>
               <p>Stick/Steuerkreuz lenken, A oder RT Gas, B Bremse, R Driften, L/LT Gegenstand, Start Pause. Menüs gehen auch mit dem Controller. Bei Treffern vibriert er.</p>
               <h3>Mehrspieler (2–4)</h3>
@@ -202,14 +205,19 @@ export class Menus {
               <button class="opt ${!s.assist ? 'on' : ''}" data-assist="0">aus</button>
             </div>
             <h3>Handy: Gas</h3><div class="row">
+              <button class="opt ${!s.autoGas ? 'on' : ''}" data-gas="0">Knopf<small>Gas halten, Bremse = zurück</small></button>
               <button class="opt ${s.autoGas ? 'on' : ''}" data-gas="1">automatisch</button>
-              <button class="opt ${!s.autoGas ? 'on' : ''}" data-gas="0">Knopf</button>
             </div>
             <h3>Grafik</h3><div class="row">${qBtns}</div>
+            <h3>Ton (iPhone)</h3><div class="row">
+              <button class="opt ${getIosSound() === 'always' ? 'on' : ''}" data-ios="always">immer an<small>auch bei Stummschalter</small></button>
+              <button class="opt ${getIosSound() === 'switch' ? 'on' : ''}" data-ios="switch">Stummschalter beachten</button>
+            </div>
           </div>
           <div class="row"><button class="small" data-act="reset">Bestzeiten löschen</button><button class="go" data-back data-focus>Fertig</button></div>
         </div></div>
       </div>${this.hints()}`, 'full');
+    this.on('[data-ios]', (b) => { setIosSound(b.dataset.ios); location.reload(); });
     this.on('[data-q]', (b) => {
       const v = Number(b.dataset.q);
       if (v === q) return;

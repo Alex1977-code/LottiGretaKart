@@ -26,7 +26,8 @@ export class Hud {
       </div>
       <div class="hud-item"><div class="slot"><img alt="" /><span class="badge"></span></div></div>
       <div class="hud-bl"><div class="hud-coins"><span class="coin-ic">₿</span> <b class="coins">0</b></div></div>
-      <div class="hud-br"><canvas class="minimap" width="240" height="185"></canvas><div class="hud-place"><b>8</b><small>.</small></div></div>
+      <div class="hud-br"><canvas class="minimap" width="300" height="300"></canvas><div class="hud-place"><b>8</b><small>.</small></div></div>
+      <div class="hud-dir"><i></i><span>Hier entlang</span></div>
       <div class="hud-center"><div class="countdown"></div><div class="message"></div></div>
       <div class="hud-wrong">FALSCHE RICHTUNG!</div>`;
     root.appendChild(this.el);
@@ -36,6 +37,11 @@ export class Hud {
     this.coinsEl = this.q('.coins'); this.placeEl = this.q('.hud-place');
     this.countEl = this.q('.countdown'); this.msgEl = this.q('.message'); this.wrongEl = this.q('.hud-wrong');
     this.map = this.q('.minimap'); this.mctx = this.map.getContext('2d');
+    this.dirEl = this.q('.hud-dir'); this.dirArrow = this.q('.hud-dir i');
+    // Antippen/Klicken der Karte: zwischen Nahkarte (dreht mit) und ganzer Insel wechseln
+    this.mapMode = 'near';
+    const toggle = (e) => { e.preventDefault(); e.stopPropagation(); this.mapMode = this.mapMode === 'near' ? 'island' : 'near'; this.el.classList.toggle('map-island', this.mapMode === 'island'); };
+    this.map.addEventListener('pointerdown', toggle);
     this.msgT = 0;
     this.rollT = 0; this.rollIdx = 0;
     this.lastItem = null;
@@ -171,10 +177,28 @@ export class Hud {
     // Einblendungen
     if (this.msgT > 0) { this.msgT -= dt; if (this.msgT <= 0) this.msgEl.className = 'message'; }
     this.wrongEl.classList.toggle('show', p.wrongWayT > 1.2 && race.state === 'race' && !p.finished);
+    this.updateDir(race, p);
     this.drawMap(race);
   }
 
+  /** Richtungspfeil: zeigt zum Rennpfad ein Stück voraus, wenn eine Kurve kommt oder das Kart abseits steht. */
+  updateDir(race, p) {
+    const tr = p.path;
+    let show = false, ang = 0;
+    if (tr && !p.finished && (race.state === 'race' || race.state === 'countdown')) {
+      const i = p.loc.i, off = Math.abs(p.loc.lat) > tr.hw[i] + 2;
+      const a = tr.pointAtS(Math.min(tr.finishS ?? Infinity, p.progress + (off ? 18 : 40)), 0);
+      const want = Math.atan2(-(a.z - p.pos.z), a.x - p.pos.x);
+      let d = want - p.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
+      ang = d;
+      show = off || Math.abs(d) > 0.6;
+    }
+    this.dirEl.classList.toggle('show', show && p.wrongWayT <= 1.2);
+    if (show) this.dirArrow.style.transform = `rotate(${(-ang * 180) / Math.PI}deg)`;
+  }
+
   drawMap(race) {
+    if (this.mapMode === 'near') { this.drawNearMap(race); return; }
     if (!this.mapBg) return;
     const c = this.mctx, W = this.map.width, H = this.map.height;
     c.clearRect(0, 0, W, H);
@@ -201,6 +225,91 @@ export class Hud {
       c.beginPath(); c.arc(x, y, rad + 2, 0, Math.PI * 2); c.fillStyle = r === me ? '#fff' : r.isPlayer ? '#ffd400' : 'rgba(20,16,40,0.8)'; c.fill();
       c.beginPath(); c.arc(x, y, rad, 0, Math.PI * 2); c.fillStyle = this.colors[r.id] ?? '#fff'; c.fill();
     }
+  }
+
+  /**
+   * Nahkarte: Ausschnitt um den eigenen Fahrer (≈ 320 m), Fahrtrichtung zeigt nach oben. Alle Straßen grau,
+   * der Rennpfad gelb mit Pfeilen nach vorn, Ziel und Checkpoints, Wasser und Lava, Gegner als Punkte.
+   */
+  drawNearMap(race) {
+    const c = this.mctx, W = this.map.width, H = this.map.height, me = this.me ?? race.player;
+    if (!me) return;
+    const R = 160, s = (W / 2) / R;   // Meter im Radius
+    c.clearRect(0, 0, W, H);
+    c.save();
+    c.beginPath(); c.arc(W / 2, H / 2, W / 2 - 3, 0, Math.PI * 2); c.closePath();
+    c.fillStyle = 'rgba(70, 150, 70, 0.78)'; c.fill();
+    c.clip();
+    // Welt → Karte: verschieben, drehen (Fahrtrichtung oben), skalieren
+    c.translate(W / 2, H / 2);
+    c.rotate(-Math.PI / 2 + me.yaw);   // Blickrichtung (cos yaw, −sin yaw) zeigt nach oben
+    c.scale(s, s);
+    c.translate(-me.pos.x, -me.pos.z);
+    const P = (x, z) => [x, z];        // Draufsicht: x nach rechts (Osten), z nach unten (Süden)
+    const world = race.world, near = (x, z) => (x - me.pos.x) ** 2 + (z - me.pos.z) ** 2 < (R * 1.5) ** 2;
+    // Wasser und Lava
+    for (const l of world.def.lakes) { if (!near(l.x, l.z) && Math.hypot(l.x - me.pos.x, l.z - me.pos.z) > R + l.r) continue; c.fillStyle = 'rgba(80,160,240,0.9)'; c.beginPath(); c.arc(...P(l.x, l.z), l.r, 0, Math.PI * 2); c.fill(); }
+    for (const l of world.lava ?? []) { if (!near(l.x, l.z)) continue; c.fillStyle = '#ff6a1a'; c.beginPath(); c.arc(...P(l.x, l.z), l.r, 0, Math.PI * 2); c.fill(); }
+    // alle Straßen
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    for (const tr of world.roads) {
+      c.beginPath();
+      let pen = false;
+      for (let i = 0; i < tr.N; i += 3) {
+        if (!near(tr.px[i], tr.pz[i])) { pen = false; continue; }
+        const [x, y] = P(tr.px[i], tr.pz[i]);
+        if (pen) c.lineTo(x, y); else c.moveTo(x, y);
+        pen = true;
+      }
+      c.strokeStyle = 'rgba(250,246,238,0.95)'; c.lineWidth = Math.max(5, tr.hw[0] * 2); c.stroke();
+    }
+    // Rennpfad: hinter dem Fahrer blass, voraus gelb mit Pfeilen
+    const tr = me.path;
+    if (tr) {
+      const i0 = me.loc.i ?? 0;
+      const seg = (a, b, col, w) => {
+        c.beginPath();
+        for (let i = a; i <= b; i += 2) { const k = Math.max(0, Math.min(tr.N - 1, i)); const [x, y] = P(tr.px[k], tr.pz[k]); if (i === a) c.moveTo(x, y); else c.lineTo(x, y); }
+        c.strokeStyle = col; c.lineWidth = w; c.stroke();
+      };
+      const ahead = Math.round(R * 1.4 / tr.ds);
+      seg(Math.max(0, i0 - Math.round(60 / tr.ds)), i0, 'rgba(255,212,0,0.45)', 5);
+      seg(i0, Math.min(tr.N - 1, i0 + ahead), '#ffd400', 6);
+      // Pfeile alle 40 m
+      c.fillStyle = '#e60012';
+      for (let d = 25; d < R * 1.4; d += 40) {
+        const k = Math.min(tr.N - 2, i0 + Math.round(d / tr.ds));
+        const [x, y] = P(tr.px[k], tr.pz[k]);
+        const ang = Math.atan2(tr.tz[k], tr.tx[k]);
+        c.save(); c.translate(x, y); c.rotate(ang);
+        c.beginPath(); c.moveTo(6, 0); c.lineTo(-4, -5); c.lineTo(-2, 0); c.lineTo(-4, 5); c.closePath(); c.fill();
+        c.restore();
+      }
+      // Ziel und Checkpoints
+      const mark = (S, col) => { const q = tr.pointAtS(S, 0); if (!near(q.x, q.z)) return; const [x, y] = P(q.x, q.z); c.fillStyle = '#fff'; c.fillRect(x - 6, y - 6, 12, 12); c.fillStyle = col; c.fillRect(x - 6, y - 6, 6, 6); c.fillRect(x, y, 6, 6); };
+      mark(tr.finishS, '#222');
+      for (const cp of tr.checkpoints ?? []) mark(cp.s, '#e8392d');
+    }
+    // Sternmünzen (Freie Fahrt)
+    if (race.free) for (const sc of race.starCoins) { if (sc.got || !near(sc.x, sc.z)) continue; c.fillStyle = '#8fe060'; c.beginPath(); c.arc(...P(sc.x, sc.z), 4, 0, Math.PI * 2); c.fill(); }
+    // andere Fahrer
+    for (const r of race.racers) {
+      if (r.out || r === me || !near(r.pos.x, r.pos.z)) continue;
+      const [x, y] = P(r.pos.x, r.pos.z);
+      c.beginPath(); c.arc(x, y, 6, 0, Math.PI * 2); c.fillStyle = r.isPlayer ? '#ffd400' : 'rgba(20,16,40,0.85)'; c.fill();
+      c.beginPath(); c.arc(x, y, 4.2, 0, Math.PI * 2); c.fillStyle = this.colors[r.id] ?? '#fff'; c.fill();
+    }
+    c.restore();
+    // eigenes Kart: Pfeil in der Mitte, nach oben
+    c.save(); c.translate(W / 2, H / 2);
+    c.beginPath(); c.moveTo(0, -16); c.lineTo(11, 12); c.lineTo(0, 6); c.lineTo(-11, 12); c.closePath();
+    c.fillStyle = this.colors[me.id] ?? '#fff'; c.strokeStyle = '#fff'; c.lineWidth = 4; c.stroke(); c.fill();
+    c.restore();
+    // Rand und Norden-Hinweis
+    c.beginPath(); c.arc(W / 2, H / 2, W / 2 - 3, 0, Math.PI * 2); c.strokeStyle = 'rgba(255,255,255,0.95)'; c.lineWidth = 5; c.stroke();
+    c.font = 'bold 22px sans-serif'; c.fillStyle = '#fff'; c.textAlign = 'center';
+    const na = -Math.PI + me.yaw;   // Norden (−z) auf der gedrehten Karte
+    c.fillText('N', W / 2 + Math.cos(na) * (W / 2 - 22), H / 2 + Math.sin(na) * (W / 2 - 22) + 8);
   }
 
   dispose() { this.el.remove(); }

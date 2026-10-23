@@ -391,11 +391,12 @@ export class Race {
     const want = Math.atan2(-(ahead.z - r.pos.z), ahead.x - r.pos.x);
     const diff = wrapA(want - r.yaw);
     const auto = clamp(diff * 2.2, -1, 1);
-    if (k > 0.7) {
-      const w = clamp((k - 0.7) / 0.5, 0, 1) * 0.7;
+    // nur sanft am Rand und nur bei Fahrt vorwärts – Bremsen, Rückwärts und Wenden bleiben frei
+    if (inp.brake > 0 || r.speed < 5) return inp;
+    if (k > 0.8) {
+      const w = clamp((k - 0.8) / 0.5, 0, 1) * 0.45;
       inp.steer = clamp(inp.steer * (1 - w) + auto * w, -1, 1);
     }
-    if (Math.abs(diff) > 2.2 && !r.drift.on) inp.steer = auto;
     return inp;
   }
 
