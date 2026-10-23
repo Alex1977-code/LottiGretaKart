@@ -53,6 +53,11 @@ jobs:
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build/sim CODE_SIGNING_ALLOWED=NO build | tail -n 40
           test "${PIPESTATUS[0]}" -eq 0
+      - name: Nahbereichs-Plugin in der App?
+        run: |
+          APP=build/sim/Build/Products/Debug-iphonesimulator/App.app
+          grep -q LGKNearbyPlugin "$APP/public/capacitor.config.json" 2>/dev/null || grep -q LGKNearbyPlugin "$APP/capacitor.config.json"
+          grep -rlaq LGKNearbyPlugin "$APP" --include='App*' && echo "LGKNearbyPlugin ist eingebaut"
       - name: Signieren und zu TestFlight hochladen
         if: env.HAS_SIGNING == 'true'
         env:
