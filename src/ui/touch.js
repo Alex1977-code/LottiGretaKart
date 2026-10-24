@@ -89,12 +89,14 @@ export class TouchControls {
     // kleine Totzone und weiche Kurve: kleine Daumenbewegungen lenken fein, voller Ausschlag voll
     const n = Math.max(0, Math.abs(dx) / STEER_MAX - 0.06) / 0.94;
     touch.steer = -Math.sign(dx) * Math.pow(n, 1.6);
+    touch.steerLin = -Math.sign(dx) * n;   // linear: Drift-Richtung und Drift-Bogen
+    touch.steerId = this.steerId;
     this.wheel.style.left = `${this.x0}px`;
     this.wheel.firstElementChild.style.transform = `rotate(${dx * 1.3}deg)`;
   }
 
   releaseSteer() {
-    this.steerId = null; touch.steer = 0;
+    this.steerId = null; touch.steer = 0; touch.steerLin = 0; touch.steerId = null;
     this.wheel.classList.remove('on');
     this.wheel.firstElementChild.style.transform = '';
   }

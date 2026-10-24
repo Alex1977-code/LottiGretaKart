@@ -169,7 +169,7 @@ export class Menus {
             <div>
               <h3>Handy (quer)</h3>
               <p>Linke Hälfte: Daumen nach links/rechts ziehen = lenken (wenig ziehen = fein lenken).</p>
-              <p>Rechts: <b>GAS</b> halten. Links lenken und rechts Gas geben geht gleichzeitig. <b>Driften:</b> in der Kurve Gas „pumpen“ (Gas – loslassen – Gas – loslassen …) – das Kart hüpft und driftet, solange du pumpst; aufhören = Mini-Turbo. <b>★</b> Gegenstand, <b>BREMSE/ZURÜCK</b> halten = bremsen und rückwärts fahren. Mit Automatik-Gas (Einstellungen) gibt es einen DRIFT-Knopf.</p>
+              <p>Rechts: <b>GAS</b> halten. Links lenken und rechts Gas geben geht gleichzeitig. <b>Driften:</b> in der Kurve Gas „pumpen“ (Gas – loslassen – Gas – loslassen …) – das Kart hüpft und driftet, solange du pumpst; aufhören = Mini-Turbo. <b>Drift-Richtung:</b> beim Hüpfer den linken Daumen schon ein kleines Stück zur Seite schieben (geht auch kurz nach der Landung). Im Drift gilt die Daumenstellung vom Driftbeginn als mittlerer Bogen: weiter hinein = enger, zurück zur Mitte = weiter. <b>★</b> Gegenstand, <b>BREMSE/ZURÜCK</b> halten = bremsen und rückwärts fahren. Mit Automatik-Gas (Einstellungen) gibt es einen DRIFT-Knopf.</p>
               <h3>Controller (Xbox, PlayStation, Switch)</h3>
               <p>Stick/Steuerkreuz lenken, A oder RT Gas, B Bremse, R Driften, L/LT Gegenstand, Start Pause. Menüs gehen auch mit dem Controller. Bei Treffern vibriert er.</p>
               <h3>Mehrspieler (2–4)</h3>

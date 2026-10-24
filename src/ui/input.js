@@ -32,7 +32,7 @@ window.addEventListener('blur', () => KEYS.clear());
 const any = (codes) => codes.some((c) => KEYS.has(c) || LATCH.has(c));
 const tapped = (...codes) => codes.some((c) => PRESSED.has(c));
 
-export const touch = { active: false, steer: 0, drift: false, item: false, brake: false, gas: false, autoGas: false, itemTap: false, driftTap: false, driftUntil: 0, coastUntil: 0 };
+export const touch = { active: false, steer: 0, steerLin: 0, steerId: null, drift: false, item: false, brake: false, gas: false, autoGas: false, itemTap: false, driftTap: false, driftUntil: 0, coastUntil: 0 };
 let usingTouch = false;
 window.addEventListener('touchstart', () => { usingTouch = true; }, { passive: true });
 
@@ -70,6 +70,7 @@ export function readDrive(src = 'auto') {
   else if (src.startsWith('pad')) { const gp = pads()[Number(src.slice(3))]; if (gp) padInto(gp, inp); }
   if ((src === 'auto' || src === 'touch') && touch.active) {
     if (touch.steer !== 0) inp.steer = touch.steer;
+    if (touch.steerId !== null) inp.steerLin = touch.steerLin;   // Daumen liegt auf dem Lenkrad
     // Gas: Knopf GAS (kurz nach dem Loslassen rollt das Kart weiter) oder DRIFT oder Automatik; BREMSE hat Vorrang
     const now = performance.now() / 1000;
     const pumping = touch.driftUntil > now;

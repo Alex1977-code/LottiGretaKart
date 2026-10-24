@@ -134,7 +134,14 @@ export class Racer {
     return true;
   }
 
-  cancelDrift() { this.drift.on = false; this.drift.dir = 0; this.drift.charge = 0; this.drift.level = 0; this.drift.hop = false; }
+  cancelDrift() { const d = this.drift; d.on = false; d.dir = 0; d.charge = 0; d.level = 0; d.hop = false; d.wait = 0; d.s = 0; d.ref = 0; }
+
+  /** Drift beginnen in Richtung dir; am Handy merkt sich der Drift die Daumenstellung (ref) als „mittleren Bogen“. */
+  startDrift(dir, dirIn = 0, touchSteer = false) {
+    const d = this.drift;
+    d.on = true; d.dir = dir; d.charge = 0; d.level = 0; d.wait = 0; d.s = 0;
+    d.ref = touchSteer ? clamp(dirIn * dir, 0, 0.6) : 0;
+  }
 
   // ------------------------------------------------------------------ Simulation
   update(dt, input) {
@@ -184,6 +191,11 @@ export class Racer {
 
     // --- Lenken und Driften
     const steerIn = disabled ? 0 : clamp(input.steer ?? 0, -1, 1);
+    // Touch-Lenkrad: linearer Ausschlag (ohne Feinlenk-Kurve) – damit wird die Drift-Richtung schon bei wenig
+    // Daumenweg erkannt und der Drift-Bogen relativ zur Daumenstellung beim Driftbeginn gesteuert
+    const touchSteer = !disabled && input.steerLin !== undefined;
+    const dirIn = touchSteer ? clamp(input.steerLin, -1, 1) : steerIn;
+    const dirMin = touchSteer ? 0.1 : 0.2;
     // Lenkung baut sich kurz auf (feinfühlig bei Tasten, kein Zucken) und geht schneller zurück auf geradeaus
     {
       const back = Math.abs(steerIn) < Math.abs(this.steer) || steerIn * this.steer < 0;
@@ -202,13 +214,19 @@ export class Racer {
       this.vy = 3.4; this.air = true; d.hop = true; d.dir = 0;
       if (this.isPlayer) this.race.audio.sfx('jump');
     }
-    if (this.air && d.hop && d.dir === 0 && Math.abs(steerIn) > 0.25) d.dir = Math.sign(steerIn);
+    if (this.air && d.hop && d.dir === 0 && Math.abs(dirIn) > dirMin) d.dir = Math.sign(dirIn);
+    // nach dem Hüpfer ohne Richtung: kurz Zeit, die Richtung noch zu wählen (Drift-Taste weiter gedrückt)
+    if (d.wait > 0 && !d.on) {
+      d.wait -= dt;
+      if (!input.drift || this.speed <= 6 || disabled) d.wait = 0;
+      else if (Math.abs(dirIn) > dirMin) this.startDrift(Math.sign(dirIn), dirIn, touchSteer);
+    }
     if (d.on) {
       if (!input.drift || this.speed < 5 || disabled) {
         if (d.level > 0 && !disabled) this.boost(DRIFT_BOOST[d.level], SPARK_COLORS[d.level], 1.12);
         this.cancelDrift();
       } else {
-        const into = Math.max(0, steerIn * d.dir);
+        const into = Math.max(0, d.s ?? 0);
         d.charge += dt * (0.8 + 0.9 * into) * (offroad ? 0.4 : 1);
         const lv = d.charge >= DRIFT_LEVELS[2] ? 3 : d.charge >= DRIFT_LEVELS[1] ? 2 : d.charge >= DRIFT_LEVELS[0] ? 1 : 0;
         if (lv > d.level && this.isPlayer) this.race.audio.sfx('select');
@@ -221,7 +239,8 @@ export class Racer {
     } else if (this.charge > 0 && !this.air) {
       if (input.drift && Math.abs(steerIn) >= 0.3 && this.speed > 6) {
         // doch gelenkt: in einen Drift übergehen
-        d.on = true; d.dir = Math.sign(steerIn); d.charge = Math.min(this.charge, DRIFT_LEVELS[0] * 0.8); d.level = 0;
+        this.startDrift(Math.sign(steerIn), dirIn, touchSteer);
+        d.charge = Math.min(this.charge, DRIFT_LEVELS[0] * 0.8);
       } else if (!input.drift && this.charge > 0.3) {
         const k = clamp((this.charge - 0.3) / 0.9, 0, 1);
         this.air = true; this.vy = 6 + 6 * k;
@@ -234,7 +253,11 @@ export class Racer {
     let yawRate;
     if (d.on) {
       // Drift-Bogen: ohne Lenken ein mittlerer Bogen, nach innen enger, nach außen fast geradeaus
-      const s = steerIn * d.dir;
+      // s: −1 = nach außen (weiter Bogen) … 0 = mittlerer Bogen … +1 = nach innen (enger Bogen). Am Handy zählt die
+      // Änderung gegenüber der Daumenstellung beim Driftbeginn (wie ein Lenkrad, das in der Kurve „einrastet“)
+      const rel = dirIn * d.dir - (d.ref ?? 0);
+      const s = touchSteer ? clamp(rel > 0 ? rel * 1.8 : rel / Math.max(0.3, d.ref ?? 0), -1, 1) : steerIn * d.dir;
+      d.s = s;
       yawRate = d.dir * P.turn * (s >= 0 ? 0.42 + 0.68 * s : 0.42 + 0.34 * s) * clamp(Math.abs(this.speed) / 10, 0.5, 1);
     }
     else yawRate = this.steer * P.turn * sf * Math.sign(this.speed || 1);
@@ -291,9 +314,9 @@ export class Racer {
         this.vy = 0; this.air = false;
         if (d.hop) {
           d.hop = false;
-          if (input.drift && d.dir === 0 && Math.abs(steerIn) > 0.2) d.dir = Math.sign(steerIn);
-          if (input.drift && d.dir !== 0 && this.speed > 6 && !disabled) { d.on = true; d.charge = 0; d.level = 0; }
-          else d.dir = 0;
+          if (input.drift && d.dir === 0 && Math.abs(dirIn) > dirMin) d.dir = Math.sign(dirIn);
+          if (input.drift && d.dir !== 0 && this.speed > 6 && !disabled) this.startDrift(d.dir, dirIn, touchSteer);
+          else { d.dir = 0; if (input.drift && !disabled) d.wait = 0.3; }
         }
         if (this.trick.ready) {
           if (this.trick.done) this.boost(0.9, 0x58b8ff, 1.15);
@@ -413,7 +436,7 @@ export class Racer {
     // Drehungen: Drift (Kart zeigt nach innen), Schleudern, Überschlag, Trick
     const d = this.drift;
     // Drift: Kart steht deutlich quer (wie im Vorbild), beim Einlenken noch etwas mehr
-    const into = d.on ? clamp((this.lastInp?.steer ?? 0) * d.dir, -1, 1) : 0;
+    const into = d.on ? clamp(d.s ?? 0, -1, 1) : 0;
     this.visDrift = damp(this.visDrift ?? 0, d.on ? d.dir * (0.62 + 0.2 * into) : 0, 8, dt || 1);
     if (this.spinT > 0) this.spinAngle += dt * 14 * Math.min(1, this.spinT * 1.5); else this.spinAngle = damp(wrapA(this.spinAngle), 0, 10, dt || 1);
     if (this.tumbleT > 0) this.tumbleAngle = (1 - this.tumbleT / 1.5) * TAU; else this.tumbleAngle = 0;
