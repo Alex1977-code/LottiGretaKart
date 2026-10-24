@@ -67,7 +67,8 @@ Straßen haben aus der Nähe eine feine Struktur, am Meeresgrund wandern Lichtmu
     direkte WebRTC-Verbindung).
   - **In der Nähe, ganz ohne Netz** (Flugzeug): in der **iPhone-App** finden sich die Handys direkt per Bluetooth/WLAN
     (Apple MultipeerConnectivity) – Flugmodus an, WLAN und Bluetooth wieder einschalten, Spiel in der Liste antippen.
-    Bauen und installieren: [ios/README.md](ios/README.md).
+    Bauen und installieren: [ios/README.md](ios/README.md) – auch ohne Mac: GitHub baut eine `.ipa`, die man mit
+    Sideloadly und kostenloser Apple-ID von Windows oder Mac aufs iPhone spielt. Im Browser gibt es kein Bluetooth.
   - **Ohne Internet im Browser**: alle Handys im selben WLAN; der Gastgeber zeigt einen QR-Code, der Gast scannt ihn
     und zeigt seinen Antwort-Code, den der Gastgeber scannt – kein Server nötig. Achtung: das iPhone kann im
     Flugmodus keinen Hotspot öffnen (viele Android-Handys schon).

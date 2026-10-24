@@ -1,5 +1,7 @@
 # Baut die iPhone-App (Capacitor) auf einem Mac von GitHub.
 #  - Immer: Prüf-Build für den iOS-Simulator (ohne Signatur) – zeigt, dass App und Nahbereichs-Plugin übersetzen.
+#  - Immer: unsignierte App-Datei LottiGretaKart.ipa als Download (Artifact) – mit Sideloadly und kostenloser
+#    Apple-ID von Windows oder Mac aufs iPhone installieren (siehe ios/README.md, Weg C).
 #  - Mit Apple-Entwicklerkonto: signierter Build und Upload zu TestFlight. Dafür unter
 #    Settings → Secrets and variables → Actions anlegen:
 #      Secrets:   APPLE_TEAM_ID        Team-ID (10 Zeichen, developer.apple.com → Membership)
@@ -58,6 +60,22 @@ jobs:
           APP=build/sim/Build/Products/Debug-iphonesimulator/App.app
           grep -q LGKNearbyPlugin "$APP/public/capacitor.config.json" 2>/dev/null || grep -q LGKNearbyPlugin "$APP/capacitor.config.json"
           grep -rlaq LGKNearbyPlugin "$APP" --include='App*' && echo "LGKNearbyPlugin ist eingebaut"
+      - name: App-Datei (.ipa, unsigniert) zum Selbst-Installieren
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build/dev \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tail -n 20
+          test "${PIPESTATUS[0]}" -eq 0
+          rm -rf build/ipa && mkdir -p build/ipa/Payload
+          cp -R build/dev/Build/Products/Release-iphoneos/App.app build/ipa/Payload/
+          (cd build/ipa && zip -qry ../LottiGretaKart.ipa Payload)
+          ls -la build/LottiGretaKart.ipa
+      - name: App-Datei hochladen (Actions → Lauf → Artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: LottiGretaKart-iPhone-App
+          path: build/LottiGretaKart.ipa
+          retention-days: 30
       - name: Signieren und zu TestFlight hochladen
         if: env.HAS_SIGNING == 'true'
         env:

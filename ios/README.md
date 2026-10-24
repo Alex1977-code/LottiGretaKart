@@ -28,6 +28,25 @@ Nativer Teil: `native/lgk-nearby` (Swift-Plugin), JavaScript-Seite: `src/net/nea
 4. Für jedes weitere iPhone wiederholen. Mit einer kostenlosen Apple-ID läuft die App **7 Tage**,
    danach einfach nochmal aus Xcode installieren.
 
+## Weg C – ohne Mac und ohne Entwicklerkonto: Sideloadly (Windows oder Mac, kostenlos)
+
+GitHub baut bei jeder Änderung eine fertige App-Datei **LottiGretaKart.ipa** (unsigniert). Sideloadly signiert sie
+mit der eigenen, kostenlosen Apple-ID und spielt sie per Kabel aufs iPhone.
+
+1. Auf GitHub (angemeldet) → Repository → **Actions → iPhone-App bauen** → den neuesten grünen Lauf öffnen →
+   unten bei *Artifacts* **LottiGretaKart-iPhone-App** herunterladen und entpacken (darin `LottiGretaKart.ipa`).
+2. [Sideloadly](https://sideloadly.io) installieren. Unter Windows zusätzlich iTunes und iCloud **von
+   apple.com** (nicht aus dem Microsoft Store).
+3. iPhone per Kabel anschließen, dem Computer vertrauen. In Sideloadly die `.ipa` hineinziehen, die eigene
+   Apple-ID eintragen, **Start**.
+4. Auf dem iPhone: *Einstellungen → Datenschutz & Sicherheit → Entwicklermodus* einschalten (Neustart), dann
+   *Einstellungen → Allgemein → VPN & Geräteverwaltung* → eigene Apple-ID → **Vertrauen**.
+5. Für **jedes** iPhone wiederholen, das mitspielen soll. Mit kostenloser Apple-ID läuft die App **7 Tage**
+   (danach in Sideloadly erneut „Start“; höchstens 3 selbst installierte Apps je Apple-ID).
+
+Beim ersten Öffnen von *Mehrspieler* fragt iOS nach dem **lokalen Netzwerk** → **Erlauben** (sonst finden sich
+die Handys nicht; nachträglich: *Einstellungen → Lotti & Greta Kart → Lokales Netzwerk*).
+
 ## Weg B – ohne Mac, über GitHub und TestFlight (Apple-Entwicklerkonto, 99 €/Jahr)
 
 Der Workflow `.github/workflows/ios.yml` baut die App auf einem Mac von GitHub. Ohne weitere Einstellungen
@@ -43,6 +62,14 @@ macht er nur einen Prüf-Build. Mit Apple-Konto lädt er jede Version zu TestFli
 5. *Actions → iPhone-App bauen → Run workflow*. Nach ein paar Minuten (plus Apples Prüfung, meist < 1 Stunde)
    erscheint der Build in TestFlight. Familie/Freunde als Tester einladen, sie installieren die App über die
    **TestFlight**-App. TestFlight-Builds laufen 90 Tage.
+
+## Die Handys finden sich nicht?
+
+- Läuft wirklich die **App** auf **beiden** Handys? In Safari bzw. als Home-Bildschirm-Webseite gibt es kein
+  Bluetooth (das erlaubt Apple Webseiten nicht) – dort zeigt das Spiel einen roten Hinweis.
+- Kontrollzentrum: **WLAN und Bluetooth** an (WLAN muss mit keinem Netz verbunden sein).
+- *Einstellungen → Lotti & Greta Kart → **Lokales Netzwerk*** an – auf beiden Handys.
+- Ein Handy „Spiel erstellen“, das andere „Beitreten“; beide Bildschirme an, App im Vordergrund, nah beieinander.
 
 ## Grenzen
 

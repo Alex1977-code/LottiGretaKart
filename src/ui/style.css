@@ -318,6 +318,9 @@ em.ptag { position: static; font-style: normal; font-size: 13px; padding: 0 6px;
 .netcol { display: grid; gap: 14px; }
 .menus [hidden] { display: none !important; }
 .netcode.near { border: 3px solid #22b03c; }
+.netcode.nobt { border: 3px solid #e8392d; }
+.netcode.nobt small { display: block; font-weight: 600; line-height: 1.35; }
+.mbox-nobt { max-width: 640px; margin: 10px auto 0; }
 .bigcode.small { font-size: 26px; letter-spacing: 0; margin: 6px 0; }
 .nearlist { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .menus .nearbtn { width: 100%; font-size: 17px; }

@@ -285,6 +285,15 @@ export class Menus {
   }
 
   // ------------------------------------------------------------------ Mehrere Handys
+  /** Im Browser: deutlich sagen, dass es hier kein Bluetooth gibt (nur in der iPhone-App). */
+  noBluetoothBox() {
+    if (nearbyAvailable()) return '';
+    return `<div class="glass netcode nobt"><p>📵 <b>Hier im Browser gibt es kein Bluetooth</b></p><small>Apple erlaubt Webseiten
+      (Safari, Home-Bildschirm) keinen Zugriff auf Bluetooth – Bluetooth am iPhone einschalten hilft deshalb nicht.
+      Handys <b>ohne Internet</b> verbinden geht nur mit der <b>iPhone-App</b> (beide Handys!). Im Browser:
+      Raumcode übers Internet oder QR-Kopplung im selben WLAN.</small></div>`;
+  }
+
   showMultiChoice() {
     this.ensureDemo();
     const card = (k, ic, name, sub) => `<button class="card cup" data-mc="${k}"><div class="trophy won">${ic}</div><span>${name}</span><small>${sub}</small></button>`;
@@ -297,6 +306,7 @@ export class Menus {
           ${card('host', '📡', 'Mehrere Handys: Spiel erstellen', app ? 'du bist Gastgeber – Handys in der Nähe (auch Flugmodus) oder übers Internet' : 'du bist Gastgeber – über Internet oder im selben WLAN')}
           ${card('join', '📲', 'Mehrere Handys: Beitreten', app ? 'Spiel in der Nähe antippen oder Raumcode' : 'mit Raumcode oder QR-Code')}
         </div>
+        ${app ? '' : `<div class="mbox-nobt">${this.noBluetoothBox()}</div>`}
         <p class="lobby-tip">${app
     ? '✈️ Im Flugzeug: Flugmodus an, dann <b>WLAN und Bluetooth wieder einschalten</b> – die Handys mit der App finden sich direkt, ganz ohne Internet.'
     : '✈️ Im Flugzeug: ein Bildschirm geht immer (Controller per Bluetooth). Mehrere Handys brauchen ein gemeinsames WLAN – das iPhone kann im Flugmodus keinen Hotspot öffnen, viele Android-Handys schon. Direkt per Bluetooth geht es nur in der iPhone-App.'}</p>
@@ -365,6 +375,7 @@ export class Menus {
       <div class="mscreen">
         ${this.head('Spiel erstellen', 'Gastgeber · mehrere Handys')}
         <div class="mbody"><div class="netwrap"><div class="netcol">
+          ${this.noBluetoothBox()}
           ${nearbyAvailable() ? `<div class="glass netcode near"><p>📶 <b>In der Nähe</b> – auch im Flugmodus</p>
             ${n.nearbyName && !this.nearbyStatus ? `<div class="bigcode small">${n.nearbyName}</div><small>Andere tippen in ihrer App auf „Beitreten“ und wählen dieses Spiel. WLAN und Bluetooth müssen an sein (geht auch im Flugmodus).</small>` : `<small>${this.nearbyStatus ?? ''}</small>`}
           </div>` : ''}
@@ -422,6 +433,7 @@ export class Menus {
       <div class="mscreen">
         ${this.head('Beitreten', 'mehrere Handys')}
         <div class="mbody"><div class="netwrap"><div class="netcol">
+          ${this.noBluetoothBox()}
           ${nearbyAvailable() ? `<div class="glass netcode near"><p>📶 <b>In der Nähe</b> (auch im Flugmodus) – Spiel antippen:</p>
             <div class="nearlist"><small>Suche … (WLAN und Bluetooth an?)</small></div></div>` : ''}
           <div class="glass netcode"><p><b>Mit Internet</b> – Raumcode vom Gastgeber eingeben:</p>
@@ -477,6 +489,21 @@ export class Menus {
       }
     };
     if (n.finder) { render(n.nearList ?? []); return; }
+    // nach 10 s ohne Treffer: Hinweise, woran es meistens liegt
+    const t0 = Date.now();
+    const help = () => {
+      if (this.screen !== 'netjoin' || this.net !== n || n.link) return;
+      const el = box();
+      if (el && !(n.nearList ?? []).length && Date.now() - t0 > 10000) {
+        el.innerHTML = `<small>Noch nichts gefunden. Bitte prüfen:<br/>1. Beide Handys nutzen die <b>App</b> (nicht Safari), eins hat „Spiel erstellen“ offen.<br/>
+          2. Auf beiden im Kontrollzentrum <b>WLAN und Bluetooth</b> an (WLAN darf ohne Netz sein).<br/>
+          3. <b>Einstellungen → Lotti &amp; Greta Kart → Lokales Netzwerk</b> einschalten (auf beiden).<br/>
+          4. Handys nah beieinander, Bildschirm an, App im Vordergrund. Danach „Zurück“ und nochmal öffnen.</small>`;
+        return;
+      }
+      setTimeout(help, 1000);
+    };
+    setTimeout(help, 1000);
     n.findNearby(RACER_BY_ID[n.myRacer]?.name ?? 'Gast', render, (msg) => { info.textContent = msg; })
       .catch((e) => { info.textContent = `Suche nicht möglich: ${e.message ?? e}`; });
   }
