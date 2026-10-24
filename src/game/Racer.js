@@ -91,10 +91,12 @@ export class Racer {
     this.syncVisual(0, 0);
   }
 
-  /** Fahrbahn-Höhe: Gelände bzw. Brückendeck (je nach Höhe des Karts), auf Wasser die Oberfläche (man schwimmt). */
+  /**
+   * Fahrbahn-Höhe: Gelände bzw. Brückendeck (je nach Höhe des Karts), auf Wasser die Oberfläche (man schwimmt) –
+   * in Unterwasser-Zonen der Meeresgrund.
+   */
   groundAt(x, z) {
-    const h = this.race.world.groundAt(x, z, this.pos.y);
-    return h < 0 ? 0 : h;
+    return this.race.world.floorAt(x, z, this.pos.y);
   }
 
   // ------------------------------------------------------------------ Ereignisse
@@ -148,6 +150,8 @@ export class Racer {
     if (surface === 'lava' && !this.air) { this.speed *= Math.exp(-3 * dt); if (!this.lavaHit) { this.lavaHit = true; this.hit('tumble', null); } } else this.lavaHit = false;
     this.offroad = offroad;
     this.onWater = onWater;
+    // unter Wasser (Strecke auf dem Meeresgrund): schwebende Sprünge wie in Mario Kart 8
+    this.underwater = this.pos.y < -0.8 && world.underwaterAt(this.pos.x, this.pos.z);
 
     // --- Zielgeschwindigkeit
     let top = P.top * (1 + 0.006 * this.coins) * (this.race.rubber?.(this) ?? 1);
@@ -277,7 +281,7 @@ export class Racer {
     if (this.grind) {
       this.updateGrind(dt);
     } else if (this.air) {
-      this.vy -= GRAVITY * (d.hop ? 1.15 : 1) * dt;
+      this.vy -= GRAVITY * (d.hop ? 1.15 : 1) * (this.underwater ? 0.5 : 1) * dt;
       this.pos.y += this.vy * dt;
       if (this.vy < 3 && this.tryRail()) { /* auf eine Schiene gesprungen */ }
       if (this.trick.ready && driftPressed && !this.trick.done) { this.trick.done = true; this.trick.t = 0; if (this.isPlayer) this.race.audio.sfx('backflip'); }

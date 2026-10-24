@@ -131,6 +131,11 @@ export class Effects {
     this.soft.spawn({ x: x + R(-0.2, 0.2), y: y + 0.1, z: z + R(-0.2, 0.2), vx: R(-0.6, 0.6), vy: R(0.4, 1.4), vz: R(-0.6, 0.6), life: R(0.4, 0.8), size: size * 0.5, size1: size * 1.6, drag: 1.5, a: 0.55, ...c });
   }
 
+  /** Luftblasen unter Wasser: steigen auf und wackeln. */
+  bubble(x, y, z, size = 0.35) {
+    this.soft.spawn({ x: x + R(-0.3, 0.3), y: y + 0.2, z: z + R(-0.3, 0.3), vx: R(-0.3, 0.3), vy: R(1.6, 3.2), vz: R(-0.3, 0.3), life: R(0.9, 1.6), size: size * 0.6, size1: size * 1.2, drag: 0.6, a: 0.7, r: 0.85, g: 0.95, b: 1 });
+  }
+
   /** Bitcoins fliegen davon (Treffer). */
   coinBurst(pos, n = 2) {
     const c = rgb(0xf7931a);

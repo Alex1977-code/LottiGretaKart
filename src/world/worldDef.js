@@ -1,4 +1,4 @@
-// Die Grüne Blockinsel als zusammenhängende Welt (wie Mario Kart World): vierzehn Rennstrecken als Regionen, verbunden
+// Die Grüne Blockinsel als zusammenhängende Welt (wie Mario Kart World): fünfzehn Rennstrecken als Regionen, verbunden
 // durch Landstraßen, ein See (darauf fährt man über das Wasser), Berge, Küste. Koordinaten in Metern, x = Osten,
 // z = Süden, Meeresspiegel y = 0.
 //
@@ -23,12 +23,13 @@ import bonbon from '../tracks/bonbon.js';
 import loroparque from '../tracks/loroparque.js';
 import piratenbucht from '../tracks/piratenbucht.js';
 import dinodschungel from '../tracks/dinodschungel.js';
+import wrackriff from '../tracks/wrackriff.js';
 
 export const WORLD = {
   name: 'Grüne Blockinsel',
   // Insel als Ellipse mit welliger Küste
   island: { cx: 70, cz: -10, rx: 1100, rz: 800 },
-  bounds: { minX: -1180, maxX: 1320, minZ: -920, maxZ: 900 },
+  bounds: { minX: -1180, maxX: 1320, minZ: -1090, maxZ: 900 },
   courses: [
     { def: kraxelwiese, ox: -20, oz: -60 },
     { def: herbstwald, ox: 0, oz: -278 },
@@ -44,6 +45,7 @@ export const WORLD = {
     { def: loroparque, ox: 600, oz: 410 },
     { def: piratenbucht, ox: -320, oz: 590 },
     { def: dinodschungel, ox: 350, oz: -610 },
+    { def: wrackriff, ox: 40, oz: -770 },
   ],
   connectors: [
     { id: 'wiese-wald', a: ['kraxelwiese', 0.075, -1], b: ['herbstwald', 0.045, 1], via: [[40, -140], [10, -190]], hw: 6.5, items: [0.5], coins: [[0.3, 0.4]] },
@@ -70,6 +72,8 @@ export const WORLD = {
     { id: 'piraten-vulkan', a: ['piratenbucht', 0.84, -1], b: ['vulkan', 0.27, -1], via: [[-540, 540]], hw: 6.5, items: [0.5], coins: [[0.4, 0.5]] },
     { id: 'wald-dino', a: ['herbstwald', 0.375, 1], b: ['dinodschungel', 0.38, -1], via: [[200, -500]], hw: 6.5, items: [0.5], coins: [[0.35, 0.45]] },
     { id: 'dino-gipfel', a: ['dinodschungel', 0.2, -1], b: ['gipfel', 0.5, 1], via: [[480, -470]], hw: 6.5, items: [0.5] },
+    { id: 'riff-dino', a: ['wrackriff', 0.14, 1], b: ['dinodschungel', 0.45, -1], via: [[200, -690], [270, -610]], hw: 6.5, items: [0.5], coins: [[0.35, 0.45]] },
+    { id: 'burg-riff', a: ['burg', 0.85, -1], b: ['wrackriff', 0.95, 1], via: [[-170, -660]], hw: 6.5, items: [0.5], coins: [[0.55, 0.65]] },
     { id: 'piraten-strand', a: ['piratenbucht', 0.29, 1], b: ['strand', 0.78, -1], via: [[-60, 560]], hw: 6.5, items: [0.45], coins: [[0.55, 0.65]] },
   ],
   lakes: [
@@ -95,6 +99,7 @@ export const WORLD = {
     { x: 645, z: 488, r: 200, h: 3 },        // Loro Parque
     { x: -320, z: 590, r: 190, h: 2 },       // Piratenbucht
     { x: 455, z: -610, r: 200, h: 4 },       // Dino-Dschungel
+    { x: 10, z: -742, r: 70, h: 3 },         // Hafen am Wrack-Riff
   ],
   hills: [
     [180, -120, 70, 14], [-200, -200, 80, 18], [330, -540, 80, 22], [-460, -580, 70, 30], [-650, -300, 120, 45],
@@ -124,6 +129,7 @@ export const WORLD = {
     { theme: 'zoo', x: 645, z: 488, r: 190, fade: 80 },
     { theme: 'pirate', x: -320, z: 590, r: 180, fade: 80 },
     { theme: 'jungle', x: 455, z: -610, r: 190, fade: 80 },
+    { theme: 'reef', x: 30, z: -880, r: 170, fade: 90 },
   ],
   // Grind-Schienen: über den See (Abkürzung) und neben der Waldstraße
   rails: [
@@ -143,6 +149,7 @@ export const WORLD = {
     [880, 440], [520, 600],
     [-250, 470], [-440, 690],
     [300, -470], [600, -620],
+    [-60, -980], [156, -880],
   ],
 };
 
@@ -157,6 +164,7 @@ export const WORLD_CUPS = [
   { id: 'tierpark', name: 'Tierpark-Cup', tracks: ['strand', 'loroparque', 'autobahn', 'wueste'] },
   { id: 'piraten', name: 'Piraten-Cup', tracks: ['manege', 'piratenbucht', 'vulkan', 'laternengrotte'] },
   { id: 'dino', name: 'Dino-Cup', tracks: ['herbstwald', 'dinodschungel', 'gipfel', 'wueste'] },
+  { id: 'ozean', name: 'Ozean-Cup', tracks: ['burg', 'wrackriff', 'dinodschungel', 'herbstwald'] },
 ];
 
 /** K.-o.-Tour: Rallye quer über die Insel; an jedem Checkpoint scheiden die Letzten aus. */
@@ -191,5 +199,10 @@ export const KO_TOURS = [
     id: 'schatz', name: 'Schatzsuche',
     stops: ['strand', 'piratenbucht', 'manege', 'kraxelwiese'],
     survivors: [8, 4],
+  },
+  {
+    id: 'tauchgang', name: 'Tauchgang',
+    stops: ['herbstwald', 'burg', 'wrackriff', 'dinodschungel', 'gipfel'],
+    survivors: [9, 6, 4],
   },
 ];

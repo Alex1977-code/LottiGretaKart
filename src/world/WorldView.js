@@ -7,6 +7,7 @@ import { Decor } from './decor.js';
 import { getTheme } from './themes.js';
 import { lin } from '../lgw/three/world/geometry.js';
 import { Rnd } from '../lgw/three/world/geometry.js';
+import { addGroundDetail, makeWaterMaterial, SHADER_TIME } from './shaders.js';
 
 const TILE = 60; // Kachelgröße in Höhenfeld-Zellen (3 m → 180 m)
 
@@ -48,15 +49,15 @@ export class WorldView {
     const col = (hex) => { let v = cache.get(hex); if (!v) { v = lin(hex); cache.set(hex, v); } return v; };
     const sand = col(0xe8d39a), sandWet = col(0xc9b27a), rock = col(0x9a92a0), rockDark = col(0x7a7284), snow = col(0xf4f2f8);
     const ash = col(0x3a3034), lavaRim = col(0xc8401a);
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 });
+    const mat = addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }), { grain: 0.16, key: 'terrain' });
     const tmp = [0, 0, 0], acc = [0, 0, 0];
     for (let tz = 0; tz < hf.nz - 1; tz += TILE) {
       for (let tx = 0; tx < hf.nx - 1; tx += TILE) {
         const nx = Math.min(TILE, hf.nx - 1 - tx), nz = Math.min(TILE, hf.nz - 1 - tz);
         // ganz unter Wasser (Meer)? Dann reicht die Wasserfläche
-        let maxH = -99;
-        for (let iz = 0; iz <= nz; iz += 4) for (let ix = 0; ix <= nx; ix += 4) maxH = Math.max(maxH, hf.h[(tz + iz) * hf.nx + tx + ix]);
-        if (maxH < -6) continue;
+        let maxH = -99, uw = false;
+        for (let iz = 0; iz <= nz; iz += 4) for (let ix = 0; ix <= nx; ix += 4) { const gi = (tz + iz) * hf.nx + tx + ix; maxH = Math.max(maxH, hf.h[gi]); uw ||= hf.uw[gi] === 1; }
+        if (maxH < -6 && !uw) continue;   // (außer in Unterwasser-Zonen: dort fährt man auf dem Grund)
         const pos = new Float32Array((nx + 1) * (nz + 1) * 3), cols = new Float32Array((nx + 1) * (nz + 1) * 3);
         let k = 0;
         for (let iz = 0; iz <= nz; iz++) {
@@ -129,7 +130,8 @@ export class WorldView {
     const w = 4000, d = 4000;
     const g = new THREE.PlaneGeometry(w, d, 1, 1);
     g.rotateX(-Math.PI / 2);
-    this.water = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x2f9be8, roughness: 0.25, metalness: 0.1, transparent: true, opacity: 0.82, emissive: 0x0a3a6a, emissiveIntensity: 0.35 }));
+    // Wellen, Tiefenfarbe und Ufer-Schaum im Shader; von unten (Unterwasser-Abschnitte) eine helle, flirrende Decke
+    this.water = new THREE.Mesh(g, makeWaterMaterial(this.world.hf));
     this.water.position.set((b.minX + b.maxX) / 2, 0, (b.minZ + b.maxZ) / 2);
     this.water.receiveShadow = true;
     this.water.renderOrder = 1;
@@ -171,7 +173,7 @@ export class WorldView {
     for (const c of w.connectors) {
       const tr = c.track, th = tr.theme;
       const cR = lin(0x9a96a8), cR2 = lin(0x948fa3);
-      const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+      const mat = addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), { grain: 0.1, scale: 1.8, key: 'conn' });
       const skip = (i) => tr.water[i] || tr.water[Math.min(tr.N - 1, i + 1)];
       const hw = (i) => tr.hw[i];
       const parts = [
@@ -436,6 +438,7 @@ export class WorldView {
     for (const d of this.decors) d.update(dt, t, cam);
     this.structureDecor?.update(dt, t, cam);
     if (this.sparkles) this.sparkles.position.x = Math.sin(t * 0.3) * 1.5;
+    SHADER_TIME.value = t;
     this.updateLava(t);
   }
 }

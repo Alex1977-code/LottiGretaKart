@@ -8,6 +8,7 @@
 
 import * as THREE from 'three';
 import { lin } from '../lgw/three/world/geometry.js';
+import { addGroundDetail } from './shaders.js';
 
 const STEP = 1;              // Abtastabstand (m)
 const CELL = 16;             // Raster der Suchtabelle (m)
@@ -70,6 +71,8 @@ export class Track {
       this.lift[i] = l0 + (l1 - l0) * sf;
     }
     this.hasLift = this.lift.some((v) => v > 0.05);
+    // negatives lift: die Straße taucht ab (unter den Meeresspiegel) – das Gelände wird bis dorthin abgesenkt
+    this.hasDive = this.lift.some((v) => v < -0.05);
     for (let i = 0; i < N; i++) {
       this.py[i] = this.roadY(i, this.px[i], this.pz[i]);
       const a = this.wrap(i - 4), b = this.wrap(i + 4);
@@ -303,7 +306,7 @@ export class Track {
   buildRoad() {
     const th = this.theme;
     const cR = lin(th.road), cR2 = lin(th.road2), cL = lin(th.line), cA = lin(th.curbA), cB = lin(th.curbB);
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide });
+    const mat = addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide }), { grain: 0.1, scale: 1.8, key: 'road' });
     const add = (g, name, shadow = true) => {
       const m = new THREE.Mesh(g, mat);
       m.receiveShadow = shadow; m.name = name;
@@ -402,7 +405,7 @@ export class Track {
     }
     // Pfeiler (alle ~12 m, je Seite einer), nicht auf anderen Straßen
     const pillars = [];
-    for (let i = 0; i < this.N; i += 12) {
+    for (let i = 0; i < this.N && this.def.bridgePillars !== false; i += 12) {
       if (!(this.lift[i] > 1.2)) continue;
       for (const side of [-1, 1]) {
         const lat = side * (this.hw[i] * 0.7), x = this.px[i] - this.tz[i] * lat, z = this.pz[i] + this.tx[i] * lat;

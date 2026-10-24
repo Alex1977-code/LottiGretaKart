@@ -252,7 +252,7 @@ export class Items {
     // höchstens 16 Käfer gleichzeitig auf der Strecke
     const bugs = this.projectiles.filter((p) => p.kind === 'kaefer');
     if (bugs.length >= 16) this.remove(bugs[0]);
-    this.addProjectile({ kind: 'kaefer', modelName: 'krabbelkaefer', opts: { color: 'red' }, scale: 1.25, pos: new THREE.Vector3(x, Math.max(0, this.race.world.groundAt(x, z, racer.pos.y + 0.5)), z), yaw: racer.yaw, owner: racer, life: 9999, radius: 0.55, i: racer.loc.i });
+    this.addProjectile({ kind: 'kaefer', modelName: 'krabbelkaefer', opts: { color: 'red' }, scale: 1.25, pos: new THREE.Vector3(x, this.race.world.floorAt(x, z, racer.pos.y + 0.5), z), yaw: racer.yaw, owner: racer, life: 9999, radius: 0.55, i: racer.loc.i });
   }
 
   spawnBomb(racer, fx, fz) {
@@ -403,7 +403,7 @@ export class Items {
     const race = this.race, track = p.path ?? p.owner?.path ?? race.track, world = race.world;
     const loc = track ? track.locate(p.pos.x, p.pos.z, p.i, p.loc ?? (p.loc = {})) : (p.loc ?? (p.loc = { i: 0, lat: 0 }));
     p.i = loc.i;
-    const groundRaw = world.groundAt(p.pos.x, p.pos.z, p.pos.y + 0.5), ground = groundRaw < 0 ? 0 : groundRaw;
+    const ground = world.floorAt(p.pos.x, p.pos.z, p.pos.y + 0.5);
     switch (p.kind) {
       case 'panzer': case 'goldpanzer': {
         if (p.kind === 'goldpanzer' && p.target && !p.target.finished) {

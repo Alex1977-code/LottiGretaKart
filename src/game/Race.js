@@ -225,7 +225,7 @@ export class Race {
     // Sternmünzen
     this.starCoins = w.def.starCoins.map(([x, z], k) => {
       const m = getModel('star_coin');
-      const y = Math.max(0, w.heightAt(x, z));
+      const y = w.floorAt(x, z);
       m.root.position.set(x, y + 0.9, z);
       m.root.scale.setScalar(1.6);
       this.scene.add(m.root);
@@ -644,8 +644,16 @@ export class Race {
     const fx = this.effects;
     for (const r of this.racers) {
       if (r.out) continue;
-      if (this.focusDist2(r.pos.x, r.pos.z) > 120 * 120) continue;
+      const far = this.focusDist2(r.pos.x, r.pos.z) > 120 * 120;
+      // Eintauchen und Auftauchen: Platsch an der Wasseroberfläche
+      if (r.underwater !== r.wasUnder) {
+        if (r.wasUnder !== undefined && !far && Math.abs(r.speed) > 3) fx.splash({ x: r.pos.x, y: 0, z: r.pos.z }, 0, 0, 26, 5);
+        if (r.isPlayer && r.wasUnder !== undefined) this.audio.sfx('splash');
+        r.wasUnder = r.underwater;
+      }
+      if (far) continue;
       if (r.grind && Math.random() < 0.9) fx.trail(r.pos.x, r.pos.y, r.pos.z, 0xfff0a0, 0.5);
+      if (r.underwater && Math.random() < 0.5) fx.bubble(r.pos.x - Math.cos(r.yaw) * 0.9, r.pos.y + 0.3, r.pos.z + Math.sin(r.yaw) * 0.9, 0.3 + Math.random() * 0.3);
       if (r.air) continue;
       const c = Math.cos(r.yaw), s = -Math.sin(r.yaw);
       const bx = r.pos.x - c * 0.9 * r.giantScale, bz = r.pos.z - s * 0.9 * r.giantScale;
@@ -726,7 +734,7 @@ export class Race {
       const h = 1.85 * (0.75 + 0.25 * r.giantScale);
       const cx = Math.cos(cs.yaw), cz = -Math.sin(cs.yaw);
       pos.set(r.pos.x - cx * dist, r.pos.y + h, r.pos.z - cz * dist);
-      const gy = Math.max(0, this.world.groundAt(pos.x, pos.z, r.pos.y + 0.5)) + 0.8;
+      const gy = this.world.floorAt(pos.x, pos.z, r.pos.y + 0.5) + 0.8;
       if (pos.y < gy) pos.y = gy;
       // Blick leicht in die Kurve hinein (Lenkung/Drift), damit man sieht, wohin es geht
       const lead = clamp((r.steer ?? 0) * 0.9 + (r.drift.on ? r.drift.dir * 0.6 : 0), -1.2, 1.2);
@@ -790,8 +798,32 @@ export class Race {
     this.onDone?.(res);
   }
 
+  /**
+   * Unter Wasser (Kamera unter dem Meeresspiegel in einer Unterwasser-Zone): blauer, dichter Nebel statt Himmel –
+   * nur für dieses Bild, danach wieder die normale Stimmung (im geteilten Bildschirm je Ansicht).
+   */
+  drawView(renderer, cam) {
+    const sc = this.app.scene, p = cam.position;
+    const under = p.y < -0.15 && this.world.hasUnderwater && this.world.underwaterAt(p.x, p.z);
+    if (!under) { renderer.render(sc, cam); return; }
+    const sky = this.app.sky, fog = sc.fog;
+    const save = this._uwSave ?? (this._uwSave = { bg: new THREE.Color(), fog: new THREE.Color() });
+    save.bg.copy(sc.background); save.fog.copy(fog.color); save.near = fog.near; save.far = fog.far;
+    save.dome = sky?.domeGroup?.visible; save.hemi = sky?.hemi.intensity;
+    const dep = Math.min(1, -p.y / 10);
+    fog.color.setRGB(0.03 - 0.015 * dep, 0.3 - 0.1 * dep, 0.48 - 0.12 * dep);
+    sc.background.copy(fog.color);
+    fog.near = 3; fog.far = 85 - 25 * dep;
+    if (sky?.domeGroup) sky.domeGroup.visible = false;
+    if (sky?.hemi) sky.hemi.intensity *= 1.15;
+    renderer.render(sc, cam);
+    sc.background.copy(save.bg); fog.color.copy(save.fog); fog.near = save.near; fog.far = save.far;
+    if (sky?.domeGroup) sky.domeGroup.visible = save.dome;
+    if (sky?.hemi) sky.hemi.intensity = save.hemi;
+  }
+
   render(renderer) {
-    if (!this.split) { renderer.render(this.app.scene, this.camera); return; }
+    if (!this.split) { this.drawView(renderer, this.camera); return; }
     // geteilter Bildschirm: zwei Spieler oben/unten, drei oder vier in vier Feldern
     const W = window.innerWidth, H = window.innerHeight, n = this.views.length;
     const rects = n === 2 ? [[0, 0, W, H / 2], [0, H / 2, W, H / 2]]
@@ -808,7 +840,7 @@ export class Race {
       renderer.setViewport(x, H - y - h, w, h);
       renderer.setScissor(x, H - y - h, w, h);
       this.app.sky.update(0, v.cam, this.foci?.[i] ?? this.focus);
-      renderer.render(this.app.scene, v.cam);
+      this.drawView(renderer, v.cam);
     });
     renderer.setScissorTest(false);
     renderer.setViewport(0, 0, W, H);

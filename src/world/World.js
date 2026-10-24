@@ -80,6 +80,8 @@ export class World {
     const b = this.def.bounds;
     const nx = Math.ceil((b.maxX - b.minX) / CELL) + 1, nz = Math.ceil((b.maxZ - b.minZ) / CELL) + 1;
     const h = new Float32Array(nx * nz), w = new Float32Array(nx * nz), t = new Float32Array(nx * nz);
+    const uw = new Uint8Array(nx * nz);   // Unterwasser-Zone: hier ist der Meeresgrund befahrbar
+    const dk = new Float32Array(nx * nz).fill(1e9);   // Abstand zum Abtastpunkt, der die Zelle prägt
     for (let iz = 0; iz < nz; iz++) for (let ix = 0; ix < nx; ix++) h[iz * nx + ix] = this.baseHeight(b.minX + ix * CELL, b.minZ + iz * CELL);
     // Straßen: Höhenverlauf entlang der Straße glätten, dann das Gelände ringsum angleichen
     const roads = [...this.courses.map((c) => ({ tr: c.track, pad: c.track.margin + 2 })), ...this.connectors.map((c) => ({ tr: c.track, pad: 7, conn: c }))];
@@ -97,6 +99,8 @@ export class World {
         // Verbindungsstraßen über den See: dort bleibt Wasser (man fährt auf dem See)
         if (conn && raw[i] < 0.4) { tr.water[i] = 1; continue; }
         prof[i] = Math.max(prof[i], 0.8);
+        // abtauchende Strecke (Unterwasser-Abschnitt): Profil um |lift| tiefer, Gelände wird dorthin gelegt
+        if (tr.hasDive && tr.lift[i] < 0) prof[i] += tr.lift[i];
       }
       tr.profile = prof;
       for (let i = 0; i < N; i++) {
@@ -111,13 +115,40 @@ export class World {
             if (d > R) continue;
             const ww = d <= inner ? 1 : smooth(R, inner, d);
             const k = jz * nx + jx;
-            if (ww > w[k]) { w[k] = ww; t[k] = prof[i]; }
+            // bei gleichem Gewicht (innen) prägt der nächste Abtastpunkt – sonst liegt das Gelände an steilen
+            // Straßen (Abtauchen) über bzw. unter der Fahrbahn
+            if (ww > w[k] || (ww === w[k] && d < dk[k])) { w[k] = ww; t[k] = prof[i]; dk[k] = d; }
+          }
+        }
+        // Unterwasser-Zone um tief liegende Straßenstücke (großzügig, damit auch der Rand dazugehört)
+        if (prof[i] < -0.3) {
+          const RU = R + 24, ru = Math.ceil(RU / CELL);
+          for (let jz = Math.max(0, Math.floor(cz - ru)); jz <= Math.min(nz - 1, Math.ceil(cz + ru)); jz++) {
+            for (let jx = Math.max(0, Math.floor(cx - ru)); jx <= Math.min(nx - 1, Math.ceil(cx + ru)); jx++) {
+              if (Math.hypot(jx - cx, jz - cz) * CELL <= RU) uw[jz * nx + jx] = 1;
+            }
           }
         }
       }
     }
     for (let k = 0; k < h.length; k++) if (w[k] > 0) h[k] += (t[k] - h[k]) * w[k];
-    this.hf = { x0: b.minX, z0: b.minZ, nx, nz, h, rw: w, cell: CELL };
+    this.hf = { x0: b.minX, z0: b.minZ, nx, nz, h, rw: w, uw, cell: CELL };
+    this.hasUnderwater = uw.some((v) => v);
+  }
+
+  /** Liegt (x, z) in einer Unterwasser-Zone (Strecke auf dem Meeresgrund)? Dort schwimmt man nicht, man taucht. */
+  underwaterAt(x, z) {
+    const g = this.hf;
+    if (!g || !this.hasUnderwater) return false;
+    const ix = Math.round((x - g.x0) / CELL), iz = Math.round((z - g.z0) / CELL);
+    if (ix < 0 || iz < 0 || ix >= g.nx || iz >= g.nz) return false;
+    return g.uw[iz * g.nx + ix] === 1;
+  }
+
+  /** Boden wie groundAt, aber auf Wasser die Oberfläche (0) – außer in Unterwasser-Zonen (dort der Grund). */
+  floorAt(x, z, y = Infinity) {
+    const h = this.groundAt(x, z, y);
+    return h < 0 && !this.underwaterAt(x, z) ? 0 : h;
   }
 
   /**
@@ -220,10 +251,18 @@ export class World {
     return false;
   }
 
-  /** Oberfläche: 'road' | 'off' (Wiese, Sand …) | 'water' (befahrbar, schwimmt) | 'sea' (offenes Meer, außerhalb) | 'lava'. */
+  /**
+   * Oberfläche: 'road' | 'off' (Wiese, Sand …) | 'water' (befahrbar, schwimmt) | 'sea' (offenes Meer, außerhalb) |
+   * 'lava'. In Unterwasser-Zonen gibt es kein Wasser: dort fährt man auf dem Grund (Straße oder Sand).
+   */
   surfaceAt(x, z, y = undefined) {
     if (y !== undefined && this.liftTracks?.length) { const d = this.deckAt(x, z, y); if (d !== null && d > this.heightAt(x, z) + 0.3) return 'road'; }
     for (const l of this.lava) if ((x - l.x) ** 2 + (z - l.z) ** 2 < l.r * l.r) return 'lava';
+    if (this.hasUnderwater && this.heightAt(x, z) < -0.05 && this.underwaterAt(x, z)) {
+      // auf dem Meeresgrund: Straße oder Sand (kein Schwimmen, kein offenes Meer)
+      const r = this.nearestRoad(x, z, 1, this._nr ?? (this._nr = {}));
+      return r.road && !r.water && r.d <= r.hw + 1.0 ? 'road' : 'off';
+    }
     const is = this.def.island;
     const ex = (x - is.cx) / is.rx, ez = (z - is.cz) / is.rz;
     if (ex * ex + ez * ez > 1.3 * 1.3) return 'sea';

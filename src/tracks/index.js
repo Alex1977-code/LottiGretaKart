@@ -13,6 +13,7 @@ import bonbon from './bonbon.js';
 import loroparque from './loroparque.js';
 import piratenbucht from './piratenbucht.js';
 import dinodschungel from './dinodschungel.js';
+import wrackriff from './wrackriff.js';
 
-export const TRACKS = [kraxelwiese, herbstwald, laternengrotte, manege, autobahn, strand, gipfel, burg, wueste, vulkan, bonbon, loroparque, piratenbucht, dinodschungel];
+export const TRACKS = [kraxelwiese, herbstwald, laternengrotte, manege, autobahn, strand, gipfel, burg, wueste, vulkan, bonbon, loroparque, piratenbucht, dinodschungel, wrackriff];
 export const TRACK_BY_ID = Object.fromEntries(TRACKS.map((t) => [t.id, t]));

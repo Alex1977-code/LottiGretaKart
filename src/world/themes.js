@@ -190,6 +190,22 @@ const PIRATE = {
   bridge: 0x6a4424, bridgePillar: 0x5a3a20, bridgeTop: 0xb08a5a, bridgeTop2: 0xa07c4e,
 };
 
+// Wrack-Riff: strahlender Hafen an der Nordküste, Kai aus Beton, Bojen-Banden rot-weiß; das Deck der Fähre aus Stahl
+const REEF = {
+  ...GRASS,
+  label: 'Wrack-Riff',
+  sky: [[1, 0x1a62d8], [0.45, 0x3a96ee], [0.15, 0x8ad4f6], [0.03, 0xd8f4ff], [0, 0xeefaff], [-0.1, 0xa8e0f0], [-1, 0x3a9ad0]],
+  background: 0xd8eef8,
+  fog: { color: 0xd4ecf6, near: 110, far: 470 },
+  hemi: { sky: 0xe0f4ff, ground: 0x7ab8c8, intensity: 1.45 },
+  sun: { color: 0xfff4dc, intensity: 3.0, dir: [-0.35, 0.9, 0.3] },
+  hills: 0x5ab84a, hills2: 0xe8d8a8,
+  grass: 0x7cc44a, grass2: 0x72ba44, grassFar: 0x6aae40, offroad: 0xf2e2b0, offroad2: 0xe8d6a0,   // Sand
+  road: 0x8e98a6, road2: 0x8892a0, line: 0xffffff, curbA: 0xe8392d, curbB: 0xffffff,
+  wallA: 0xe8392d, wallB: 0xf8f8f8, wallTop: 0xffd23a, wallH: 0.85,
+  bridge: 0x1e3a6a, bridgePillar: 0x2a3a5a, bridgeTop: 0x7a828e, bridgeTop2: 0x727a86,
+};
+
 // Dino-Dschungel: feucht-grüner Urwald, leichter Dunst, rote Lehmstraße, Bambusbanden
 const JUNGLE = {
   ...GRASS,
@@ -206,5 +222,5 @@ const JUNGLE = {
   bridge: 0x7a5a32, bridgePillar: 0x6a4a2a, bridgeTop: 0x9a7a4a, bridgeTop2: 0x8e6e42,
 };
 
-export const THEMES = { jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
+export const THEMES = { reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
 export const getTheme = (n) => THEMES[n] ?? GRASS;

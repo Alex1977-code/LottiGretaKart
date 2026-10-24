@@ -23,7 +23,7 @@ if (!base) {
 const only = process.argv[2];
 // Fälle: Runden auf jeder Strecke, Grand Prix mit Anfahrt (inkl. Seeüberquerung), K.-o.-Tour
 const CASES = [
-  ...['kraxelwiese', 'herbstwald', 'laternengrotte', 'manege', 'autobahn', 'strand', 'gipfel', 'burg', 'wueste', 'vulkan', 'bonbon', 'loroparque', 'piratenbucht', 'dinodschungel'].map((t) => ({ id: t, q: `race=${t}&laps=1&racer=greta`, rows: 12 })),
+  ...['kraxelwiese', 'herbstwald', 'laternengrotte', 'manege', 'autobahn', 'strand', 'gipfel', 'burg', 'wueste', 'vulkan', 'bonbon', 'loroparque', 'piratenbucht', 'dinodschungel', 'wrackriff'].map((t) => ({ id: t, q: `race=${t}&laps=1&racer=greta`, rows: 12 })),
   { id: 'gp-wiese-wald', q: 'mode=gp&from=kraxelwiese&race=herbstwald&laps=1&racer=lotti', rows: 12 },
   { id: 'gp-zirkus-wiese', q: 'mode=gp&from=manege&race=kraxelwiese&laps=1&racer=pflaume', rows: 12 },
   { id: 'gp-wiese-strand', q: 'mode=gp&from=kraxelwiese&race=strand&laps=1&racer=kobold', rows: 12 },
@@ -46,6 +46,9 @@ const CASES = [
   { id: 'ko-schatz', q: 'mode=ko&tour=schatz&racer=greta', rows: 12, ko: true },
   { id: 'gp-wald-dino', q: 'mode=gp&from=herbstwald&race=dinodschungel&laps=1&racer=lotti', rows: 12 },
   { id: 'gp-dino-gipfel', q: 'mode=gp&from=dinodschungel&race=gipfel&laps=1&racer=greta', rows: 12 },
+  { id: 'gp-burg-riff', q: 'mode=gp&from=burg&race=wrackriff&laps=1&racer=lotti', rows: 12 },
+  { id: 'gp-riff-dino', q: 'mode=gp&from=wrackriff&race=dinodschungel&laps=1&racer=greta', rows: 12 },
+  { id: 'ko-tauchgang', q: 'mode=ko&tour=tauchgang&racer=lotti', rows: 12, ko: true },
 ].filter((c) => !only || c.id === only);
 const browser = await pw.chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 let failed = 0;

@@ -307,7 +307,7 @@ export class Decor {
     m.root.position.set(x, yy, z);
     m.root.rotation.y = yaw ?? 0;
     m.root.scale.setScalar(scale);
-    m.root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    m.root.traverse((o) => { if (o.isMesh && !o.userData.noShadow) { o.castShadow = true; o.receiveShadow = true; } });
     this.group.add(m.root);
     const entry = { model: m, state, tick, base, t: this.r() * 10 };
     this.models.push(entry);
