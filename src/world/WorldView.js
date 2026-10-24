@@ -163,6 +163,7 @@ export class WorldView {
       const tr = c.track;
       tr.buildRoad();
       tr.buildWalls();
+      tr.buildBridge((x, z, t) => w.roadBelow(x, z, t));
       tr.buildStartLine();
       this.group.add(tr.group);
     }

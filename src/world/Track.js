@@ -14,7 +14,8 @@ const CELL = 16;             // Raster der Suchtabelle (m)
 
 export class Track {
   /**
-   * @param {object} def    Streckendefinition (ctrl = [[x, z, halbe Breite?], …])
+   * @param {object} def    Streckendefinition (ctrl = [[x, z, halbe Breite?, Brückenhöhe?], …]) – mit Brückenhöhe
+   *                         (m über dem Gelände) führt die Strecke über eine Brücke, z. B. über sich selbst (Acht).
    * @param {object} theme  Farben
    * @param {object} opts   { ox, oz (Verschiebung in die Welt), closed (Rundkurs, Standard true),
    *                          heightFn (x, z) → Höhe (Welt-Gelände statt eigener Hügel) }
@@ -49,6 +50,7 @@ export class Track {
     this.px = new Float32Array(N); this.pz = new Float32Array(N); this.py = new Float32Array(N);
     this.tx = new Float32Array(N); this.tz = new Float32Array(N);
     this.hw = new Float32Array(N); this.curv = new Float32Array(N);
+    this.lift = new Float32Array(N);
     const nC = def.ctrl.length;
     const p = new THREE.Vector3(), t = new THREE.Vector3();
     for (let i = 0; i < N; i++) {
@@ -64,9 +66,12 @@ export class Track {
       const w0 = def.ctrl[i0][2] ?? this.hwDefault, w1 = def.ctrl[i1][2] ?? this.hwDefault;
       const sf = f * f * (3 - 2 * f);
       this.hw[i] = w0 + (w1 - w0) * sf;
+      const l0 = def.ctrl[i0][3] ?? 0, l1 = def.ctrl[i1][3] ?? 0;
+      this.lift[i] = l0 + (l1 - l0) * sf;
     }
+    this.hasLift = this.lift.some((v) => v > 0.05);
     for (let i = 0; i < N; i++) {
-      this.py[i] = this.heightAt(this.px[i], this.pz[i]);
+      this.py[i] = this.roadY(i, this.px[i], this.pz[i]);
       const a = this.wrap(i - 4), b = this.wrap(i + 4);
       const ang = Math.atan2(this.tx[a] * this.tz[b] - this.tz[a] * this.tx[b], this.tx[a] * this.tx[b] + this.tz[a] * this.tz[b]);
       this.curv[i] = ang / (8 * this.ds); // rad/m, + = Rechtskurve
@@ -84,6 +89,38 @@ export class Track {
       h += hh * Math.exp(-(dx * dx + dz * dz) / (r * r));
     }
     return h;
+  }
+
+  /**
+   * Höhe der Fahrbahn an Abtastpunkt k (Querlage x, z): Gelände, auf Brücken das Deck. Das Deck liegt
+   * `lift` über dem geglätteten Straßenprofil (von der Welt gesetzt) – unabhängig vom Gelände darunter
+   * (Wasser, andere Straße); an den Rampen weich ins Gelände übergeblendet.
+   */
+  roadY(k, x, z) {
+    const h = this.heightAt(x, z);
+    const L = this.hasLift ? this.lift[k] : 0;
+    if (!(L > 0.001)) return h;
+    const base = this.profile ? this.profile[k] : h;
+    const a = Math.min(1, L / 0.6), w = a * a * (3 - 2 * a);
+    return h + (base + L - h) * w;
+  }
+
+  /** Nächster Brücken-Abtastpunkt (lift > 0) in der Umgebung von (x, z) oder −1. */
+  nearestLifted(x, z) {
+    if (!this.hasLift) return -1;
+    const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
+    let best = -1, bd = Infinity;
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+      const list = this.cells.get(`${cx + a},${cz + b}`);
+      if (!list) continue;
+      for (const i of list) {
+        if (!(this.lift[i] > 0.05)) continue;
+        const dx = x - this.px[i], dz = z - this.pz[i], d = dx * dx + dz * dz;
+        if (d < bd) { bd = d; best = i; }
+      }
+    }
+    if (best < 0 || Math.sqrt(bd) > this.wallAt(best) + 0.8) return -1;
+    return best;
   }
 
   buildIndex() {
@@ -165,7 +202,8 @@ export class Track {
     let tx = this.tx[i0] + (this.tx[i1] - this.tx[i0]) * f, tz = this.tz[i0] + (this.tz[i1] - this.tz[i0]) * f;
     const l = Math.hypot(tx, tz) || 1; tx /= l; tz /= l;
     out.x = x - tz * lat; out.z = z + tx * lat;
-    out.y = this.heightAt(out.x, out.z);
+    // auf Brücken: Deckhöhe (innerhalb der Banden), sonst Gelände
+    out.y = this.hasLift && Math.abs(lat) <= this.wallAt(i0) + 0.5 ? this.roadY(f < 0.5 ? i0 : i1, out.x, out.z) : this.heightAt(out.x, out.z);
     out.yaw = Math.atan2(-tz, tx);
     out.i = i0; out.tx = tx; out.tz = tz;
     out.hw = this.hw[i0] + (this.hw[i1] - this.hw[i0]) * f;
@@ -180,6 +218,7 @@ export class Track {
     this.buildTerrain();
     this.buildRoad();
     this.buildWalls();
+    this.buildBridge();
     this.buildStartLine();
     return this.group;
   }
@@ -247,7 +286,7 @@ export class Track {
       if (!c) continue;
       const P = (k, lat, yo) => {
         const x = this.px[k] - this.tz[k] * lat, z = this.pz[k] + this.tx[k] * lat;
-        return [x, this.heightAt(x, z) + yo, z];
+        return [x, this.roadY(k, x, z) + yo, z];
       };
       const a0 = P(i, aFn(i), yOff(i, 0)), b0 = P(i, bFn(i), yOff(i, 1)), a1 = P(j, aFn(j), yOff(j, 0)), b1 = P(j, bFn(j), yOff(j, 1));
       // a liegt links (kleineres lat) → Dreiecke gegen den Uhrzeigersinn von oben
@@ -314,6 +353,84 @@ export class Track {
     this.group.add(m);
   }
 
+  /**
+   * Brückenkörper unter angehobenen Abschnitten: Deckplatte (Unterseite und Seiten) und Pfeiler. Pfeiler stehen
+   * nicht auf anderen Straßen (isRoad(x, z) → true = dort keinen Pfeiler). Höhere Banden als Geländer.
+   */
+  buildBridge(isRoad = null) {
+    if (!this.hasLift) return;
+    const th = this.theme;
+    const cDeck = lin(th.bridge ?? 0x8a6a4a), cPillar = lin(th.bridgePillar ?? 0x6a5a4e), cRail = lin(th.wallTop);
+    const cTop = lin(th.bridgeTop ?? th.offroad), cTop2 = lin(th.bridgeTop2 ?? th.offroad2);
+    const flat = (i) => !(this.lift[i] > 0.4 || this.lift[this.wrap(i + 1)] > 0.4);   // hier keine Brücke
+    const W = (i) => this.wallAt(i) + 0.45;
+    const parts = [
+      // Deck-Oberseite zwischen Fahrbahn und Bande (dort gibt es kein Gelände), Unterseite (0,8 m dick), Seiten
+      this.ribbon((i) => -W(i), (i) => W(i), () => -0.02, (i) => (Math.floor(i / 3) % 2 ? cTop : cTop2), 1, flat),
+      this.ribbon((i) => -W(i), (i) => W(i), () => -0.8, () => cDeck, 1, flat),
+      this.wallFace((i) => -W(i), 0.0, () => cDeck, flat),
+      this.wallFace((i) => W(i), 0.0, () => cDeck, flat),
+    ];
+    // Seitenblenden reichen von −0,3 bis 0 – darunter bis −0,8 verlängern
+    const skirt = (side) => {
+      const pos = [], col = [];
+      for (let i = 0; i < this.N; i++) {
+        const j = this.wrap(i + 1);
+        if (!this.closed && i >= this.N - 1) break;
+        if (flat(i)) continue;
+        const P = (k, y) => { const lat = side * W(k), x = this.px[k] - this.tz[k] * lat, z = this.pz[k] + this.tx[k] * lat; return [x, this.roadY(k, x, z) + y, z]; };
+        const a0 = P(i, -0.8), a1 = P(j, -0.8), b0 = P(i, -0.25), b1 = P(j, -0.25);
+        pos.push(...a0, ...b0, ...a1, ...a1, ...b0, ...b1);
+        for (let q = 0; q < 6; q++) col.push(cDeck[0] * 0.8, cDeck[1] * 0.8, cDeck[2] * 0.8);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      g.computeVertexNormals();
+      return g;
+    };
+    parts.push(skirt(-1), skirt(1));
+    // Geländer: Pfosten und Handlauf auf beiden Seiten
+    const rails = new THREE.BoxGeometry(1, 1, 1);
+    const posts = [];
+    for (let i = 0; i < this.N; i += 4) {
+      if (!(this.lift[i] > 1)) continue;
+      for (const side of [-1, 1]) {
+        const lat = side * (this.wallAt(i) + 0.2), x = this.px[i] - this.tz[i] * lat, z = this.pz[i] + this.tx[i] * lat;
+        posts.push([x, this.roadY(i, x, z), z]);
+      }
+    }
+    // Pfeiler (alle ~12 m, je Seite einer), nicht auf anderen Straßen
+    const pillars = [];
+    for (let i = 0; i < this.N; i += 12) {
+      if (!(this.lift[i] > 1.2)) continue;
+      for (const side of [-1, 1]) {
+        const lat = side * (this.hw[i] * 0.7), x = this.px[i] - this.tz[i] * lat, z = this.pz[i] + this.tx[i] * lat;
+        if (isRoad?.(x, z, this, i)) continue;
+        const top = this.roadY(i, x, z) - 0.8, bottom = Math.min(this.heightAt(x, z), top) - 2;
+        pillars.push([x, (top + bottom) / 2, z, top - bottom]);
+      }
+    }
+    const geo = mergeAll(parts);
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, side: THREE.DoubleSide });
+    const deck = new THREE.Mesh(geo, mat);
+    deck.castShadow = true; deck.receiveShadow = true; deck.name = 'bruecke';
+    this.group.add(deck);
+    if (pillars.length) {
+      const pg = new THREE.CylinderGeometry(0.9, 1.1, 1, 12);
+      const im = new THREE.InstancedMesh(pg, new THREE.MeshStandardMaterial({ color: new THREE.Color().setRGB(...cPillar), roughness: 0.8 }), pillars.length);
+      pillars.forEach(([x, y, z, h], k) => im.setMatrixAt(k, new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion(), new THREE.Vector3(1, h, 1))));
+      im.castShadow = true; im.receiveShadow = true; im.name = 'brueckenpfeiler';
+      this.group.add(im);
+    }
+    if (posts.length) {
+      const im = new THREE.InstancedMesh(rails, new THREE.MeshStandardMaterial({ color: new THREE.Color().setRGB(...cRail), roughness: 0.5 }), posts.length);
+      posts.forEach(([x, y, z], k) => im.setMatrixAt(k, new THREE.Matrix4().compose(new THREE.Vector3(x, y + 1.2, z), new THREE.Quaternion(), new THREE.Vector3(0.18, 1.0, 0.18))));
+      im.castShadow = true; im.name = 'gelaender';
+      this.group.add(im);
+    }
+  }
+
   /** Liegt Abtastpunkt i auf Seite side in einer Banden-Lücke (Tor zu einer Verbindungsstraße)? */
   inGap(side, i) {
     const s = i * this.ds;
@@ -334,7 +451,7 @@ export class Track {
       if (skipFn && skipFn(i)) continue;
       const P = (k, y) => {
         const lat = latFn(k), x = this.px[k] - this.tz[k] * lat, z = this.pz[k] + this.tx[k] * lat;
-        return [x, this.heightAt(x, z) + y, z];
+        return [x, this.roadY(k, x, z) + y, z];
       };
       const a0 = P(i, -0.3), a1 = P(j, -0.3), b0 = P(i, H), b1 = P(j, H);
       pos.push(...a0, ...b0, ...a1, ...a1, ...b0, ...b1);

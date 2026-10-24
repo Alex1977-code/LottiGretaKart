@@ -252,7 +252,7 @@ export class Items {
     // höchstens 16 Käfer gleichzeitig auf der Strecke
     const bugs = this.projectiles.filter((p) => p.kind === 'kaefer');
     if (bugs.length >= 16) this.remove(bugs[0]);
-    this.addProjectile({ kind: 'kaefer', modelName: 'krabbelkaefer', opts: { color: 'red' }, scale: 1.25, pos: new THREE.Vector3(x, Math.max(0, this.race.world.heightAt(x, z)), z), yaw: racer.yaw, owner: racer, life: 9999, radius: 0.55, i: racer.loc.i });
+    this.addProjectile({ kind: 'kaefer', modelName: 'krabbelkaefer', opts: { color: 'red' }, scale: 1.25, pos: new THREE.Vector3(x, Math.max(0, this.race.world.groundAt(x, z, racer.pos.y + 0.5)), z), yaw: racer.yaw, owner: racer, life: 9999, radius: 0.55, i: racer.loc.i });
   }
 
   spawnBomb(racer, fx, fz) {
@@ -403,7 +403,7 @@ export class Items {
     const race = this.race, track = p.path ?? p.owner?.path ?? race.track, world = race.world;
     const loc = track ? track.locate(p.pos.x, p.pos.z, p.i, p.loc ?? (p.loc = {})) : (p.loc ?? (p.loc = { i: 0, lat: 0 }));
     p.i = loc.i;
-    const groundRaw = world.heightAt(p.pos.x, p.pos.z), ground = groundRaw < 0 ? 0 : groundRaw;
+    const groundRaw = world.groundAt(p.pos.x, p.pos.z, p.pos.y + 0.5), ground = groundRaw < 0 ? 0 : groundRaw;
     switch (p.kind) {
       case 'panzer': case 'goldpanzer': {
         if (p.kind === 'goldpanzer' && p.target && !p.target.finished) {
@@ -423,7 +423,7 @@ export class Items {
         }
         p.pos.x += p.vx * dt; p.pos.z += p.vz * dt; p.pos.y = ground;
         // Bande/Wand: abprallen
-        const col = world.collide(p.pos.x, p.pos.z, 0.4, this._col ?? (this._col = {}));
+        const col = world.collide(p.pos.x, p.pos.z, 0.4, this._col ?? (this._col = {}), p.pos.y);
         if (col) {
           const nx = col.nx, nz = col.nz, vn = p.vx * nx + p.vz * nz;
           if (vn < 0) { p.vx -= 2 * vn * nx; p.vz -= 2 * vn * nz; }
@@ -453,7 +453,7 @@ export class Items {
           if (p.fuse <= 0) { this.explode(p.pos, 5.5, p.owner); this.remove(p); return; }
         }
         // an Wänden abprallen
-        const colB = world.collide(p.pos.x, p.pos.z, 0.5, this._col ?? (this._col = {}));
+        const colB = world.collide(p.pos.x, p.pos.z, 0.5, this._col ?? (this._col = {}), p.pos.y);
         if (colB) { p.vx *= -0.4; p.vz *= -0.4; p.pos.x += colB.px; p.pos.z += colB.pz; }
         p.model.update(dt, p.landed ? { anim: 'lit', fuse: 1 - p.fuse / 1.5 } : { anim: 'kicked', speed: 6 });
         break;
@@ -461,7 +461,7 @@ export class Items {
       case 'funkenball': {
         p.pos.x += p.vx * dt; p.pos.z += p.vz * dt;
         p.pos.y = ground + 0.3 + Math.abs(Math.sin(p.age * 9)) * 1.0;
-        if (world.collide(p.pos.x, p.pos.z, 0.3, this._col ?? (this._col = {}))) { race.effects.sparks(p.pos, 0, 0, 0xff8a2a, 8); this.remove(p); return; }
+        if (world.collide(p.pos.x, p.pos.z, 0.3, this._col ?? (this._col = {}), p.pos.y)) { race.effects.sparks(p.pos, 0, 0, 0xff8a2a, 8); this.remove(p); return; }
         race.effects.trail(p.pos.x, p.pos.y, p.pos.z, 0xff7a2a, 0.6);
         p.model.update(dt, 'idle');
         break;

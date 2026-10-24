@@ -31,7 +31,8 @@ export class World {
     this.buildHeightfield();
     for (const c of this.courses) c.track.heightFn = this.heightAt;
     for (const c of this.connectors) c.track.heightFn = this.heightAt;
-    for (const c of this.courses) for (let i = 0; i < c.track.N; i++) c.track.py[i] = this.heightAt(c.track.px[i], c.track.pz[i]);
+    for (const c of this.courses) for (let i = 0; i < c.track.N; i++) c.track.py[i] = c.track.roadY(i, c.track.px[i], c.track.pz[i]);
+    this.liftTracks = this.courses.map((c) => c.track).filter((t) => t.hasLift);
     // 3. Suchtabellen: Straßen-Abtastpunkte und Kollisionen
     this.buildRoadIndex();
     this.segs = []; this.circles = []; this.colIndex = new Map();
@@ -100,6 +101,8 @@ export class World {
       tr.profile = prof;
       for (let i = 0; i < N; i++) {
         if (tr.water[i]) continue;
+        // unter Brücken bleibt das Gelände, wie es ist (Wasser, die andere Straße)
+        if (tr.hasLift && tr.lift[i] > 0.5) continue;
         const inner = tr.hw[i] + pad, R = inner + 14;
         const cx = (tr.px[i] - b.minX) / CELL, cz = (tr.pz[i] - b.minZ) / CELL, rr = Math.ceil(R / CELL);
         for (let jz = Math.max(0, Math.floor(cz - rr)); jz <= Math.min(nz - 1, Math.ceil(cz + rr)); jz++) {
@@ -115,6 +118,29 @@ export class World {
     }
     for (let k = 0; k < h.length; k++) if (w[k] > 0) h[k] += (t[k] - h[k]) * w[k];
     this.hf = { x0: b.minX, z0: b.minZ, nx, nz, h, rw: w, cell: CELL };
+  }
+
+  /**
+   * Brückendeck unter einem Punkt in Höhe y (oder null): nur, wenn man auf/über dem Deck ist – wer unter der
+   * Brücke fährt, hat dort das Gelände als Boden.
+   */
+  deckAt(x, z, y = Infinity) {
+    let best = null;
+    for (const tr of this.liftTracks ?? []) {
+      const i = tr.nearestLifted(x, z);
+      if (i < 0) continue;
+      const dy = tr.roadY(i, x, z);
+      if (y >= dy - 1.6 && (best === null || dy > best)) best = dy;
+    }
+    return best;
+  }
+
+  /** Boden unter einem Kart/Gegenstand in Höhe y: Brückendeck oder Gelände. */
+  groundAt(x, z, y = Infinity) {
+    const h = this.heightAt(x, z);
+    if (!this.liftTracks?.length) return h;
+    const d = this.deckAt(x, z, y);
+    return d !== null && d > h ? d : h;
   }
 
   // ------------------------------------------------------------------ Verbindungsstraßen
@@ -179,8 +205,24 @@ export class World {
     return out;
   }
 
+  /** Liegt bei (x, z) eine Straße am Boden (nicht das Brückendeck von tr selbst)? – dort keine Brückenpfeiler. */
+  roadBelow(x, z, tr) {
+    const cx = Math.floor(x / HCELL), cz = Math.floor(z / HCELL);
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+      const l = this.roadIndex.get(`${cx + a},${cz + b}`);
+      if (!l) continue;
+      for (let k = 0; k < l.length; k += 2) {
+        const r = this.roads[l[k]], i = l[k + 1];
+        if (r === tr && r.lift[i] > 0.5) continue;
+        if (Math.hypot(x - r.px[i], z - r.pz[i]) < (r.closed ? r.wallAt(i) : r.hw[i]) + 2.5) return true;
+      }
+    }
+    return false;
+  }
+
   /** Oberfläche: 'road' | 'off' (Wiese, Sand …) | 'water' (befahrbar, schwimmt) | 'sea' (offenes Meer, außerhalb) | 'lava'. */
-  surfaceAt(x, z) {
+  surfaceAt(x, z, y = undefined) {
+    if (y !== undefined && this.liftTracks?.length) { const d = this.deckAt(x, z, y); if (d !== null && d > this.heightAt(x, z) + 0.3) return 'road'; }
     for (const l of this.lava) if ((x - l.x) ** 2 + (z - l.z) ** 2 < l.r * l.r) return 'lava';
     const is = this.def.island;
     const ex = (x - is.cx) / is.rx, ez = (z - is.cz) / is.rz;
@@ -203,9 +245,9 @@ export class World {
   }
 
   // ------------------------------------------------------------------ Kollisionen
-  addSeg(x1, z1, x2, z2) {
+  addSeg(x1, z1, x2, z2, y = null) {
     const id = this.segs.length;
-    this.segs.push([x1, z1, x2, z2]);
+    this.segs.push([x1, z1, x2, z2, y]);
     const minX = Math.floor(Math.min(x1, x2) / HCELL), maxX = Math.floor(Math.max(x1, x2) / HCELL);
     const minZ = Math.floor(Math.min(z1, z2) / HCELL), maxZ = Math.floor(Math.max(z1, z2) / HCELL);
     for (let a = minX; a <= maxX; a++) for (let b = minZ; b <= maxZ; b++) this.indexAdd(a, b, id);
@@ -233,7 +275,10 @@ export class World {
           const j = tr.wrap(i + 2);
           if (tr.inGap(side, i) || tr.inGap(side, j)) continue;
           const la = side * tr.wallAt(i), lb = side * tr.wallAt(j);
-          this.addSeg(tr.px[i] - tr.tz[i] * la, tr.pz[i] + tr.tx[i] * la, tr.px[j] - tr.tz[j] * lb, tr.pz[j] + tr.tx[j] * lb);
+          const x1 = tr.px[i] - tr.tz[i] * la, z1 = tr.pz[i] + tr.tx[i] * la;
+          // Banden auf Brücken (und Banden, unter denen eine Brücke kreuzt) gelten nur in ihrer Höhe
+          const y = tr.hasLift ? tr.roadY(i, x1, z1) : null;
+          this.addSeg(x1, z1, tr.px[j] - tr.tz[j] * lb, tr.pz[j] + tr.tx[j] * lb, y);
         }
       }
     }
@@ -268,7 +313,7 @@ export class World {
    * Kreis (x, z, r) gegen Banden, Wände und Hindernisse. Liefert die summierte Hinausschiebung
    * { px, pz } und die gemittelte Normale { nx, nz } oder null, wenn nichts berührt wird.
    */
-  collide(x, z, r, out = {}) {
+  collide(x, z, r, out = {}, y = null) {
     const cx = Math.floor(x / HCELL), cz = Math.floor(z / HCELL);
     let px = 0, pz = 0, hit = false;
     const seen = this._seen ?? (this._seen = new Set());
@@ -281,7 +326,8 @@ export class World {
         seen.add(id);
         let qx, qz;
         if (id >= 0) {
-          const [x1, z1, x2, z2] = this.segs[id];
+          const [x1, z1, x2, z2, sy] = this.segs[id];
+          if (y !== null && sy !== null && Math.abs(y - sy) > 2.4) continue;
           const dx = x2 - x1, dz = z2 - z1, L2 = dx * dx + dz * dz || 1;
           const t = clamp(((x + px - x1) * dx + (z + pz - z1) * dz) / L2, 0, 1);
           qx = x1 + dx * t; qz = z1 + dz * t;

@@ -29,6 +29,7 @@ export class RacePath {
     this.N = N; this.length = L; this.ds = L / (N - 1);
     this.px = new Float32Array(N); this.pz = new Float32Array(N); this.tx = new Float32Array(N); this.tz = new Float32Array(N);
     this.hw = new Float32Array(N); this.curv = new Float32Array(N); this.py = new Float32Array(N);
+    this.lift = new Float32Array(N);   // > 0: Brücke (py = Deckhöhe)
     const pts = curve.getSpacedPoints(N - 1);
     // Breite: vom nächsten Originalpunkt (gleicher Anteil entlang der Linie)
     const polyLen = points.reduce((a, p, k) => a + (k ? Math.hypot(p.x - points[k - 1].x, p.z - points[k - 1].z) : 0), 0);
@@ -42,7 +43,8 @@ export class RacePath {
         sAcc += Math.hypot(points[j + 1].x - points[j].x, points[j + 1].z - points[j].z); j++;
       }
       this.hw[i] = points[j].hw;
-      this.py[i] = world.heightAt(p.x, p.z);
+      this.lift[i] = points[j].lift ?? 0;
+      this.py[i] = this.lift[i] > 0.05 ? world.groundAt(p.x, p.z, points[j].y + 0.5) : world.heightAt(p.x, p.z);
     }
     for (let i = 0; i < N; i++) {
       const a = Math.max(0, i - 1), b = Math.min(N - 1, i + 1);
@@ -109,7 +111,8 @@ export class RacePath {
     let tx = this.tx[i0] + (this.tx[i1] - this.tx[i0]) * f, tz = this.tz[i0] + (this.tz[i1] - this.tz[i0]) * f;
     const l = Math.hypot(tx, tz) || 1; tx /= l; tz /= l;
     out.x = x - tz * lat; out.z = z + tx * lat;
-    out.y = this.world.heightAt(out.x, out.z);
+    // auf Brücken: Deck in Höhe des Pfads, sonst Gelände
+    out.y = this.lift[i0] > 0.05 || this.lift[i1] > 0.05 ? this.world.groundAt(out.x, out.z, this.py[i0] + (this.py[i1] - this.py[i0]) * f + 0.5) : this.world.heightAt(out.x, out.z);
     out.yaw = Math.atan2(-tz, tx);
     out.i = i0; out.tx = tx; out.tz = tz;
     out.hw = this.hw[i0];
@@ -125,7 +128,7 @@ export class RacePath {
     const tr = course.track, N = tr.N;
     let i = a, guard = 0;
     while (guard++ < N * 2) {
-      pts.push({ x: tr.px[i], z: tr.pz[i], hw: tr.hw[i] });
+      pts.push({ x: tr.px[i], z: tr.pz[i], hw: tr.hw[i], y: tr.py[i], lift: tr.hasLift ? tr.lift[i] : 0 });
       if (i === b) break;
       i = (i + 1) % N;
       if (i === 0) onFinishLine?.(pts);
