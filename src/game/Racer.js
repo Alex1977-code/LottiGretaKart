@@ -81,8 +81,9 @@ export class Racer {
 
   /** Auf einen Startplatz stellen. */
   /** Auf einen Platz stellen; hintI = ungefährer Pfad-Index (der Pfad kann dieselbe Stelle mehrfach passieren). */
-  placeAt(x, z, yaw, hintI = -1) {
-    this.pos.set(x, this.groundAt(x, z), z);
+  placeAt(x, z, yaw, hintI = -1, y = undefined) {
+    // y: Höhe des Platzes (auf Brücken das Deck) – sonst Boden in der bisherigen Höhe
+    this.pos.set(x, y !== undefined ? y : this.groundAt(x, z), z);
     this.yaw = yaw;
     this.speed = 0; this.vlat = 0; this.vy = 0; this.air = false;
     this.lastI = -1;
@@ -90,9 +91,9 @@ export class Racer {
     this.syncVisual(0, 0);
   }
 
-  /** Fahrbahn-Höhe: Gelände, auf Wasser die Wasseroberfläche (man schwimmt). */
+  /** Fahrbahn-Höhe: Gelände bzw. Brückendeck (je nach Höhe des Karts), auf Wasser die Oberfläche (man schwimmt). */
   groundAt(x, z) {
-    const h = this.race.world.heightAt(x, z);
+    const h = this.race.world.groundAt(x, z, this.pos.y);
     return h < 0 ? 0 : h;
   }
 
@@ -140,7 +141,7 @@ export class Racer {
     for (const k of timers) if (this[k] > 0) this[k] = Math.max(0, this[k] - dt);
 
     const loc = track ? track.locate(this.pos.x, this.pos.z, this.lastI, this.loc) : this.loc;
-    const surface = world.surfaceAt(this.pos.x, this.pos.z);
+    const surface = world.surfaceAt(this.pos.x, this.pos.z, this.pos.y);
     this.surface = surface;
     const offroad = surface === 'off' && !this.air && !this.grind;
     const onWater = (surface === 'water' || surface === 'sea') && !this.air;
@@ -241,7 +242,7 @@ export class Racer {
     const fx = Math.cos(this.yaw), fz = -Math.sin(this.yaw);
     const rx = -fz, rz = fx; // rechts
     // Drift: Kart rutscht leicht nach außen
-    const slide = d.on ? -d.dir * Math.abs(this.speed) * 0.08 : 0;
+    const slide = d.on ? -d.dir * Math.abs(this.speed) * 0.1 : 0;
     this.vlat = damp(this.vlat, slide, d.on ? 3 : P.grip, dt);
     if (!this.grind) {
       this.pos.x += (fx * this.speed + rx * this.vlat) * dt;
@@ -249,7 +250,7 @@ export class Racer {
     }
 
     // --- Banden, Wände, Bäume (Welt-Kollision)
-    const col = this.grind ? null : world.collide(this.pos.x, this.pos.z, 0.72 * this.giantScale, this._col ?? (this._col = {}));
+    const col = this.grind ? null : world.collide(this.pos.x, this.pos.z, 0.72 * this.giantScale, this._col ?? (this._col = {}), this.pos.y);
     if (col) {
       const nx = col.nx, nz = col.nz;
       this.pos.x += col.px; this.pos.z += col.pz;
@@ -407,7 +408,9 @@ export class Racer {
     if (this.onWater && !this.air) this.root.position.y += 0.06 * Math.sin(t * 5 + this.slot);
     // Drehungen: Drift (Kart zeigt nach innen), Schleudern, Überschlag, Trick
     const d = this.drift;
-    this.visDrift = damp(this.visDrift ?? 0, d.on ? d.dir * 0.42 : 0, 9, dt || 1);
+    // Drift: Kart steht deutlich quer (wie im Vorbild), beim Einlenken noch etwas mehr
+    const into = d.on ? clamp((this.lastInp?.steer ?? 0) * d.dir, -1, 1) : 0;
+    this.visDrift = damp(this.visDrift ?? 0, d.on ? d.dir * (0.62 + 0.2 * into) : 0, 8, dt || 1);
     if (this.spinT > 0) this.spinAngle += dt * 14 * Math.min(1, this.spinT * 1.5); else this.spinAngle = damp(wrapA(this.spinAngle), 0, 10, dt || 1);
     if (this.tumbleT > 0) this.tumbleAngle = (1 - this.tumbleT / 1.5) * TAU; else this.tumbleAngle = 0;
     const trickRoll = this.trick.done ? Math.min(1, this.trick.t / 0.45) * TAU : 0;

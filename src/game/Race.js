@@ -581,7 +581,7 @@ export class Race {
       if (r.path) {
         const tr = r.path, i = tr.wrap(r.loc.i + 6);
         const q = tr.pointAt(i / (tr.N - 1), 0);
-        r.placeAt(q.x, q.z, q.yaw, i);
+        r.placeAt(q.x, q.z, q.yaw, i, q.y);
       } else {
         const nr = this.world.nearestRoad(r.pos.x, r.pos.z, 12, {});
         if (nr.road) {
@@ -720,13 +720,13 @@ export class Race {
     } else {
       // Verfolger-Kamera hinter dem Kart; beim Driften schwingt sie mit
       const r = target;
-      const vy = r.yaw + (r.visDrift ?? 0) * 0.45;
+      const vy = r.yaw + (r.visDrift ?? 0) * 0.3;
       cs.yaw = cs.yaw + wrapA(vy - cs.yaw) * (1 - Math.exp(-(r.spinT > 0 ? 1.5 : 5.5) * dt));
       const dist = 4.4 * (0.75 + 0.25 * r.giantScale) + clamp(r.speed / 30, 0, 1) * 0.5;
       const h = 1.85 * (0.75 + 0.25 * r.giantScale);
       const cx = Math.cos(cs.yaw), cz = -Math.sin(cs.yaw);
       pos.set(r.pos.x - cx * dist, r.pos.y + h, r.pos.z - cz * dist);
-      const gy = Math.max(0, this.world.heightAt(pos.x, pos.z)) + 0.8;
+      const gy = Math.max(0, this.world.groundAt(pos.x, pos.z, r.pos.y + 0.5)) + 0.8;
       if (pos.y < gy) pos.y = gy;
       // Blick leicht in die Kurve hinein (Lenkung/Drift), damit man sieht, wohin es geht
       const lead = clamp((r.steer ?? 0) * 0.9 + (r.drift.on ? r.drift.dir * 0.6 : 0), -1.2, 1.2);
