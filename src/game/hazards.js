@@ -65,13 +65,29 @@ export class Hazards {
           const R = d.size ?? 2.2;
           // Aussehen: Schneeball (Standard), Steppenläufer (Wüste, Zweig-Gitter) oder Kaugummikugel (Bonbonland)
           const style = d.style ?? 'snow';
+          if (style === 'barrel') {
+            // rollendes Pulverfass (Piratenbucht): Fass liegt quer, Achse entlang der Strecke
+            const bm = getModel('barrel'), sc = R / 0.54;
+            const wrap = new THREE.Group();
+            bm.root.rotation.z = Math.PI / 2; bm.root.position.x = 0.6 * sc; bm.root.scale.setScalar(sc);
+            wrap.add(bm.root);
+            h.model = { root: wrap, update() {}, dispose() { bm.dispose(); } };
+            h.holder = new THREE.Group();
+            h.holder.add(wrap);
+            h.R = R; h.radius = R * 0.9;
+            h.lat = (Math.random() * 2 - 1) * base.hw;
+            h.dir = Math.random() < 0.5 ? -1 : 1;
+            h.speed = d.speed ?? 6;
+            break;
+          }
           const mat = style === 'tumbleweed' ? new THREE.MeshStandardMaterial({ color: 0xb8905a, roughness: 1, wireframe: true })
             : style === 'gum' ? new THREE.MeshStandardMaterial({ color: d.color ?? 0xff5aa8, roughness: 0.25, metalness: 0.05 })
+            : style === 'rock' ? new THREE.MeshStandardMaterial({ color: d.color ?? 0x8a8078, roughness: 0.95, flatShading: true })
             : new THREE.MeshStandardMaterial({ color: 0xf6f9ff, roughness: 0.9, flatShading: true });
           const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(R, style === 'gum' ? 4 : 2), mat);
           if (style === 'tumbleweed') ball.add(new THREE.Mesh(new THREE.IcosahedronGeometry(R * 0.7, 1), mat));
           // ein paar eingerollte Zweige und Steine, damit man das Rollen sieht
-          for (let k = 0; k < (style === 'snow' ? 5 : 0); k++) {
+          for (let k = 0; k < (style === 'snow' || style === 'rock' ? 5 : 0); k++) {
             const bit = new THREE.Mesh(new THREE.BoxGeometry(R * 0.5, R * 0.12, R * 0.12), new THREE.MeshStandardMaterial({ color: k % 2 ? 0x7a5a3a : 0x8a94a8 }));
             const a = k * 2.4, e = (k / 5 - 0.4) * 2;
             bit.position.set(Math.cos(a) * Math.cos(e) * R * 0.95, Math.sin(e) * R * 0.95, Math.sin(a) * Math.cos(e) * R * 0.95);
@@ -150,12 +166,13 @@ export class Hazards {
         }
         case 'cannon': {
           const side = d.side ?? 1;
-          const dist = track.wallAt(base.i) + 3.5;
+          const dist = track.wallAt(base.i) + (d.dist ?? 3.5);
           const p = track.pointAt(d.u, side * dist);
-          h.model = getModel('bomb_cannon');
+          h.model = getModel(d.model ?? 'bomb_cannon');
           h.holder = new THREE.Group();
           h.holder.add(h.model.root);
-          h.holder.scale.setScalar(1.2);
+          h.holder.scale.setScalar(d.scale ?? 1.2);
+          h.shot = d.shot ?? 'kickbombe'; h.shots = 0;
           h.pos = new THREE.Vector3(p.x, p.y, p.z);
           // Rohr zeigt zur Strecke
           h.yaw = p.yaw - side * Math.PI / 2;
@@ -204,7 +221,7 @@ export class Hazards {
             const dx = r.pos.x - p.x, dz = r.pos.z - p.z, rr = r.radius + h.radius;
             if (dx * dx + dz * dz < rr * rr && Math.abs(r.pos.y + fly * 0.5 - p.y) < 2) {
               if (r.invincible) { h.down = 4; race.effects.sparkle(h.holder.position, 0xffffff, 12, 3); if (r.isPlayer) race.audio.sfx('stomp'); }
-              else if (r.hit('spin', null)) { /* Gegner läuft weiter */ }
+              else if (r.hit(h.hit ?? 'spin', null)) { /* Gegner läuft weiter */ }
             }
           }
           break;
@@ -362,12 +379,12 @@ export class Hazards {
           if (h.phase === 'idle' && h.timer <= 0.7) { h.phase = 'charge'; h.pt = 0; }
           if (h.phase === 'charge') {
             h.pt += dt;
-            if (h.timer <= 0) { h.phase = 'fire'; h.pt = 0; h.timer = h.every + Math.random() * 1.5; this.fireBomb(h); }
+            if (h.timer <= 0) { h.phase = 'fire'; h.pt = 0; h.shots++; h.timer = h.every + Math.random() * 1.5; this.fireBomb(h); }
           } else if (h.phase === 'fire') {
             h.pt += dt;
             if (h.pt > 0.5) h.phase = 'idle';
           }
-          h.model.update(dt, { anim: h.phase, aim: 0.75, progress: h.phase === 'charge' ? clamp(h.pt / 0.7, 0, 1) : clamp(h.pt / 0.5, 0, 1) });
+          h.model.update(dt, { anim: h.phase, n: h.shots, aim: 0.75, progress: h.phase === 'charge' ? clamp(h.pt / 0.7, 0, 1) : clamp(h.pt / 0.5, 0, 1) });
           break;
         }
         default: break;
@@ -460,10 +477,10 @@ export class Hazards {
     // Ziel: zufällige Stelle auf der Fahrbahn, bevorzugt vor der Spitzengruppe nahe der Kanone
     const du = (Math.random() * 2 - 1) * (22 / track.length);
     const tp = track.pointAt(h.u + du, (Math.random() * 2 - 1) * h.base.hw * 0.8);
-    const model = getModel('kickbombe');
+    const model = getModel(h.shot ?? 'kickbombe');
     const holder = new THREE.Group();
     holder.add(model.root);
-    holder.scale.setScalar(1.3);
+    holder.scale.setScalar(h.shot === 'cannonball' ? 1.6 : 1.3);
     race.scene.add(holder);
     const marker = getModel('boss_marker');
     marker.root.position.set(tp.x, tp.y + 0.09, tp.z);

@@ -174,5 +174,37 @@ const ZOO = {
   wallA: 0x2fa84a, wallB: 0xffd21a, wallTop: 0xe8241e, wallH: 0.75,
 };
 
-export const THEMES = { zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
+// Piratenbucht: goldene Abendsonne über dem Meer, sandige Plankenstraße, Holzbanden mit Tau
+const PIRATE = {
+  ...GRASS,
+  label: 'Piratenbucht',
+  sky: [[1, 0x2a6ad0], [0.45, 0x4a9ae8], [0.15, 0x9ad0f0], [0.03, 0xffe0b0], [0, 0xfff0d8], [-0.1, 0xb8d8e0], [-1, 0x6aa8c8]],
+  background: 0xe8d8b8,
+  fog: { color: 0xe6dcc4, near: 100, far: 440 },
+  hemi: { sky: 0xffe8c8, ground: 0xc8a870, intensity: 1.4 },
+  sun: { color: 0xffe0b0, intensity: 2.9, dir: [-0.5, 0.85, 0.4] },
+  hills: 0x6ab84a, hills2: 0xd8c08a,
+  grass: 0x8cc84a, grass2: 0x80bc44, grassFar: 0x78b040, offroad: 0xf0d8a0, offroad2: 0xe6cc92,   // Sand
+  road: 0xa08a6e, road2: 0x988268, line: 0xfff4e0, curbA: 0xd8282a, curbB: 0xfff4e0,
+  wallA: 0x8a5a2e, wallB: 0x6a4020, wallTop: 0xd8b878, wallH: 0.85,
+  bridge: 0x6a4424, bridgePillar: 0x5a3a20, bridgeTop: 0xb08a5a, bridgeTop2: 0xa07c4e,
+};
+
+// Dino-Dschungel: feucht-grüner Urwald, leichter Dunst, rote Lehmstraße, Bambusbanden
+const JUNGLE = {
+  ...GRASS,
+  label: 'Dschungel',
+  sky: [[1, 0x2a7ad0], [0.45, 0x5aa8e0], [0.15, 0xa8dce8], [0.03, 0xd8f0e0], [0, 0xe8f6e8], [-0.1, 0xb8d8c0], [-1, 0x8ab898]],
+  background: 0xc8e4d0,
+  fog: { color: 0xc4e0cc, near: 70, far: 380 },
+  hemi: { sky: 0xd8f2e0, ground: 0x4a7a3a, intensity: 1.35 },
+  sun: { color: 0xfff2d0, intensity: 2.6, dir: [-0.3, 1, 0.35] },
+  hills: 0x3a8a2e, hills2: 0x4a9a3a,
+  grass: 0x4aa83a, grass2: 0x42a034, grassFar: 0x3a8a2e, offroad: 0x8a6a3a, offroad2: 0x7e6034,
+  road: 0xb07a52, road2: 0xa8724c, line: 0xfff4e0, curbA: 0xffc21a, curbB: 0x2f8a2a,
+  wallA: 0xc8c45a, wallB: 0xa8a440, wallTop: 0x3a9a2e, wallH: 0.8,
+  bridge: 0x7a5a32, bridgePillar: 0x6a4a2a, bridgeTop: 0x9a7a4a, bridgeTop2: 0x8e6e42,
+};
+
+export const THEMES = { jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
 export const getTheme = (n) => THEMES[n] ?? GRASS;

@@ -11,6 +11,8 @@ import wueste from './wueste.js';
 import vulkan from './vulkan.js';
 import bonbon from './bonbon.js';
 import loroparque from './loroparque.js';
+import piratenbucht from './piratenbucht.js';
+import dinodschungel from './dinodschungel.js';
 
-export const TRACKS = [kraxelwiese, herbstwald, laternengrotte, manege, autobahn, strand, gipfel, burg, wueste, vulkan, bonbon, loroparque];
+export const TRACKS = [kraxelwiese, herbstwald, laternengrotte, manege, autobahn, strand, gipfel, burg, wueste, vulkan, bonbon, loroparque, piratenbucht, dinodschungel];
 export const TRACK_BY_ID = Object.fromEntries(TRACKS.map((t) => [t.id, t]));
