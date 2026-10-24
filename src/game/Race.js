@@ -775,8 +775,10 @@ export class Race {
   netTick(dt) {
     if (!this.net) return;
     this.netAcc += dt;
-    if (this.netHost && this.netAcc >= 0.05) { this.netAcc = 0; this.net.broadcast(hostSnapshot(this)); }
-    if (this.netGuest && this.netAcc >= 0.033 && this.player) { this.netAcc = 0; this.net.send(guestState(this.player, this.player.lastInp ?? {})); }
+    // über die Umleitung (Vermittler) etwas seltener senden – schont den öffentlichen Vermittler
+    const relay = this.netHost ? this.net.guests?.some((g) => g.link.relay) : this.net.link?.relay;
+    if (this.netHost && this.netAcc >= (relay ? 0.1 : 0.05)) { this.netAcc = 0; this.net.broadcast(hostSnapshot(this)); }
+    if (this.netGuest && this.netAcc >= (relay ? 0.066 : 0.033) && this.player) { this.netAcc = 0; this.net.send(guestState(this.player, this.player.lastInp ?? {})); }
   }
 
   /** Gast: Schnappschuss des Gastgebers übernehmen. */

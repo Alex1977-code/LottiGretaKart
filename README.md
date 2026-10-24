@@ -63,8 +63,9 @@ Straßen haben aus der Nähe eine feine Struktur, am Meeresgrund wandern Lichtmu
 - **Mehrere Handys** (bis zu 12 Fahrer, Rest Computer): ein Handy ist Gastgeber und rechnet das Rennen, jeder Gast
   fährt sein eigenes Kart direkt (keine Eingabeverzögerung) und sieht die anderen nach Schnappschüssen des Gastgebers.
   - **Übers Internet, beliebig weit weg**: Gastgeber bekommt einen vierstelligen Raumcode (auch als QR-Code/Link
-    `?join=CODE`), Gäste geben ihn unter „Beitreten“ ein (Vermittlung über den öffentlichen PeerJS-Server, danach
-    direkte WebRTC-Verbindung).
+    `?join=CODE`), Gäste geben ihn unter „Beitreten“ ein (Vermittlung über einen öffentlichen MQTT-Server, danach
+    direkte WebRTC-Verbindung; klappt die nicht – z. B. beide im Mobilfunk – laufen die Daten automatisch über den
+    Vermittler weiter).
   - **In der Nähe, ganz ohne Netz** (Flugzeug): in der **iPhone-App** finden sich die Handys direkt per Bluetooth/WLAN
     (Apple MultipeerConnectivity) – Flugmodus an, WLAN und Bluetooth wieder einschalten, Spiel in der Liste antippen.
     Bauen und installieren: [ios/README.md](ios/README.md) – auch ohne Mac: GitHub baut eine `.ipa`, die man mit

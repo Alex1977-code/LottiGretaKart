@@ -15,7 +15,6 @@
     "@capacitor/core": "^8.5.3",
     "jsqr": "^1.4.0",
     "lgk-nearby": "file:native/lgk-nearby",
-    "peerjs": "^1.5.5",
     "qrcode-generator": "^2.0.4",
     "three": "^0.186.1"
   },
