@@ -252,13 +252,15 @@ export class Racer {
     const sf = clamp(Math.abs(this.speed) / 7, 0, 1) * (1 - 0.22 * clamp((Math.abs(this.speed) - 16) / 14, 0, 1));
     let yawRate;
     if (d.on) {
-      // Drift-Bogen: ohne Lenken ein mittlerer Bogen, nach innen enger, nach außen fast geradeaus
+      // Drift-Bogen: ohne Lenken ein mittlerer Bogen, nach innen enger, nach außen aufrichten bis leicht gegenlenken
       // s: −1 = nach außen (weiter Bogen) … 0 = mittlerer Bogen … +1 = nach innen (enger Bogen). Am Handy zählt die
       // Änderung gegenüber der Daumenstellung beim Driftbeginn (wie ein Lenkrad, das in der Kurve „einrastet“)
       const rel = dirIn * d.dir - (d.ref ?? 0);
       const s = touchSteer ? clamp(rel > 0 ? rel * 1.8 : rel / Math.max(0.3, d.ref ?? 0), -1, 1) : steerIn * d.dir;
       d.s = s;
-      yawRate = d.dir * P.turn * (s >= 0 ? 0.42 + 0.68 * s : 0.42 + 0.34 * s) * clamp(Math.abs(this.speed) / 10, 0.5, 1);
+      // nach außen gelenkt richtet sich das Kart auf und lenkt zuletzt sogar leicht gegen – so lässt sich die
+      // Richtung auch quer in der Kurve noch korrigieren; nach innen wird der Bogen eng
+      yawRate = d.dir * P.turn * (s >= 0 ? 0.46 + 0.74 * s : 0.46 + 0.6 * s) * clamp(Math.abs(this.speed) / 10, 0.5, 1);
     }
     else yawRate = this.steer * P.turn * sf * Math.sign(this.speed || 1);
     if (this.air && !d.hop) yawRate *= 0.35;
@@ -268,9 +270,9 @@ export class Racer {
     // --- Bewegung
     const fx = Math.cos(this.yaw), fz = -Math.sin(this.yaw);
     const rx = -fz, rz = fx; // rechts
-    // Drift: Kart rutscht leicht nach außen
-    const slide = d.on ? -d.dir * Math.abs(this.speed) * 0.1 : 0;
-    this.vlat = damp(this.vlat, slide, d.on ? 3 : P.grip, dt);
+    // Drift: Kart rutscht nach außen – weniger, wenn nach außen gelenkt wird (es fährt dann mehr dorthin, wohin es zeigt)
+    const slide = d.on ? -d.dir * Math.abs(this.speed) * (0.08 + 0.025 * clamp(d.s ?? 0, -1, 1)) : 0;
+    this.vlat = damp(this.vlat, slide, d.on ? 4 : P.grip, dt);
     if (!this.grind) {
       this.pos.x += (fx * this.speed + rx * this.vlat) * dt;
       this.pos.z += (fz * this.speed + rz * this.vlat) * dt;
@@ -437,7 +439,7 @@ export class Racer {
     const d = this.drift;
     // Drift: Kart steht deutlich quer (wie im Vorbild), beim Einlenken noch etwas mehr
     const into = d.on ? clamp(d.s ?? 0, -1, 1) : 0;
-    this.visDrift = damp(this.visDrift ?? 0, d.on ? d.dir * (0.62 + 0.2 * into) : 0, 8, dt || 1);
+    this.visDrift = damp(this.visDrift ?? 0, d.on ? d.dir * (0.6 + 0.26 * into) : 0, 8, dt || 1);
     if (this.spinT > 0) this.spinAngle += dt * 14 * Math.min(1, this.spinT * 1.5); else this.spinAngle = damp(wrapA(this.spinAngle), 0, 10, dt || 1);
     if (this.tumbleT > 0) this.tumbleAngle = (1 - this.tumbleT / 1.5) * TAU; else this.tumbleAngle = 0;
     const trickRoll = this.trick.done ? Math.min(1, this.trick.t / 0.45) * TAU : 0;
