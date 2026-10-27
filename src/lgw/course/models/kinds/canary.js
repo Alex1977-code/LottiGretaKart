@@ -15,7 +15,8 @@
 // guagua         Kanarischer Linienbus (grün-weiß, ≈ 10 m), Front nach +X.
 // cabra          Ziege (läuft über die Serpentinen).  state 'walk'|'idle'|'squashed'
 // hotel_san_felipe  Das Hotel Bahía Príncipe San Felipe in Puerto de la Cruz: weißes Hochhaus (17 Ebenen) mit
-//                durchgehenden Balkonen und Glasgeländern, niedrigere Seitenflügel, Leuchtschrift auf dem Dach.
+//                rundum laufenden Balkonen und Glasgeländern (auch an den Schmalseiten), eingeschossige
+//                Seitenflügel, Leuchtschrift auf dem Dach.
 //                Vorn (+X, zur Straße) die Auffahrt mit Wendeschleife, Mittelinsel, Schild, Vordach, Fahnen und
 //                Taxi; hinten (−X) der Poolgarten: großer Lagunen-Pool mit Holzbrücke, mittlerer Pool,
 //                Kinderbecken, Liegen, Schirme, Palmen (≈ 80 × 76 m, von x −52 bis +32).
@@ -380,40 +381,48 @@ function addBuilt(b, sub, o) {
   b.parts.push(g.index ? g.toNonIndexed() : g);
 }
 
-/** Hochhausblock mit Balkonen: Länge L (entlang z), Tiefe D (x), n Stockwerke; Front nach +X. */
-function balconyBlock(b, x0, z0, L, D, n, glassRail) {
-  const FH = 3.0, H = n * FH;
-  b.box(D, H + 0.6, L, 0xf6f4ee, { p: [x0, (H + 0.6) / 2, z0] }, 0.2, 1);
+/** Hochhaus mit umlaufenden Balkonen (vorn, hinten und an den Schmalseiten): Länge L (z), Tiefe D (x), n Ebenen. */
+function balconyTower(b, L, D, n, glassRail) {
+  const FH = 3.0, H = n * FH, B = 1.8;
+  b.box(D, H + 0.6, L, 0xf6f4ee, { p: [0, (H + 0.6) / 2, 0] }, 0.2, 1);
   for (let f = 1; f < n; f++) {
     const y = f * FH;
-    // Balkonplatte über die ganze Front, Glasgeländer, Trennwände
-    b.box(1.8, 0.28, L - 0.6, 0xffffff, { p: [x0 + D / 2 + 0.9, y, z0] }, 0.05);
-    glassRail.box(0.08, 1.0, L - 0.8, 0xa8d8f0, { p: [x0 + D / 2 + 1.75, y + 0.65, z0] }, 0);
-    for (let z = -L / 2 + 4; z < L / 2 - 1; z += 4) b.box(1.7, 1.2, 0.12, 0xece8de, { p: [x0 + D / 2 + 0.85, y + 0.75, z0 + z] }, 0);
+    // Balkonplatte rundherum, Glasgeländer auf allen vier Seiten
+    b.box(D + 2 * B, 0.28, L + 2 * B, 0xffffff, { p: [0, y, 0] }, 0.08);
+    for (const s of [1, -1]) {
+      glassRail.box(0.08, 1.0, L + 2 * B - 0.2, 0xa8d8f0, { p: [s * (D / 2 + B - 0.05), y + 0.65, 0] }, 0);
+      glassRail.box(D + 2 * B - 0.2, 1.0, 0.08, 0xa8d8f0, { p: [0, y + 0.65, s * (L / 2 + B - 0.05)] }, 0);
+      // Trennwände zwischen den Zimmern
+      for (let z = -L / 2 + 4; z < L / 2 - 1; z += 4) b.box(B - 0.1, 1.2, 0.12, 0xece8de, { p: [s * (D / 2 + B / 2), y + 0.75, z] }, 0);
+      for (let x = -D / 2 + 4; x < D / 2 - 1; x += 4) b.box(0.12, 1.2, B - 0.1, 0xece8de, { p: [x, y + 0.75, s * (L / 2 + B / 2)] }, 0);
+    }
   }
-  // Rückseite: Fensterreihen
-  for (let f = 0; f < n; f++) b.box(0.06, 1.2, L - 2, 0x3a4a5a, { p: [x0 - D / 2 - 0.02, f * FH + 1.6, z0] }, 0);
-  b.box(D + 0.6, 0.5, L + 0.6, 0xd8d2c4, { p: [x0, H + 0.6, z0] }, 0.05);   // Dachkante
+  b.box(D + 2 * B + 0.4, 0.5, L + 2 * B + 0.4, 0xd8d2c4, { p: [0, H + 0.6, 0] }, 0.05);   // Dachkante
   return H;
+}
+
+/** Eingeschossiger Seitenflügel (Restaurant, Läden): flaches Dach mit Brüstung, Fensterband. Länge L (z), Tiefe D (x). */
+function lowWing(b, L, D) {
+  b.box(D, 4.2, L, 0xf6f4ee, { p: [0, 2.1, 0] }, 0.15, 1);
+  b.box(D + 0.6, 0.9, L + 0.6, 0xffffff, { p: [0, 4.6, 0] }, 0.08, 1);                 // Brüstung
+  b.box(D - 1, 0.1, L - 1, 0xd8d2c4, { p: [0, 4.25, 0] }, 0);                          // Dachfläche
+  b.box(D + 1.6, 0.25, L + 0.2, 0xffffff, { p: [0, 3.5, 0] }, 0.05);   // Sonnenblende
+  return 4.2;
 }
 
 function hotelSanFelipe() {
   const root = new THREE.Group();
   const glassRail = new Build();
-  const FLOORS = 17, WING = 12;
+  const FLOORS = 17;
   root.add(mesh(cached('can:sanfelipe', () => {
     const b = new Build();
     // Hauptturm (17 Ebenen) und zwei niedrigere Seitenflügel, leicht nach hinten gedreht; Balkone auf beiden Seiten
-    const H = balconyBlock(b, 0, 0, 34, 15, FLOORS, glassRail);
-    const back = new Build(), backRail = new Build();
-    balconyBlock(back, 0, 0, 34, 15, FLOORS, backRail);
-    addBuilt(b, back, { r: [0, Math.PI, 0] });
-    addBuilt(glassRail, backRail, { r: [0, Math.PI, 0] });
+    const H = balconyTower(b, 34, 15, FLOORS, glassRail);
+    // eingeschossige Seitenflügel, leicht nach hinten geknickt
     for (const s of [1, -1]) {
-      const g = new Build(), gr = new Build();
-      balconyBlock(g, 0, 0, 22, 14, WING, gr);
-      addBuilt(b, g, { p: [-3, 0, s * 27], r: [0, Math.PI - s * 0.22, 0] });   // Balkone der Flügel zum Pool (hinten), Flügel knicken nach hinten
-      addBuilt(glassRail, gr, { p: [-3, 0, s * 27], r: [0, Math.PI - s * 0.22, 0] });
+      const g = new Build();
+      lowWing(g, 22, 14);
+      addBuilt(b, g, { p: [-3, 0, s * 30], r: [0, -s * 0.22, 0] });
     }
     b.box(8, 3, 12, 0xe8e4da, { p: [-2, H + 2.4, 0] }, 0.1);   // Technikaufbau
 
@@ -470,16 +479,19 @@ function hotelSanFelipe() {
     const k = new THREE.Mesh(new THREE.CircleGeometry(2.8, 24).rotateX(-Math.PI / 2), water);
     k.position.set(-18, 0.84, 28); k.userData.noShadow = true; root.add(k);
   }
-  // Fenster der Zimmer (leuchten nachts warm) – vorn und hinten
+  // Fenster der Zimmer (leuchten nachts warm) – auf allen vier Seiten, dazu die Fensterbänder der Flügel
   const winMat = std('can:sanfelipe:win', { color: 0x4a5a6a, emissive: 0xffd89a, emissiveIntensity: 0.05, roughness: 0.3 });
   nightGlow(winMat, 0.05, 0.9);
   root.add(mesh(cached('can:sanfelipe:win', () => {
     const b = new Build();
-    for (const side of [1, -1]) for (let f = 1; f < FLOORS; f++) for (let z = -15; z < 15; z += 4) if ((f * 7 + z * 3 + (side > 0 ? 0 : 2)) % 5 !== 0) b.box(0.06, 1.7, 2.6, 0xffffff, { p: [side * 7.53, f * 3 + 1.4, z + 2] }, 0);
+    for (const side of [1, -1]) for (let f = 1; f < FLOORS; f++) {
+      for (let z = -15; z < 15; z += 4) if ((f * 7 + z * 3 + (side > 0 ? 0 : 2)) % 5 !== 0) b.box(0.06, 1.7, 2.6, 0xffffff, { p: [side * 7.53, f * 3 + 1.4, z + 2] }, 0);
+      for (let x = -5.5; x <= 5.5; x += 4) if ((f * 3 + x) % 4 !== 1) b.box(2.6, 1.7, 0.06, 0xffffff, { p: [x, f * 3 + 1.4, side * 17.03] }, 0);
+    }
     for (const s of [1, -1]) {
       const g = new Build();
-      for (let f = 1; f < WING; f++) for (let z = -9; z < 9; z += 4) if ((f * 5 + z) % 4 !== 0) g.box(0.06, 1.7, 2.6, 0xffffff, { p: [7.03, f * 3 + 1.4, z + 2] }, 0);
-      addBuilt(b, g, { p: [-3, 0, s * 27], r: [0, Math.PI - s * 0.22, 0] });
+      for (const sx of [1, -1]) g.box(0.06, 2.2, 20, 0xffffff, { p: [sx * 7.03, 2.0, 0] }, 0);
+      addBuilt(b, g, { p: [-3, 0, s * 30], r: [0, -s * 0.22, 0] });
     }
     return b.geometry();
   }), winMat));
