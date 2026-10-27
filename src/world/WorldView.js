@@ -8,6 +8,7 @@ import { getTheme } from './themes.js';
 import { lin } from '../lgw/three/world/geometry.js';
 import { Rnd } from '../lgw/three/world/geometry.js';
 import { addGroundDetail, makeWaterMaterial, SHADER_TIME } from './shaders.js';
+import { IslandLife } from './life.js';
 
 const TILE = 60; // Kachelgröße in Höhenfeld-Zellen (3 m → 180 m)
 
@@ -32,6 +33,7 @@ export class WorldView {
       ['Höhlenberg und Zirkuszelt', () => this.buildStructures()],
       ['Kulisse', () => this.buildDecor()],
       ['Wälder', () => this.buildForests()],
+      ['Boote, Vögel und Schmetterlinge', () => { this.life = new IslandLife(this.group, this.world, this.quality); }],
     ];
     for (let k = 0; k < steps.length; k++) {
       progress(k / steps.length, steps[k][0]);
@@ -49,7 +51,7 @@ export class WorldView {
     const col = (hex) => { let v = cache.get(hex); if (!v) { v = lin(hex); cache.set(hex, v); } return v; };
     const sand = col(0xe8d39a), sandWet = col(0xc9b27a), rock = col(0x9a92a0), rockDark = col(0x7a7284), snow = col(0xf4f2f8);
     const ash = col(0x3a3034), lavaRim = col(0xc8401a);
-    const mat = addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }), { grain: 0.16, key: 'terrain' });
+    const mat = addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }), { grain: 0.16, key: 'terrain', patches: true });
     const tmp = [0, 0, 0], acc = [0, 0, 0];
     for (let tz = 0; tz < hf.nz - 1; tz += TILE) {
       for (let tx = 0; tx < hf.nx - 1; tx += TILE) {
@@ -392,14 +394,21 @@ export class WorldView {
       else if (top === 'volcano') d.add(pick < 0.35 ? 'pineTree' : 'rock', x, h, z, s * (pick < 0.35 ? 1.1 : 1.8), pick < 0.35 ? 0x2a2420 : 0x2e2830, rnd.frac() * 6);
       else if (top === 'candy') d.add(pick < 0.35 ? 'lollipop' : pick < 0.55 ? 'candycane' : pick < 0.7 ? 'donut' : 'gumdrop', x, h, z, s * (pick < 0.55 ? 1.3 : 1.2), pick < 0.35 ? [0xff5aa8, 0x5ab8ff, 0xffd21f, 0x8fe060][Math.floor(rnd.frac() * 4)] : pick < 0.55 ? 0xffffff : pick < 0.7 ? [0xff8ac8, 0x8a5a3a, 0xfff0f8][Math.floor(rnd.frac() * 3)] : [0xff5a5a, 0xffd21f, 0x5ad86a, 0xb47fe6][Math.floor(rnd.frac() * 4)], rnd.frac() * 6);
       else if (top === 'castle') d.add(pick < 0.7 ? 'pineTree' : 'rock', x, h, z, s * 1.2, pick < 0.7 ? [0x2a4a3a, 0x324e40][Math.floor(rnd.frac() * 2)] : 0x6a6478, rnd.frac() * 6);
-      else if (pick < 0.55) d.add('roundTree', x, h, z, s * 1.1, green[Math.floor(rnd.frac() * green.length)], rnd.frac() * 6);
+      else if (pick < 0.55) {
+        d.add('roundTree', x, h, z, s * 1.1, green[Math.floor(rnd.frac() * green.length)], rnd.frac() * 6);
+        // Farne und Büschel am Stamm
+        if (this.quality >= 2) for (let f = 0; f < 2; f++) {
+          const a = rnd.frac() * 6.28, r = 1.4 + rnd.frac() * 1.6, fx = x + Math.cos(a) * r, fz = z + Math.sin(a) * r;
+          d.add('fern', fx, w.heightAt(fx, fz), fz, 0.8 + rnd.frac() * 0.6, [0x3f9a2a, 0x4aa83a, 0x2f8a2a][Math.floor(rnd.frac() * 3)], rnd.frac() * 6);
+        }
+      }
       else if (pick < 0.8) d.add('bush', x, h, z, s, green[Math.floor(rnd.frac() * green.length)], rnd.frac() * 6);
       else if (pick < 0.9) d.add('mushroom', x, h, z, s * 0.9, [0xe8392d, 0xff8a1a, 0x3b7cf0][Math.floor(rnd.frac() * 3)], rnd.frac() * 6);
       else d.add('block', x, h, z, s * 1.6, [0xffc21a, 0x3b7cf0, 0xe8392d, 0x4fb833][Math.floor(rnd.frac() * 4)], rnd.frac() * 6);
       k++;
     }
     // Blumenwiesen (ohne Hindernis)
-    for (let k = 0, tries = 0; k < (this.quality >= 2 ? 700 : 350) && tries < 9000; tries++) {
+    for (let k = 0, tries = 0; k < (this.quality >= 2 ? 1500 : 350) && tries < 18000; tries++) {
       const x = b.minX + rnd.frac() * (b.maxX - b.minX), z = b.minZ + rnd.frac() * (b.maxZ - b.minZ);
       const h = w.heightAt(x, z);
       if (h < 1.5 || h > 18 || !w.isFree(x, z, 1)) continue;
@@ -409,7 +418,7 @@ export class WorldView {
       k++;
     }
     // Grasbüschel und Kiesel nah an den Straßen (dort schaut man hin) – Farbe nach Region
-    const nT = this.quality >= 3 ? 14000 : this.quality >= 2 ? 7000 : 0;
+    const nT = this.quality >= 3 ? 22000 : this.quality >= 2 ? 12000 : 3000;
     const roads = w.roads;
     for (let k = 0, tries = 0; k < nT && tries < nT * 4; tries++) {
       const tr = roads[Math.floor(rnd.frac() * roads.length)];
@@ -422,7 +431,8 @@ export class WorldView {
       const amb = w.ambienceAt(x, z);
       const top = amb.reduce((a, r) => (r.w > a.w ? r : a), amb[0]).theme;
       const peb = ['cave', 'castle', 'highway', 'volcano', 'desert'].includes(top) ? rnd.frac() < 0.6 : rnd.frac() < 0.08;
-      if (peb) d.add('pebble', x, h, z, 0.8 + rnd.frac() * 1.4, [0x9a92a0, 0xb0a8b4, 0x8a8296][Math.floor(rnd.frac() * 3)], rnd.frac() * 6);
+      if (!peb && this.quality >= 2 && rnd.frac() < 0.12 && !['snow', 'desert', 'volcano', 'cave', 'candy'].includes(top)) d.add('daisy', x, h, z, 0.8 + rnd.frac() * 0.6, 0xffffff, rnd.frac() * 6);
+      else if (peb) d.add('pebble', x, h, z, 0.8 + rnd.frac() * 1.4, [0x9a92a0, 0xb0a8b4, 0x8a8296][Math.floor(rnd.frac() * 3)], rnd.frac() * 6);
       else {
         const th = getTheme(top);
         const c = new THREE.Color(rnd.frac() < 0.5 ? th.grass : th.grass2).multiplyScalar(0.78 + rnd.frac() * 0.3);
@@ -430,8 +440,58 @@ export class WorldView {
       }
       k++;
     }
+    this.buildReeds(d, rnd);
+    this.buildFences(d);
     d.build();
     this.decors.push(d);
+  }
+
+  /** Schilf an Seeufern und an der Küste (flaches Wasser gleich daneben). */
+  buildReeds(d, rnd) {
+    const w = this.world, b = w.def.bounds;
+    const n = this.quality >= 3 ? 1400 : this.quality >= 2 ? 900 : 250;
+    for (let k = 0, tries = 0; k < n && tries < n * 60; tries++) {
+      const x = b.minX + rnd.frac() * (b.maxX - b.minX), z = b.minZ + rnd.frac() * (b.maxZ - b.minZ);
+      const h = w.heightAt(x, z);
+      if (h < -0.3 || h > 0.9) continue;
+      // Wasser in der Nähe?
+      let wet = false;
+      for (let a = 0; a < 6 && !wet; a++) wet = w.heightAt(x + Math.cos(a) * 5, z + Math.sin(a) * 5) < -0.2;
+      if (!wet || !w.isFree(x, z, 1.5) && h > 0.3) continue;
+      if (w.underwaterAt(x, z) || w.surfaceAt(x, z) === 'lava') continue;
+      const amb = w.ambienceAt(x, z);
+      if (amb.some((r) => ['snow', 'desert', 'volcano', 'candy', 'cave'].includes(r.theme) && r.w > 0.4)) continue;
+      // kleine Gruppe
+      const m = 2 + Math.floor(rnd.frac() * 4);
+      for (let j = 0; j < m; j++) {
+        const rx = x + (rnd.frac() - 0.5) * 3, rz = z + (rnd.frac() - 0.5) * 3;
+        d.add('reed', rx, Math.max(-0.4, w.heightAt(rx, rz)), rz, 0.8 + rnd.frac() * 0.6, [0x6a9a3a, 0x7aa848, 0x5a8a32][Math.floor(rnd.frac() * 3)], rnd.frac() * 6);
+      }
+      k += m;
+    }
+  }
+
+  /** Holzzäune abschnittsweise entlang der Landstraßen (nicht an Toren, nicht über Wasser). */
+  buildFences(d) {
+    if (this.quality < 1) return;
+    const w = this.world;
+    for (const c of w.connectors) {
+      const tr = c.track, step = 3;
+      for (const side of [-1, 1]) {
+        let prev = null;
+        for (let i = 28; i < tr.N - 28; i += step) {
+          const on = Math.floor((i + (side > 0 ? 40 : 0)) / 70) % 3 !== 2;   // Lücken zwischen den Abschnitten
+          const lat = side * (tr.hw[i] + 3.4);
+          const x = tr.px[i] - tr.tz[i] * lat, z = tr.pz[i] + tr.tx[i] * lat;
+          const h = w.heightAt(x, z);
+          const ok = on && !tr.water[i] && h > 0.7 && w.isFree(x, z, 0.3) && !w.def.structures.some((st) => Math.abs(Math.hypot(x - st.x, z - st.z) - st.r) < 14);
+          if (!ok) { prev = null; continue; }
+          d.add('fencePost', x, h, z, 1, 0x9a6a3a, 0);
+          if (prev) d.add('fenceRail', prev.x, (prev.h + h) / 2, prev.z, 1, 0xb07a44, Math.atan2(-(z - prev.z), x - prev.x));
+          prev = { x, z, h };
+        }
+      }
+    }
   }
 
   update(dt, t, cam) {
@@ -439,6 +499,7 @@ export class WorldView {
     this.structureDecor?.update(dt, t, cam);
     if (this.sparkles) this.sparkles.position.x = Math.sin(t * 0.3) * 1.5;
     SHADER_TIME.value = t;
+    this.life?.update(dt, t, Array.isArray(cam) ? cam[0] : cam);
     this.updateLava(t);
   }
 }

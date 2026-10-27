@@ -1,9 +1,9 @@
 // Touch-Steuerung (Querformat): linke Bildschirmhälfte = Lenkrad, rechte Hälfte = Knöpfe – mit mehreren Fingern
 // gleichzeitig (links lenken, rechts Gas/Gegenstand/Bremse).
 //   GAS (groß, unten rechts) · ★ Gegenstand · BREMSE/ZURÜCK (halten = bremsen, dann rückwärts)
-//   Driften durch „Pumpen“: Gas – loslassen – Gas – loslassen … in schneller Folge. Der zweite schnelle Druck lässt
-//   das Kart hüpfen und driften; der Drift hält, solange weiter gepumpt wird (das Gas bleibt dabei an). Aufhören –
-//   Gas länger halten oder länger loslassen – beendet den Drift mit Mini-Turbo.
+//   Driften durch „Pumpen“: Gas – loslassen – Gas in schneller Folge. Der zweite schnelle Druck lässt das Kart hüpfen
+//   und driften; danach einfach Gas halten (oder weiter pumpen) und in Ruhe lenken. Gas länger loslassen beendet den
+//   Drift mit Mini-Turbo.
 //   Mit Automatik-Gas gibt es stattdessen einen DRIFT-Knopf.
 // Ein Finger gehört der Hälfte, in der er aufgesetzt wurde. Alle Finger werden bei jedem Touch-Ereignis aus
 // e.touches neu gelesen – so bremst kein Finger den anderen aus und kein Finger bleibt „hängen“.
@@ -12,7 +12,6 @@
 import { touch } from './input.js';
 
 const PUMP_GAP = 0.36;   // s: so kurz loslassen und wieder drücken = Pumpen
-const PUMP_HOLD = 0.55;  // s: länger gedrückt halten beendet den Drift
 const STEER_MAX = 92;    // px Daumenweg für vollen Lenkausschlag
 
 export class TouchControls {
@@ -21,7 +20,7 @@ export class TouchControls {
     root.innerHTML = `
       <div class="t-steer"><div class="t-wheel"><div class="t-wheel-in"></div></div></div>
       <div class="t-pad">
-        <button class="t-btn t-gas" data-k="gas"><span>GAS<small>pumpen = Drift</small></span></button>
+        <button class="t-btn t-gas" data-k="gas"><span>GAS<small>2× tippen + halten = Drift</small></span></button>
         <button class="t-btn t-drift" data-k="drift"><span>DRIFT</span></button>
         <button class="t-btn t-item" data-k="item"><span>★</span></button>
         <button class="t-btn t-brake" data-k="brake"><span>BREMSE<br/>ZURÜCK</span></button>
@@ -134,7 +133,8 @@ export class TouchControls {
     if (touch.driftUntil > now || pumped) {
       // schnell wieder gedrückt: Drift beginnt (Hüpfer) bzw. geht weiter
       if (!(touch.driftUntil > now)) touch.driftTap = true;
-      touch.driftUntil = now + PUMP_HOLD;
+      touch.driftUntil = now + PUMP_GAP;
+      touch.driftHold = true;   // ab jetzt hält Gas-Halten den Drift
       this.watchDrift();
     }
   }
@@ -167,7 +167,7 @@ export class TouchControls {
     if (!on) {
       this.releaseSteer();
       touch.drift = touch.item = touch.brake = touch.gas = false;
-      touch.coastUntil = touch.driftUntil = 0;
+      touch.coastUntil = touch.driftUntil = 0; touch.driftHold = false;
       this.fingers.clear();
       for (const b of this.btns) b.classList.remove('down', 'drifting');
     }

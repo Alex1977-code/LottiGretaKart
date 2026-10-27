@@ -39,7 +39,7 @@ function addVarying(shader) {
 /**
  * Detail-Korn und Unterwasser-Look für Gelände/Fahrbahn. grain = Stärke des Korns (0,1 … 0,3), scale = Körnung.
  */
-export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g' } = {}) {
+export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patches = false } = {}) {
   mat.onBeforeCompile = (shader) => {
     addVarying(shader);
     shader.fragmentShader = shader.fragmentShader
@@ -48,6 +48,13 @@ export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g' } = {})
     float fade = 1.0 - smoothstep(18.0, 80.0, vLgkD);
     float n = lgkNoise(vLgkW.xz * ${(0.9 * scale).toFixed(3)}) * 0.55 + lgkNoise(vLgkW.xz * ${(3.3 * scale).toFixed(3)}) * 0.3 + lgkNoise(vLgkW.xz * ${(9.0 * scale).toFixed(3)}) * 0.15;
     diffuseColor.rgb *= 1.0 + (n - 0.5) * ${grain.toFixed(3)} * 2.0 * fade;
+    ${patches ? `// Wiesenflecken: großflächig sattere und sonnig-hellere Stellen, dazu kleine Kleeinseln (nur über Wasser)
+    if (vLgkW.y > 0.3) {
+      float m = lgkNoise(vLgkW.xz * 0.035) * 0.65 + lgkNoise(vLgkW.xz * 0.11 + 7.0) * 0.35;
+      diffuseColor.rgb *= mix(vec3(0.86, 0.97, 0.9), vec3(1.08, 1.05, 0.9), smoothstep(0.3, 0.75, m));
+      float c = smoothstep(0.72, 0.8, lgkNoise(vLgkW.xz * 0.6 + 3.0)) * fade;
+      diffuseColor.rgb *= 1.0 - c * 0.12;
+    }` : ''}
     if (vLgkW.y < -0.15) {
       float dep = clamp(-vLgkW.y / 8.0, 0.0, 1.0);
       diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.5, 0.82, 0.95), 0.4 + 0.5 * dep);
@@ -59,7 +66,7 @@ export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g' } = {})
     totalEmissiveRadiance += vec3(0.42, 0.7, 0.75) * lgkCaustic(vLgkW.xz, uLgkTime) * 0.55 * dep;
   }`);
   };
-  mat.customProgramCacheKey = () => `lgk-ground-${key}-${grain}-${scale}`;
+  mat.customProgramCacheKey = () => `lgk-ground-${key}-${grain}-${scale}-${patches}`;
   return mat;
 }
 
@@ -117,5 +124,31 @@ export function makeWaterMaterial(hf) {
   if (!gl_FrontFacing) totalEmissiveRadiance += vec3(0.25, 0.55, 0.65) * (0.4 + 0.6 * lgkCaustic(vLgkW.xz * 1.5, uLgkTime * 1.3));`);
   };
   mat.customProgramCacheKey = () => 'lgk-water';
+  return mat;
+}
+
+/**
+ * Wind: Halme, Blumen, Schilf und Baumkronen wiegen sich (Ausschlag wächst mit der Höhe über dem Fuß).
+ * amp = Ausschlag je Meter Höhe. Für InstancedMesh: jede Instanz schwingt mit eigener Phase (nach ihrem Ort).
+ */
+export function addSway(mat, amp = 0.1, key = 's') {
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uLgkTime = SHADER_TIME;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform float uLgkTime;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+  {
+  #ifdef USE_INSTANCING
+    vec3 lgkP = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+  #else
+    vec3 lgkP = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+  #endif
+    float lgkW = sin(uLgkTime * 1.6 + lgkP.x * 0.21 + lgkP.z * 0.17) + 0.45 * sin(uLgkTime * 2.9 + lgkP.x * 0.53 - lgkP.z * 0.31);
+    float lgkH = max(transformed.y, 0.0);
+    transformed.x += lgkW * ${amp.toFixed(4)} * lgkH;
+    transformed.z += lgkW * ${(amp * 0.6).toFixed(4)} * lgkH;
+  }`);
+  };
+  mat.customProgramCacheKey = () => `lgk-sway-${key}-${amp}`;
   return mat;
 }

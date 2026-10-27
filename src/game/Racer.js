@@ -257,10 +257,12 @@ export class Racer {
       // Änderung gegenüber der Daumenstellung beim Driftbeginn (wie ein Lenkrad, das in der Kurve „einrastet“)
       const rel = dirIn * d.dir - (d.ref ?? 0);
       const s = touchSteer ? clamp(rel > 0 ? rel * 1.8 : rel / Math.max(0.3, d.ref ?? 0), -1, 1) : steerIn * d.dir;
-      d.s = s;
+      // leicht geglättet: ein zittriger Daumen lässt das Kart nicht hin- und herzucken
+      d.s = (d.s ?? 0) + (s - (d.s ?? 0)) * Math.min(1, dt * (touchSteer ? 12 : 30));
       // nach außen gelenkt richtet sich das Kart auf und lenkt zuletzt sogar leicht gegen – so lässt sich die
       // Richtung auch quer in der Kurve noch korrigieren; nach innen wird der Bogen eng
-      yawRate = d.dir * P.turn * (s >= 0 ? 0.46 + 0.74 * s : 0.46 + 0.6 * s) * clamp(Math.abs(this.speed) / 10, 0.5, 1);
+      const sv = d.s;
+      yawRate = d.dir * P.turn * (sv >= 0 ? 0.46 + 0.74 * sv : 0.46 + 0.6 * sv) * clamp(Math.abs(this.speed) / 10, 0.5, 1);
     }
     else yawRate = this.steer * P.turn * sf * Math.sign(this.speed || 1);
     if (this.air && !d.hop) yawRate *= 0.35;

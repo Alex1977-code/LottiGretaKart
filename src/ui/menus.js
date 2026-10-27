@@ -169,7 +169,7 @@ export class Menus {
             <div>
               <h3>Handy (quer)</h3>
               <p>Linke Hälfte: Daumen nach links/rechts ziehen = lenken (wenig ziehen = fein lenken).</p>
-              <p>Rechts: <b>GAS</b> halten. Links lenken und rechts Gas geben geht gleichzeitig. <b>Driften:</b> in der Kurve Gas „pumpen“ (Gas – loslassen – Gas – loslassen …) – das Kart hüpft und driftet, solange du pumpst; aufhören = Mini-Turbo. <b>Drift-Richtung:</b> beim Hüpfer den linken Daumen schon ein kleines Stück zur Seite schieben (geht auch kurz nach der Landung). Im Drift gilt die Daumenstellung vom Driftbeginn als mittlerer Bogen: weiter hinein = enger, zurück zur Mitte = weiter, auf die andere Seite = Kart richtet sich auf und lenkt leicht gegen – so lässt sich die Richtung auch quer in der Kurve korrigieren. <b>★</b> Gegenstand, <b>BREMSE/ZURÜCK</b> halten = bremsen und rückwärts fahren. Mit Automatik-Gas (Einstellungen) gibt es einen DRIFT-Knopf.</p>
+              <p>Rechts: <b>GAS</b> halten. Links lenken und rechts Gas geben geht gleichzeitig. <b>Driften:</b> in der Kurve Gas kurz loslassen und gleich wieder drücken („pumpen“) – das Kart hüpft und driftet. Dann <b>Gas einfach halten</b> und in Ruhe lenken; Gas loslassen = Mini-Turbo. <b>Drift-Richtung:</b> beim Hüpfer den linken Daumen schon ein kleines Stück zur Seite schieben (geht auch kurz nach der Landung). Im Drift gilt die Daumenstellung vom Driftbeginn als mittlerer Bogen: weiter hinein = enger, zurück zur Mitte = weiter, auf die andere Seite = Kart richtet sich auf und lenkt leicht gegen – so lässt sich die Richtung auch quer in der Kurve korrigieren. <b>★</b> Gegenstand, <b>BREMSE/ZURÜCK</b> halten = bremsen und rückwärts fahren. Mit Automatik-Gas (Einstellungen) gibt es einen DRIFT-Knopf.</p>
               <h3>Controller (Xbox, PlayStation, Switch)</h3>
               <p>Stick/Steuerkreuz lenken, A oder RT Gas, B Bremse, R Driften, L/LT Gegenstand, Start Pause. Menüs gehen auch mit dem Controller. Bei Treffern vibriert er.</p>
               <h3>Mehrspieler (2–4)</h3>
@@ -207,7 +207,7 @@ export class Menus {
               <button class="opt ${!s.assist ? 'on' : ''}" data-assist="0">aus</button>
             </div>
             <h3>Handy: Gas</h3><div class="row">
-              <button class="opt ${!s.autoGas ? 'on' : ''}" data-gas="0">Knopf<small>Gas pumpen = Drift, Bremse = zurück</small></button>
+              <button class="opt ${!s.autoGas ? 'on' : ''}" data-gas="0">Knopf<small>2× Gas = Drift, halten = weiterdriften</small></button>
               <button class="opt ${s.autoGas ? 'on' : ''}" data-gas="1">automatisch</button>
             </div>
             <h3>Grafik</h3><div class="row">${qBtns}</div>

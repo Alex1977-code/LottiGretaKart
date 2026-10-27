@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { Build, vcol } from '../lgw/course/models/lib/kit.js';
 import { getModel } from '../lgw/course/models/index.js';
 import { Rnd } from '../lgw/three/world/geometry.js';
+import { addSway } from './shaders.js';
 
 // ------------------------------------------------------------------ Geometrien der Massenware (Ursprung = Fuß)
 const GEO = {};
@@ -110,6 +111,45 @@ const tuft = () => g('tuft', () => {
   }
   return b.geometry();
 });
+// Schilf am Ufer: Halme mit Rohrkolben (braune Kolben)
+const reed = () => g('reed', () => {
+  const b = new Build();
+  for (let i = 0; i < 6; i++) {
+    const a = i * 2.4, r = 0.08 + (i % 3) * 0.1, h = 1.3 + (i % 3) * 0.35;
+    b.cyl(0.025, 0.04, h, 0xffffff, { p: [Math.cos(a) * r, h / 2, Math.sin(a) * r], r: [Math.sin(a) * 0.12, 0, Math.cos(a) * 0.12] }, 4);
+    if (i % 2 === 0) b.capsule(0.07, 0.28, 0x7a4a26, { p: [Math.cos(a) * r * 1.2, h + 0.05, Math.sin(a) * r * 1.2] }, 2, 6);
+  }
+  for (let i = 0; i < 4; i++) { const a = i * 1.6 + 0.3; b.cone(0.06, 1.1, 0xffffff, { p: [Math.cos(a) * 0.18, 0.55, Math.sin(a) * 0.18], r: [Math.sin(a) * 0.4, 0, Math.cos(a) * 0.4], s: [1, 1, 0.3] }, 3); }
+  return b.geometry();
+});
+// Farn: gefiederte Wedel, flach nach außen gebogen
+const fern = () => g('fern', () => {
+  const b = new Build();
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    b.sphere(1, 0xffffff, { p: [Math.cos(a) * 0.45, 0.32, Math.sin(a) * 0.45], r: [0, -a, 0.55], s: [0.55, 0.05, 0.16] }, 8, 4);
+  }
+  return b.geometry();
+});
+// Gänseblümchen-Tupfer: flache weiße Blüten mit gelber Mitte, im Gras verstreut
+const daisy = () => g('daisy', () => {
+  const b = new Build();
+  for (let i = 0; i < 6; i++) {
+    const a = i * 2.1, r = 0.25 + (i % 3) * 0.3;
+    b.cyl(0.07, 0.07, 0.03, 0xffffff, { p: [Math.cos(a) * r, 0.08 + (i % 2) * 0.03, Math.sin(a) * r] }, 7);
+    b.cyl(0.03, 0.03, 0.035, 0xffd21f, { p: [Math.cos(a) * r, 0.1 + (i % 2) * 0.03, Math.sin(a) * r] }, 5);
+  }
+  return b.geometry();
+});
+// Holzzaun an den Landstraßen: Pfosten und Querlatte (3 m entlang +X)
+const fencePost = () => g('fencePost', () => new Build()
+  .box(0.16, 1.1, 0.16, 0xffffff, { p: [0, 0.55, 0] }, 0.03)
+  .cone(0.13, 0.12, 0xffffff, { p: [0, 1.16, 0], r: [0, Math.PI / 4, 0] }, 4)
+  .geometry());
+const fenceRail = () => g('fenceRail', () => new Build()
+  .box(3.05, 0.1, 0.06, 0xffffff, { p: [1.5, 0.82, 0] }, 0.02)
+  .box(3.05, 0.1, 0.06, 0xffffff, { p: [1.5, 0.45, 0] }, 0.02)
+  .geometry());
 // Kieselsteine
 const pebble = () => g('pebble', () => new Build()
   .sphere(0.22, 0xffffff, { p: [0, 0.06, 0], s: [1.3, 0.55, 1] }, 6, 4)
@@ -158,9 +198,17 @@ const gumdrop = () => g('gumdrop', () => new Build()
   .dome(0.7, 0xffffff, { p: [0, 0, 0], s: [1, 1.15, 1] }, Math.PI / 2, 14, 7)
   .geometry());
 
-const KINDS = { cactus, mesa, lollipop, candycane, donut, gumdrop, tuft, pebble, roundTree, pineTree, bush, flower, mushroom, rock, crystal, stalactite, hill, building, block, palm, umbrella, starfish, snowman };
+const KINDS = { reed, fern, daisy, fencePost, fenceRail, cactus, mesa, lollipop, candycane, donut, gumdrop, tuft, pebble, roundTree, pineTree, bush, flower, mushroom, rock, crystal, stalactite, hill, building, block, palm, umbrella, starfish, snowman };
 // Sichtweite (m) für Kleinkram, der in der Ferne ohnehin nicht zu erkennen ist
-const NEAR_ONLY = { tuft: 110, pebble: 90, flower: 170, starfish: 90 };
+const NEAR_ONLY = { tuft: 110, pebble: 90, flower: 170, starfish: 90, reed: 150, fern: 130, daisy: 90, fencePost: 190, fenceRail: 190 };
+// Wind: diese Arten wiegen sich (Ausschlag je Meter Höhe)
+const SWAY = { tuft: 0.14, flower: 0.1, reed: 0.12, fern: 0.05, palm: 0.018, roundTree: 0.01, bush: 0.03 };
+const swayMats = new Map();
+const swayMat = (kind) => {
+  let m = swayMats.get(kind);
+  if (!m) { m = addSway(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, side: kind === 'fern' ? THREE.DoubleSide : THREE.FrontSide }), SWAY[kind], kind); swayMats.set(kind, m); }
+  return m;
+};
 // Hindernis-Radius je Art (× Größe) in der offenen Welt
 const COLLIDE = { cactus: 0.4, mesa: 5.6, lollipop: 0.2, candycane: 0.2, donut: 1.3, roundTree: 0.5, pineTree: 0.45, mushroom: 0.9, rock: 1.0, block: 0.6, crystal: 0.4, palm: 0.35, umbrella: 0.12, snowman: 0.85 };
 
@@ -584,9 +632,10 @@ export class Decor {
         t.push(e);
       }
       for (const part of tiles.values()) {
-        const im = new THREE.InstancedMesh(KINDS[kind](), vcol(kind === 'crystal' ? 0.2 : 0.55, kind === 'crystal' ? { emissive: 0x2a4a6a } : {}, kind === 'crystal' ? 'crystal' : ''), part.length);
+        const mat = SWAY[kind] && this.quality >= 2 ? swayMat(kind) : vcol(kind === 'crystal' ? 0.2 : 0.55, kind === 'crystal' ? { emissive: 0x2a4a6a } : {}, kind === 'crystal' ? 'crystal' : '');
+        const im = new THREE.InstancedMesh(KINDS[kind](), mat, part.length);
         part.forEach((e, i) => { im.setMatrixAt(i, e.m); im.setColorAt(i, e.c); });
-        im.castShadow = this.noShadow ? false : this.quality >= 2 ? !['hill', 'flower', 'building', 'stalactite', 'starfish', 'tuft', 'pebble'].includes(kind) : ['roundTree', 'pineTree', 'mushroom', 'palm'].includes(kind);
+        im.castShadow = this.noShadow ? false : this.quality >= 2 ? !['hill', 'flower', 'building', 'stalactite', 'starfish', 'tuft', 'pebble', 'daisy', 'reed', 'fern', 'fenceRail'].includes(kind) : ['roundTree', 'pineTree', 'mushroom', 'palm'].includes(kind);
         im.receiveShadow = true;
         im.computeBoundingSphere();
         im.name = `kulisse:${kind}`;

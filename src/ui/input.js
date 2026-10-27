@@ -32,7 +32,7 @@ window.addEventListener('blur', () => KEYS.clear());
 const any = (codes) => codes.some((c) => KEYS.has(c) || LATCH.has(c));
 const tapped = (...codes) => codes.some((c) => PRESSED.has(c));
 
-export const touch = { active: false, steer: 0, steerLin: 0, steerId: null, drift: false, item: false, brake: false, gas: false, autoGas: false, itemTap: false, driftTap: false, driftUntil: 0, coastUntil: 0 };
+export const touch = { driftHold: false, active: false, steer: 0, steerLin: 0, steerId: null, drift: false, item: false, brake: false, gas: false, autoGas: false, itemTap: false, driftTap: false, driftUntil: 0, coastUntil: 0 };
 let usingTouch = false;
 window.addEventListener('touchstart', () => { usingTouch = true; }, { passive: true });
 
@@ -73,7 +73,11 @@ export function readDrive(src = 'auto') {
     if (touch.steerId !== null) inp.steerLin = touch.steerLin;   // Daumen liegt auf dem Lenkrad
     // Gas: Knopf GAS (kurz nach dem Loslassen rollt das Kart weiter) oder DRIFT oder Automatik; BREMSE hat Vorrang
     const now = performance.now() / 1000;
+    // Drift mit Gas-Pumpen begonnen: solange Gas gehalten wird, läuft der Drift weiter (in Ruhe lenken);
+    // Loslassen (länger als eine Pump-Pause) beendet ihn mit Mini-Turbo
+    if (touch.driftHold && touch.gas) touch.driftUntil = Math.max(touch.driftUntil, now + 0.12);
     const pumping = touch.driftUntil > now;
+    if (!pumping) touch.driftHold = false;
     if (touch.autoGas || touch.gas || touch.drift || pumping || touch.coastUntil > now) inp.throttle = Math.max(inp.throttle, touch.brake ? 0 : 1);
     if (touch.brake) inp.brake = 1;
     // Driften: DRIFT-Knopf (Automatik-Gas) oder Gas pumpen (Gas – los – Gas – los …)
