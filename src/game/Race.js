@@ -22,6 +22,10 @@ import { getModel } from '../lgw/course/models/index.js';
 import { getTheme } from '../world/themes.js';
 import { isNight, nightTheme, applyNightGlow } from '../world/night.js';
 
+const SIDES = [-1, 1];
+const NET_TIMERS = ['boostT', 'starT', 'giantT', 'spinT', 'tumbleT', 'squishT', 'invulnT', 'throwT', 'bumpCooldown'];
+const byProgress = (a, b) => b.progress - a.progress;
+
 const TAU = Math.PI * 2;
 const wrapA = (a) => { a %= TAU; if (a > Math.PI) a -= TAU; else if (a < -Math.PI) a += TAU; return a; };
 const damp = (c, t, r, dt) => c + (t - c) * (1 - Math.exp(-r * dt));
@@ -200,8 +204,10 @@ export class Race {
   huds() { return (this.views ?? []).map((v) => v.hud).filter(Boolean); }
   /** Kleinster quadrierter Abstand zu einem der Kamera-Mittelpunkte (Sichtbarkeit, Simulation in der Nähe). */
   focusDist2(x, z) {
+    const fs = this.foci;
+    if (!fs) { const f = this.focus; return f ? (x - f.x) * (x - f.x) + (z - f.z) * (z - f.z) : Infinity; }
     let d = Infinity;
-    for (const f of this.foci ?? [this.focus]) if (f) d = Math.min(d, (x - f.x) ** 2 + (z - f.z) ** 2);
+    for (let k = 0; k < fs.length; k++) { const f = fs[k]; if (f) d = Math.min(d, (x - f.x) * (x - f.x) + (z - f.z) * (z - f.z)); }
     return d;
   }
 
@@ -613,12 +619,17 @@ export class Race {
   }
 
   rank() {
-    if (this.free) { this.racers.forEach((r, i) => { r.place = i + 1; }); return; }
-    const fin = this.finishOrder.filter((r) => !r.out);
-    const rest = this.racers.filter((r) => !r.finished).sort((a, b) => b.progress - a.progress);
-    fin.forEach((r, i) => { r.place = i + 1; });
-    rest.forEach((r, i) => { r.place = fin.length + i + 1; });
-    [...this.outOrder].reverse().forEach((r, i) => { r.place = fin.length + rest.length + i + 1; });
+    if (this.free) { for (let i = 0; i < this.racers.length; i++) this.racers[i].place = i + 1; return; }
+    // je Bild: wiederverwendete Liste statt neuer Arrays
+    let n = 0;
+    for (let i = 0; i < this.finishOrder.length; i++) { const r = this.finishOrder[i]; if (!r.out) r.place = ++n; }
+    const rest = (this._rest ??= []);
+    rest.length = 0;
+    for (let i = 0; i < this.racers.length; i++) if (!this.racers[i].finished) rest.push(this.racers[i]);
+    rest.sort(byProgress);
+    for (let i = 0; i < rest.length; i++) rest[i].place = n + i + 1;
+    n += rest.length;
+    for (let i = this.outOrder.length - 1, k = 1; i >= 0; i--, k++) this.outOrder[i].place = n + k;
   }
 
   /** Karts schubsen sich gegenseitig (Gewicht zählt); Stern/Riese werfen andere um. */
@@ -672,13 +683,13 @@ export class Race {
       const bx = r.pos.x - c * 0.9 * r.giantScale, bz = r.pos.z - s * 0.9 * r.giantScale;
       if (r.drift.on && Math.random() < 0.9) {
         const col = SPARK_COLORS[r.drift.level] ?? 0xffffff;
-        for (const side of [-1, 1]) fx.trail(bx + s * side * 0.55, r.pos.y + 0.1, bz - c * side * 0.55, r.drift.level ? col : 0xfff0d0, r.drift.level ? 0.55 : 0.3);
+        for (const side of SIDES) fx.trail(bx + s * side * 0.55, r.pos.y + 0.1, bz - c * side * 0.55, r.drift.level ? col : 0xfff0d0, r.drift.level ? 0.55 : 0.3);
       }
       if (r.charge > 0.2 && Math.random() < 0.6) fx.trail(bx, r.pos.y + 0.1, bz, r.charge > 1 ? 0xff5ad0 : 0x58b8ff, 0.4);
       if (r.boostT > 0 && Math.random() < 0.8) fx.trail(bx - c * 0.3, r.pos.y + 0.35, bz - s * 0.3, r.boostColor, 0.7);
       if (r.offroad && Math.abs(r.speed) > 4 && Math.random() < 0.5) fx.dust(bx, r.pos.y, bz, 0xe8d8b0, 0.9);
       if (r.onWater && Math.abs(r.speed) > 3 && Math.random() < 0.8) {
-        for (const side of [-1, 1]) fx.dust(bx + s * side * 0.6, r.pos.y + 0.1, bz - c * side * 0.6, 0xeaf8ff, 1.1);
+        for (const side of SIDES) fx.dust(bx + s * side * 0.6, r.pos.y + 0.1, bz - c * side * 0.6, 0xeaf8ff, 1.1);
       }
       if (r.starT > 0 && Math.random() < 0.8) fx.rainbow(r.pos);
     }
@@ -686,9 +697,11 @@ export class Race {
 
   // ------------------------------------------------------------------ Kamera
   updateCamera(dt, t) {
-    const targets = this.views.map((v) => this.updateViewCamera(v, dt, t));
-    this.foci = targets.map((tg) => tg.pos);
-    this.focus = this.foci[0];
+    const foci = (this._foci ??= []);
+    foci.length = this.views.length;
+    for (let k = 0; k < this.views.length; k++) foci[k] = this.updateViewCamera(this.views[k], dt, t).pos;
+    this.foci = foci;
+    this.focus = foci[0];
     this.app.sky.update(dt, this.views[0].cam, this.focus);
     this.app.worldView.update(dt, t, this.split ? this.foci : this.focus);
     this.playerLight.position.set(this.focus.x, this.focus.y + 3.5, this.focus.z);
@@ -781,7 +794,7 @@ export class Race {
 
   /** Zeitgeber eines Gast-Karts beim Gastgeber herunterzählen (die Physik rechnet der Gast). */
   netTimers(r, dt) {
-    for (const k of ['boostT', 'starT', 'giantT', 'spinT', 'tumbleT', 'squishT', 'invulnT', 'throwT', 'bumpCooldown']) if (r[k] > 0) r[k] = Math.max(0, r[k] - dt);
+    for (const k of NET_TIMERS) if (r[k] > 0) r[k] = Math.max(0, r[k] - dt);
   }
 
   /** Schnappschüsse senden (Gastgeber) bzw. eigene Lage melden (Gast). */

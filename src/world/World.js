@@ -7,6 +7,9 @@ import { Track } from './Track.js';
 import { getTheme } from './themes.js';
 import { WORLD } from './worldDef.js';
 
+/** Schlüssel einer Rasterzelle als kleine Ganzzahl (keine Zeichenkette – erzeugt keinen Speichermüll). */
+const ck = (a, b) => (a + 2048) * 4096 + (b + 2048);
+
 const CELL = 3;            // Höhenfeld-Raster (m)
 const HCELL = 16;          // Suchtabelle für Straßen und Kollisionen (m)
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -218,7 +221,7 @@ export class World {
     const map = new Map();
     this.roads.forEach((tr, ri) => {
       for (let i = 0; i < tr.N; i++) {
-        const k = `${Math.floor(tr.px[i] / HCELL)},${Math.floor(tr.pz[i] / HCELL)}`;
+        const k = ck(Math.floor(tr.px[i] / HCELL), Math.floor(tr.pz[i] / HCELL));
         let l = map.get(k);
         if (!l) { l = []; map.set(k, l); }
         l.push(ri, i);
@@ -232,7 +235,7 @@ export class World {
     const cx = Math.floor(x / HCELL), cz = Math.floor(z / HCELL);
     let bd = Infinity, br = -1, bi = -1;
     for (let a = -maxCells; a <= maxCells; a++) for (let b = -maxCells; b <= maxCells; b++) {
-      const l = this.roadIndex.get(`${cx + a},${cz + b}`);
+      const l = this.roadIndex.get(ck(cx + a, cz + b));
       if (!l) continue;
       for (let k = 0; k < l.length; k += 2) {
         const tr = this.roads[l[k]], i = l[k + 1];
@@ -250,7 +253,7 @@ export class World {
   roadBelow(x, z, tr) {
     const cx = Math.floor(x / HCELL), cz = Math.floor(z / HCELL);
     for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
-      const l = this.roadIndex.get(`${cx + a},${cz + b}`);
+      const l = this.roadIndex.get(ck(cx + a, cz + b));
       if (!l) continue;
       for (let k = 0; k < l.length; k += 2) {
         const r = this.roads[l[k]], i = l[k + 1];
@@ -318,7 +321,7 @@ export class World {
   }
 
   indexAdd(a, b, id) {
-    const k = `${a},${b}`;
+    const k = ck(a, b);
     let l = this.colIndex.get(k);
     if (!l) { l = []; this.colIndex.set(k, l); }
     l.push(id);
@@ -374,32 +377,35 @@ export class World {
   collide(x, z, r, out = {}, y = null) {
     const cx = Math.floor(x / HCELL), cz = Math.floor(z / HCELL);
     let px = 0, pz = 0, hit = false;
-    const seen = this._seen ?? (this._seen = new Set());
-    seen.clear();
+    // schon geprüfte Hindernisse merken: Stempel je Hindernis statt Set (erzeugt keinen Speichermüll)
+    const nS = this.segs.length, nAll = nS + this.circles.length;
+    if (!this._stamp || this._stamp.length < nAll) this._stamp = new Int32Array(nAll + 256);
+    const stamp = this._stamp, mark = (this._mark = (this._mark + 1) | 0 || 1);
     for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
-      const l = this.colIndex.get(`${cx + a},${cz + b}`);
+      const l = this.colIndex.get(ck(cx + a, cz + b));
       if (!l) continue;
-      for (const id of l) {
-        if (seen.has(id)) continue;
-        seen.add(id);
+      for (let k = 0; k < l.length; k++) {
+        const id = l[k], si = id >= 0 ? id : nS - 1 - id;
+        if (stamp[si] === mark) continue;
+        stamp[si] = mark;
         let qx, qz;
         if (id >= 0) {
-          const [x1, z1, x2, z2, sy] = this.segs[id];
-          if (y !== null && sy !== null && Math.abs(y - sy) > 2.4) continue;
+          const sg = this.segs[id], x1 = sg[0], z1 = sg[1], x2 = sg[2], z2 = sg[3], sy = sg[4];
+          if (y !== null && sy !== null && sy !== undefined && Math.abs(y - sy) > 2.4) continue;
           const dx = x2 - x1, dz = z2 - z1, L2 = dx * dx + dz * dz || 1;
           const t = clamp(((x + px - x1) * dx + (z + pz - z1) * dz) / L2, 0, 1);
           qx = x1 + dx * t; qz = z1 + dz * t;
-          const ex = x + px - qx, ez = z + pz - qz, d = Math.hypot(ex, ez);
+          const ex = x + px - qx, ez = z + pz - qz, d = Math.sqrt(ex * ex + ez * ez);
           if (d < r && d > 1e-6) { px += (ex / d) * (r - d); pz += (ez / d) * (r - d); hit = true; }
         } else {
-          const [ox, oz, orr] = this.circles[-1 - id];
-          const ex = x + px - ox, ez = z + pz - oz, d = Math.hypot(ex, ez), R = r + orr;
+          const c = this.circles[-1 - id], ox = c[0], oz = c[1], orr = c[2];
+          const ex = x + px - ox, ez = z + pz - oz, d = Math.sqrt(ex * ex + ez * ez), R = r + orr;
           if (d < R && d > 1e-6) { px += (ex / d) * (R - d); pz += (ez / d) * (R - d); hit = true; }
         }
       }
     }
     if (!hit) return null;
-    const l = Math.hypot(px, pz) || 1;
+    const l = Math.sqrt(px * px + pz * pz) || 1;
     out.px = px; out.pz = pz; out.nx = px / l; out.nz = pz / l; out.pen = l;
     return out;
   }

@@ -240,6 +240,9 @@ export class Hud {
   }
 
   drawMap(race) {
+    // Karte nur jedes zweite Bild neu zeichnen (spart viel Zeichenarbeit, sieht gleich aus)
+    this.mapFrame = (this.mapFrame ?? 0) + 1;
+    if (this.mapFrame & 1) return;
     if (this.mapMode === 'near') { this.drawNearMap(race); return; }
     if (!this.mapBg) return;
     const c = this.mctx, W = this.map.width, H = this.map.height;
@@ -288,18 +291,22 @@ export class Hud {
     c.scale(s, s);
     c.translate(-me.pos.x, -me.pos.z);
     const P = (x, z) => [x, z];        // Draufsicht: x nach rechts (Osten), z nach unten (Süden)
-    const world = race.world, near = (x, z) => (x - me.pos.x) ** 2 + (z - me.pos.z) ** 2 < (R * 1.5) ** 2;
+    const world = race.world, near = (x, z) => (x - me.pos.x) * (x - me.pos.x) + (z - me.pos.z) * (z - me.pos.z) < R * R * 2.25;
     // Wasser und Lava
     for (const l of world.def.lakes) { if (!near(l.x, l.z) && Math.hypot(l.x - me.pos.x, l.z - me.pos.z) > R + l.r) continue; c.fillStyle = 'rgba(80,160,240,0.9)'; c.beginPath(); c.arc(...P(l.x, l.z), l.r, 0, Math.PI * 2); c.fill(); }
     for (const l of world.lava ?? []) { if (!near(l.x, l.z)) continue; c.fillStyle = '#ff6a1a'; c.beginPath(); c.arc(...P(l.x, l.z), l.r, 0, Math.PI * 2); c.fill(); }
     // alle Straßen
     c.lineCap = 'round'; c.lineJoin = 'round';
-    for (const tr of world.roads) {
+    const mx = me.pos.x, mz = me.pos.z, RR = R * 1.5;
+    for (let ri = 0; ri < world.roads.length; ri++) {
+      const tr = world.roads[ri], bb = tr.bounds;
+      // Straßen weit weg gar nicht erst durchgehen
+      if (bb && (mx < bb.minX - RR || mx > bb.maxX + RR || mz < bb.minZ - RR || mz > bb.maxZ + RR)) continue;
       c.beginPath();
       let pen = false;
       for (let i = 0; i < tr.N; i += 3) {
         if (!near(tr.px[i], tr.pz[i])) { pen = false; continue; }
-        const [x, y] = P(tr.px[i], tr.pz[i]);
+        const x = tr.px[i], y = tr.pz[i];
         if (pen) c.lineTo(x, y); else c.moveTo(x, y);
         pen = true;
       }
@@ -311,7 +318,7 @@ export class Hud {
       const i0 = me.loc.i ?? 0;
       const seg = (a, b, col, w) => {
         c.beginPath();
-        for (let i = a; i <= b; i += 2) { const k = Math.max(0, Math.min(tr.N - 1, i)); const [x, y] = P(tr.px[k], tr.pz[k]); if (i === a) c.moveTo(x, y); else c.lineTo(x, y); }
+        for (let i = a; i <= b; i += 2) { const k = Math.max(0, Math.min(tr.N - 1, i)); const x = tr.px[k], y = tr.pz[k]; if (i === a) c.moveTo(x, y); else c.lineTo(x, y); }
         c.strokeStyle = col; c.lineWidth = w; c.stroke();
       };
       const ahead = Math.round(R * 1.4 / tr.ds);

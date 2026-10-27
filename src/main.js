@@ -28,16 +28,17 @@ import { installRimLight } from './world/trackDetail.js';
 
 const params = new URLSearchParams(location.search);
 const app = document.getElementById('app');
+// Grafikstufe: 1 sparsam, 2 hoch, 3 ultra (URL > Einstellung > Standard: Handy hoch, PC ultra)
+let savedQuality = null;
+try { savedQuality = localStorage.getItem('lgkart.quality'); } catch (_) { /* egal */ }
+const quality = params.has('quality') ? Number(params.get('quality')) : savedQuality ? Number(savedQuality) : (isTouch() ? 2 : 3);
+const usePost = quality >= 2 && params.get('post') !== '0';
 const { renderer, canvas } = getRenderer();
 canvas.id = 'gl3d';
 app.prepend(canvas);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 
-// Grafikstufe: 1 sparsam, 2 hoch, 3 ultra (URL > Einstellung > Standard: Handy hoch, PC ultra)
-let savedQuality = null;
-try { savedQuality = localStorage.getItem('lgkart.quality'); } catch (_) { /* egal */ }
-const quality = params.has('quality') ? Number(params.get('quality')) : savedQuality ? Number(savedQuality) : (isTouch() ? 2 : 3);
 const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.1, 1600);
 
 const ctx = {
@@ -49,7 +50,7 @@ const ctx = {
   paused: false,
 };
 // Nachbearbeitung wie bei Mario Kart 8 (Leuchten, Farben, Kontrast) ab Grafikstufe „Hoch“
-if (quality >= 2 && params.get('post') !== '0') ctx.post = new Post(renderer, quality);
+if (usePost) ctx.post = new Post(renderer, quality);
 if (quality >= 2) installRimLight();
 window.__kart = ctx; // Tests/Fehlersuche
 ctx.ai = { aiInput, initAI }; // Tests: Spielerin von der KI fahren lassen
@@ -104,8 +105,28 @@ ctx.startRace = (o) => {
   ctx.touch.show(touchOn);
   document.body.classList.toggle('touch-on', touchOn && !race.split);
   ctx.touch.onStartTap = () => race.startTap();
+  if (!demo) warmShaders(race);
   return race;
 };
+
+/**
+ * Alle Shader der Szene gleich zum Rennstart übersetzen (während die Strecke vorgestellt wird) – sonst werden sie
+ * erst übersetzt, wenn ein Objekt zum ersten Mal ins Bild kommt, und das Spiel hängt dabei kurz (vor allem am iPhone).
+ */
+function warmShaders(race) {
+  const scene = ctx.scene, hidden = [], offLights = [];
+  // Lichter, die gerade nicht leuchten, bleiben aus (sonst würde für eine falsche Lichterzahl übersetzt)
+  scene.traverse((o) => { if (o.isLight) { let v = true; o.traverseAncestors((a) => { if (!a.visible) v = false; }); if (!v || !o.visible) offLights.push([o, o.visible]); } });
+  scene.traverse((o) => { if (!o.visible) { hidden.push(o); o.visible = true; } });
+  for (const [l] of offLights) l.visible = false;
+  const rt = ctx.post?.composer.renderTarget1 ?? null;
+  const prev = renderer.getRenderTarget();
+  renderer.setRenderTarget(rt);   // gleiche Ausgabe wie beim Zeichnen (Zwischenbild der Nachbearbeitung)
+  try { renderer.compileAsync(scene, race.camera ?? camera).catch(() => {}); } catch (_) { /* egal */ }
+  renderer.setRenderTarget(prev);
+  for (const o of hidden) o.visible = false;
+  for (const [l, v] of offLights) l.visible = v;
+}
 /** Beliebige Szene mit update/render/dispose (Siegerehrung) statt eines Rennens zeigen. */
 ctx.setScene = (scene) => {
   ctx.endRace();

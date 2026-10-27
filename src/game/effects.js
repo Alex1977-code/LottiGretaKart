@@ -42,8 +42,10 @@ function softTexture() {
 class Cloud {
   constructor(scene, max, additive) {
     this.max = max;
-    this.n = 0;
-    this.p = []; // { x,y,z, vx,vy,vz, life, age, size, size1, r,g,b, a, drag, grav }
+    this.n = 0;          // lebende Teilchen (vorn in p)
+    this.oldest = 0;
+    this.drawn = 0;
+    this.p = []; // { x,y,z, vx,vy,vz, life, age, size, size1, r,g,b, a, drag, grav, floor, fadeIn }
     const g = new THREE.BufferGeometry();
     this.pos = new Float32Array(max * 3);
     this.col = new Float32Array(max * 4);
@@ -64,16 +66,30 @@ class Cloud {
     scene.add(this.points);
   }
 
-  spawn(o) {
-    if (this.p.length >= this.max) this.p.shift();
-    this.p.push({ age: 0, drag: 0, grav: 0, a: 1, size1: o.size, ...o });
+  /**
+   * Partikel ausstoßen. Teilchen liegen in einem festen Vorrat (gleiche Objekte werden wiederverwendet – erzeugt
+   * keinen Speichermüll); ist er voll, ersetzt das neue das älteste.
+   */
+  emit(x, y, z, vx, vy, vz, life, size, size1, grav, drag, a, col, floor = NaN, fadeIn = false) {
+    let q;
+    if (this.n < this.max) {
+      q = this.p[this.n] ?? (this.p[this.n] = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 1, age: 0, size: 1, size1: 1, r: 1, g: 1, b: 1, a: 1, drag: 0, grav: 0, floor: NaN, fadeIn: false });
+      this.n++;
+    } else {
+      q = this.p[this.oldest];
+      this.oldest = (this.oldest + 1) % this.max;
+    }
+    q.x = x; q.y = y; q.z = z; q.vx = vx; q.vy = vy; q.vz = vz; q.life = life; q.age = 0;
+    q.size = size; q.size1 = size1; q.grav = grav; q.drag = drag; q.a = a;
+    q.r = col.r; q.g = col.g; q.b = col.b; q.floor = floor; q.fadeIn = fadeIn;
   }
 
   update(dt, viewH) {
     this.mat.uniforms.scale.value = viewH * 0.9;
     const list = this.p;
     let w = 0;
-    for (let r = 0; r < list.length; r++) {
+    // lebende Teilchen nach vorn sortieren (Tausch statt neuer Liste)
+    for (let r = 0; r < this.n; r++) {
       const q = list[r];
       q.age += dt;
       if (q.age >= q.life) continue;
@@ -81,10 +97,12 @@ class Cloud {
       const dr = Math.exp(-q.drag * dt);
       q.vx *= dr; q.vy *= dr; q.vz *= dr;
       q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt;
-      if (q.floor !== undefined && q.y < q.floor) { q.y = q.floor; q.vy *= -0.3; q.vx *= 0.6; q.vz *= 0.6; }
-      list[w++] = q;
+      if (q.y < q.floor) { q.y = q.floor; q.vy *= -0.3; q.vx *= 0.6; q.vz *= 0.6; }
+      if (w !== r) { list[r] = list[w]; list[w] = q; }
+      w++;
     }
-    list.length = w;
+    this.n = w;
+    if (this.oldest >= w) this.oldest = 0;
     for (let i = 0; i < w; i++) {
       const q = list[i], k = q.age / q.life;
       this.pos[i * 3] = q.x; this.pos[i * 3 + 1] = q.y; this.pos[i * 3 + 2] = q.z;
@@ -93,16 +111,22 @@ class Cloud {
       this.siz[i] = q.size + (q.size1 - q.size) * k;
     }
     this.geo.setDrawRange(0, w);
-    this.geo.attributes.position.needsUpdate = true;
-    this.geo.attributes.rgba.needsUpdate = true;
-    this.geo.attributes.size.needsUpdate = true;
+    if (w > 0 || this.drawn > 0) {
+      this.geo.attributes.position.needsUpdate = true;
+      this.geo.attributes.rgba.needsUpdate = true;
+      this.geo.attributes.size.needsUpdate = true;
+    }
+    this.drawn = w;
   }
 
   dispose() { this.points.removeFromParent(); this.geo.dispose(); this.mat.dispose(); }
 }
 
 const C = new THREE.Color();
-const rgb = (hex) => { C.setHex(hex); return { r: C.r, g: C.g, b: C.b }; };
+const COLS = new Map();
+/** Farbe als { r, g, b } (zwischengespeichert je Farbwert). */
+const rgb = (hex) => { let c = COLS.get(hex); if (!c) { C.setHex(hex); c = { r: C.r, g: C.g, b: C.b }; COLS.set(hex, c); } return c; };
+const HSL = { r: 1, g: 1, b: 1 }, BUBBLE = { r: 0.85, g: 0.95, b: 1 };
 const R = (a, b) => a + Math.random() * (b - a);
 
 export class Effects {
@@ -115,32 +139,32 @@ export class Effects {
   sparks(pos, nx = 0, nz = 0, color = 0xffd060, n = 10) {
     const c = rgb(color);
     for (let i = 0; i < n; i++) {
-      this.glow.spawn({ x: pos.x, y: pos.y + 0.4, z: pos.z, vx: nx * R(2, 6) + R(-3, 3), vy: R(1.5, 5), vz: nz * R(2, 6) + R(-3, 3), life: R(0.25, 0.5), size: R(0.25, 0.45), size1: 0.05, grav: 14, ...c });
+      this.glow.emit(pos.x, pos.y + 0.4, pos.z, nx * R(2, 6) + R(-3, 3), R(1.5, 5), nz * R(2, 6) + R(-3, 3), R(0.25, 0.5), R(0.25, 0.45), 0.05, 14, 0, 1, c);
     }
   }
 
   /** Drift-Funken / Turbo-Glut hinter dem Kart. */
   trail(x, y, z, color, size = 0.5) {
     const c = rgb(color);
-    this.glow.spawn({ x: x + R(-0.1, 0.1), y: y + R(0, 0.1), z: z + R(-0.1, 0.1), vx: R(-1, 1), vy: R(0.5, 2.5), vz: R(-1, 1), life: R(0.15, 0.3), size, size1: 0.05, grav: 6, ...c });
+    this.glow.emit(x + R(-0.1, 0.1), y + R(0, 0.1), z + R(-0.1, 0.1), R(-1, 1), R(0.5, 2.5), R(-1, 1), R(0.15, 0.3), size, 0.05, 6, 0, 1, c);
   }
 
   /** Staub auf der Wiese / beim Bremsen. */
   dust(x, y, z, color = 0xe8d8b0, size = 0.9) {
     const c = rgb(color);
-    this.soft.spawn({ x: x + R(-0.2, 0.2), y: y + 0.1, z: z + R(-0.2, 0.2), vx: R(-0.6, 0.6), vy: R(0.4, 1.4), vz: R(-0.6, 0.6), life: R(0.4, 0.8), size: size * 0.5, size1: size * 1.6, drag: 1.5, a: 0.55, ...c });
+    this.soft.emit(x + R(-0.2, 0.2), y + 0.1, z + R(-0.2, 0.2), R(-0.6, 0.6), R(0.4, 1.4), R(-0.6, 0.6), R(0.4, 0.8), size * 0.5, size * 1.6, 0, 1.5, 0.55, c);
   }
 
   /** Luftblasen unter Wasser: steigen auf und wackeln. */
   bubble(x, y, z, size = 0.35) {
-    this.soft.spawn({ x: x + R(-0.3, 0.3), y: y + 0.2, z: z + R(-0.3, 0.3), vx: R(-0.3, 0.3), vy: R(1.6, 3.2), vz: R(-0.3, 0.3), life: R(0.9, 1.6), size: size * 0.6, size1: size * 1.2, drag: 0.6, a: 0.7, r: 0.85, g: 0.95, b: 1 });
+    this.soft.emit(x + R(-0.3, 0.3), y + 0.2, z + R(-0.3, 0.3), R(-0.3, 0.3), R(1.6, 3.2), R(-0.3, 0.3), R(0.9, 1.6), size * 0.6, size * 1.2, 0, 0.6, 0.7, BUBBLE);
   }
 
   /** Bitcoins fliegen davon (Treffer). */
   coinBurst(pos, n = 2) {
     const c = rgb(0xf7931a);
     for (let i = 0; i < n * 4; i++) {
-      this.glow.spawn({ x: pos.x, y: pos.y + 0.8, z: pos.z, vx: R(-4, 4), vy: R(4, 8), vz: R(-4, 4), life: 0.8, size: 0.6, size1: 0.3, grav: 18, floor: pos.y + 0.1, ...c });
+      this.glow.emit(pos.x, pos.y + 0.8, pos.z, R(-4, 4), R(4, 8), R(-4, 4), 0.8, 0.6, 0.3, 18, 0, 1, c, pos.y + 0.1);
     }
   }
 
@@ -148,21 +172,21 @@ export class Effects {
   sparkle(pos, color = 0xfff2a0, n = 14, spread = 4) {
     const c = rgb(color);
     for (let i = 0; i < n; i++) {
-      this.glow.spawn({ x: pos.x, y: pos.y, z: pos.z, vx: R(-spread, spread), vy: R(1, spread + 2), vz: R(-spread, spread), life: R(0.35, 0.7), size: R(0.35, 0.7), size1: 0.05, drag: 2.5, grav: 5, ...c });
+      this.glow.emit(pos.x, pos.y, pos.z, R(-spread, spread), R(1, spread + 2), R(-spread, spread), R(0.35, 0.7), R(0.35, 0.7), 0.05, 5, 2.5, 1, c);
     }
   }
 
   /** Explosion (Kickbombe, Zauberkugel): Blitz, Feuerball, Rauch. */
   explosion(pos, radius = 5) {
     const flash = rgb(0xfff4c0), fire = rgb(0xff8a2a), smoke = rgb(0xc8c0d4);
-    this.glow.spawn({ x: pos.x, y: pos.y + 1, z: pos.z, vx: 0, vy: 0, vz: 0, life: 0.3, size: radius * 1.2, size1: radius * 3, ...flash });
+    this.glow.emit(pos.x, pos.y + 1, pos.z, 0, 0, 0, 0.3, radius * 1.2, radius * 3, 0, 0, 1, flash);
     for (let i = 0; i < 26; i++) {
       const a = Math.random() * Math.PI * 2, s = R(2, radius * 1.6);
-      this.glow.spawn({ x: pos.x, y: pos.y + 0.6, z: pos.z, vx: Math.cos(a) * s, vy: R(1, 7), vz: Math.sin(a) * s, life: R(0.35, 0.7), size: R(1.2, 2.2), size1: 0.3, drag: 3, ...fire });
+      this.glow.emit(pos.x, pos.y + 0.6, pos.z, Math.cos(a) * s, R(1, 7), Math.sin(a) * s, R(0.35, 0.7), R(1.2, 2.2), 0.3, 0, 3, 1, fire);
     }
     for (let i = 0; i < 16; i++) {
       const a = Math.random() * Math.PI * 2, s = R(0.5, radius * 0.6);
-      this.soft.spawn({ x: pos.x + Math.cos(a) * s * 0.4, y: pos.y + R(0.3, 1.2), z: pos.z + Math.sin(a) * s * 0.4, vx: Math.cos(a) * s, vy: R(0.5, 2), vz: Math.sin(a) * s, life: R(0.8, 1.4), size: R(1.0, 1.8), size1: R(2.2, 3.2), drag: 2.2, a: 0.45, ...smoke });
+      this.soft.emit(pos.x + Math.cos(a) * s * 0.4, pos.y + R(0.3, 1.2), pos.z + Math.sin(a) * s * 0.4, Math.cos(a) * s, R(0.5, 2), Math.sin(a) * s, R(0.8, 1.4), R(1.0, 1.8), R(2.2, 3.2), 0, 2.2, 0.45, smoke);
     }
   }
 
@@ -173,16 +197,16 @@ export class Effects {
       const s = R(0.3, 1) * reach, a = R(-0.5, 0.5);
       const vx = (dx * Math.cos(a) - dz * Math.sin(a)) * s * 0.75, vz = (dz * Math.cos(a) + dx * Math.sin(a)) * s * 0.75;
       const c = i % 4 === 0 ? foam : i % 4 === 1 ? drop : deep;
-      this.soft.spawn({ x: pos.x + R(-1.5, 1.5), y: pos.y + R(0, 2), z: pos.z + R(-1.5, 1.5), vx, vy: R(6, 13), vz, life: R(1.0, 1.6), size: R(0.5, 1.2), size1: R(0.2, 0.6), grav: 16, a: 0.85, floor: pos.y - 1.2, ...c });
+      this.soft.emit(pos.x + R(-1.5, 1.5), pos.y + R(0, 2), pos.z + R(-1.5, 1.5), vx, R(6, 13), vz, R(1.0, 1.6), R(0.5, 1.2), R(0.2, 0.6), 16, 0, 0.85, c, pos.y - 1.2);
     }
     // aufsteigende Gischtwolke
-    for (let i = 0; i < 14; i++) this.soft.spawn({ x: pos.x + R(-2, 2), y: pos.y + R(0.5, 3), z: pos.z + R(-2, 2), vx: dx * R(1, 4), vy: R(1, 3), vz: dz * R(1, 4), life: R(0.8, 1.3), size: R(1.2, 2), size1: R(2.5, 3.5), drag: 1.8, a: 0.3, ...foam });
+    for (let i = 0; i < 14; i++) this.soft.emit(pos.x + R(-2, 2), pos.y + R(0.5, 3), pos.z + R(-2, 2), dx * R(1, 4), R(1, 3), dz * R(1, 4), R(0.8, 1.3), R(1.2, 2), R(2.5, 3.5), 0, 1.8, 0.3, foam);
   }
 
   /** Tropfen von einem nassen Kart. */
   drip(x, y, z) {
     const c = rgb(0xaee0ff);
-    this.soft.spawn({ x: x + R(-0.5, 0.5), y: y + R(0.3, 1), z: z + R(-0.5, 0.5), vx: R(-0.4, 0.4), vy: R(-0.5, 0.8), vz: R(-0.4, 0.4), life: R(0.3, 0.5), size: R(0.15, 0.3), size1: 0.08, grav: 12, a: 0.8, ...c });
+    this.soft.emit(x + R(-0.5, 0.5), y + R(0.3, 1), z + R(-0.5, 0.5), R(-0.4, 0.4), R(-0.5, 0.8), R(-0.4, 0.4), R(0.3, 0.5), R(0.15, 0.3), 0.08, 12, 0, 0.8, c);
   }
 
   /** Konfetti (Zieleinlauf, Siegerehrung). */
@@ -190,14 +214,15 @@ export class Effects {
     const cols = [0xe83a30, 0x3b7cf0, 0x4fb833, 0xffc21a, 0xf0609f, 0xb47fe6];
     for (let i = 0; i < n; i++) {
       const c = rgb(cols[i % cols.length]);
-      this.soft.spawn({ x: pos.x + R(-spread, spread), y: pos.y + R(4, 9), z: pos.z + R(-spread, spread), vx: R(-1.5, 1.5), vy: R(-1, 2), vz: R(-1.5, 1.5), life: R(2.5, 4), size: R(0.18, 0.3), size1: 0.18, grav: 2.2, drag: 1.2, ...c });
+      this.soft.emit(pos.x + R(-spread, spread), pos.y + R(4, 9), pos.z + R(-spread, spread), R(-1.5, 1.5), R(-1, 2), R(-1.5, 1.5), R(2.5, 4), R(0.18, 0.3), 0.18, 2.2, 1.2, 1, c);
     }
   }
 
   /** Regenbogen-Glitzern (Funkelstern). */
   rainbow(pos) {
     C.setHSL(Math.random(), 1, 0.6);
-    this.glow.spawn({ x: pos.x + R(-0.8, 0.8), y: pos.y + R(0.2, 1.4), z: pos.z + R(-0.8, 0.8), vx: R(-0.5, 0.5), vy: R(0.5, 1.5), vz: R(-0.5, 0.5), life: 0.5, size: 0.5, size1: 0.05, r: C.r, g: C.g, b: C.b });
+    HSL.r = C.r; HSL.g = C.g; HSL.b = C.b;
+    this.glow.emit(pos.x + R(-0.8, 0.8), pos.y + R(0.2, 1.4), pos.z + R(-0.8, 0.8), R(-0.5, 0.5), R(0.5, 1.5), R(-0.5, 0.5), 0.5, 0.5, 0.05, 0, 0, 1, HSL);
   }
 
   update(dt, viewH) {

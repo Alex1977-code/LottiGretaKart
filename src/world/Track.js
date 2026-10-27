@@ -10,6 +10,9 @@ import * as THREE from 'three';
 import { lin } from '../lgw/three/world/geometry.js';
 import { addGroundDetail } from './shaders.js';
 
+/** Schlüssel einer Rasterzelle als kleine Ganzzahl (keine Zeichenkette – erzeugt keinen Speichermüll). */
+const ck = (a, b) => (a + 2048) * 4096 + (b + 2048);
+
 const STEP = 1;              // Abtastabstand (m)
 const CELL = 16;             // Raster der Suchtabelle (m)
 
@@ -114,7 +117,7 @@ export class Track {
     const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
     let best = -1, bd = Infinity;
     for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
-      const list = this.cells.get(`${cx + a},${cz + b}`);
+      const list = this.cells.get(ck(cx + a, cz + b));
       if (!list) continue;
       for (const i of list) {
         if (!(this.lift[i] > 0.05)) continue;
@@ -132,7 +135,7 @@ export class Track {
     for (let i = 0; i < this.N; i++) {
       const x = this.px[i], z = this.pz[i];
       minX = Math.min(minX, x); maxX = Math.max(maxX, x); minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z);
-      const k = `${Math.floor(x / CELL)},${Math.floor(z / CELL)}`;
+      const k = ck(Math.floor(x / CELL), Math.floor(z / CELL));
       let list = map.get(k);
       if (!list) { list = []; map.set(k, list); }
       list.push(i);
@@ -148,7 +151,7 @@ export class Track {
     for (let r = 0; r <= maxCells; r++) {
       for (let a = -r; a <= r; a++) for (let b = -r; b <= r; b++) {
         if (Math.max(Math.abs(a), Math.abs(b)) !== r) continue;
-        const list = this.cells.get(`${cx + a},${cz + b}`);
+        const list = this.cells.get(ck(cx + a, cz + b));
         if (!list) continue;
         for (const i of list) {
           const dx = x - this.px[i], dz = z - this.pz[i], d = dx * dx + dz * dz;

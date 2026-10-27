@@ -51,6 +51,14 @@ function weights(f, race) {
 const tmpV = new THREE.Vector3();
 const TAU = Math.PI * 2;
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _s = new THREE.Vector3();
+const isDead = (p) => p.dead, notDead = (p) => !p.dead;
+const cellKey = (a, b) => (a + 2048) * 4096 + (b + 2048);
+/** Nur den geänderten Bereich der Instanz-Matrizen zur Grafikkarte schicken. */
+function markRange(attr, lo, hi) {
+  attr.clearUpdateRanges();
+  attr.addUpdateRange(lo * 16, (hi - lo + 1) * 16);
+  attr.needsUpdate = true;
+}
 
 /** Funkel-Kiste (wie der goldene Block der Welt): goldener Würfel, weißer Funkelstern auf allen vier Seiten. */
 let _boxGeo = null, _boxMat = null;
@@ -299,42 +307,129 @@ export class Items {
     if (dd < 40) { this.race.audio.sfx('slam'); this.race.shake = Math.max(this.race.shake ?? 0, 1 - dd / 40); }
   }
 
+  /** Raster (16 m) über Kisten oder Münzen: nur die in der Nähe eines Fahrers prüfen. */
+  static grid(list) {
+    const g = new Map();
+    for (let i = 0; i < list.length; i++) {
+      const k = cellKey(Math.floor(list[i].pos.x / 16), Math.floor(list[i].pos.z / 16));
+      let l = g.get(k);
+      if (!l) { l = []; g.set(k, l); }
+      l.push(i);
+    }
+    return g;
+  }
+
+  /** Kisten: Wiederkehr zählen, Einsammeln (nur Kisten in der Nähe der Fahrer). */
+  pickBoxes(dt) {
+    const race = this.race, boxes = this.boxes, racers = race.racers;
+    for (let bi = 0; bi < boxes.length; bi++) {
+      const b = boxes[bi];
+      if (!b.active) { b.respawn -= dt; if (b.respawn <= 0) { b.active = true; b.pop = 0; } }
+      else if (b.pop < 1) b.pop = Math.min(1, b.pop + dt * 3);
+    }
+    if (race.netGuest) return;
+    const grid = (this.boxGrid ??= Items.grid(boxes));
+    for (let ri = 0; ri < racers.length; ri++) {
+      const r = racers[ri];
+      if (r.out) continue;
+      const cx = Math.floor(r.pos.x / 16), cz = Math.floor(r.pos.z / 16), rr = (1.2 + r.radius * 0.6) * (1.2 + r.radius * 0.6);
+      for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) {
+        const l = grid.get(cellKey(cx + a, cz + c));
+        if (!l) continue;
+        for (let k = 0; k < l.length; k++) {
+          const b = boxes[l[k]];
+          if (!b.active) continue;
+          const dx = r.pos.x - b.pos.x, dz = r.pos.z - b.pos.z;
+          if (dx * dx + dz * dz < rr && Math.abs(r.pos.y - b.pos.y) < 2.5) {
+            b.active = false; b.respawn = 2.4;
+            race.effects.sparkle(b.pos, 0xfff2a0, 16, 4);
+            if (r.isPlayer) race.audio.sfx('blockhit');
+            this.giveItem(r);
+          }
+        }
+      }
+    }
+  }
+
+  /** Kisten drehen und schweben lassen – nur die in Sichtweite (ferne bleiben stehen, man sieht sie nicht). */
+  animBoxes(t) {
+    const race = this.race, boxes = this.boxes, m = _m, q = _q, e = _e, sc = _s, S = Math.sin(Math.PI * 0.75);
+    let lo = Infinity, hi = -1;
+    for (let bi = 0; bi < boxes.length; bi++) {
+      const b = boxes[bi];
+      if (race.focusDist2(b.pos.x, b.pos.z) > 240 * 240 && b.drawn === b.active) continue;
+      b.drawn = b.active;
+      const sz = b.active ? 0.95 * (b.pop < 1 ? Math.sin(b.pop * Math.PI * 0.75) / S : 1) : 0.0001;
+      e.set(0.25 * Math.sin(t * 1.3 + b.phase), t * 1.2 + b.phase, 0);
+      q.setFromEuler(e);
+      tmpV.set(b.pos.x, b.pos.y + 0.45 + 0.18 * Math.sin(t * 2.2 + b.phase), b.pos.z);
+      sc.setScalar(Math.max(0.0001, sz));
+      m.compose(tmpV, q, sc);
+      this.boxMesh.setMatrixAt(b.k, m);
+      if (b.k < lo) lo = b.k;
+      if (b.k > hi) hi = b.k;
+    }
+    if (hi >= 0) markRange(this.boxMesh.instanceMatrix, lo, hi);
+  }
+
+  /** Münzen: Wiederkehr zählen, Einsammeln (nur Münzen in der Nähe der Fahrer). */
+  pickCoins(dt) {
+    const race = this.race, coins = this.coins, racers = race.racers;
+    if (race.netGuest) return;
+    for (let k = 0; k < coins.length; k++) { const c = coins[k]; if (!c.active) { c.respawn -= dt; if (c.respawn <= 0) c.active = true; } }
+    const grid = (this.coinGrid ??= Items.grid(coins));
+    for (let ri = 0; ri < racers.length; ri++) {
+      const r = racers[ri];
+      if (r.out) continue;
+      const cx = Math.floor(r.pos.x / 16), cz = Math.floor(r.pos.z / 16), rr = (0.9 + r.radius * 0.5) * (0.9 + r.radius * 0.5);
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+        const l = grid.get(cellKey(cx + a, cz + b));
+        if (!l) continue;
+        for (let k = 0; k < l.length; k++) {
+          const c = coins[l[k]];
+          if (!c.active) continue;
+          const dx = r.pos.x - c.pos.x, dz = r.pos.z - c.pos.z;
+          if (dx * dx + dz * dz < rr && Math.abs(r.pos.y + 0.6 - c.pos.y) < 1.6) {
+            c.active = false; c.respawn = 14;
+            if (r.coins < 10) r.coins++;
+            if (r.isPlayer) race.audio.sfx('coin');
+            r.boost(0.18, 0xffc21a, 1.0);
+            race.effects.sparkle(c.pos, 0xffc040, 8, 2);
+          }
+        }
+      }
+    }
+  }
+
+  /** Münzen drehen – nur die in Sichtweite. */
+  animCoins(t) {
+    const race = this.race, coins = this.coins, m = _m, q = _q, e = _e, sc = _s;
+    let lo = Infinity, hi = -1;
+    for (let k = 0; k < coins.length; k++) {
+      const c = coins[k];
+      if (race.focusDist2(c.pos.x, c.pos.z) > 200 * 200 && c.drawn === c.active) continue;
+      c.drawn = c.active;
+      e.set(0, t * 3 + k * 0.4, 0);
+      q.setFromEuler(e);
+      sc.setScalar(c.active ? 1.25 : 0.0001);
+      tmpV.copy(c.pos); tmpV.y += 0.08 * Math.sin(t * 3 + k);
+      m.compose(tmpV, q, sc);
+      this.coinBody.setMatrixAt(k, m);
+      this.coinFace.setMatrixAt(k, m);
+      if (k < lo) lo = k;
+      if (k > hi) hi = k;
+    }
+    if (hi >= 0) { markRange(this.coinBody.instanceMatrix, lo, hi); markRange(this.coinFace.instanceMatrix, lo, hi); }
+  }
+
   // ------------------------------------------------------------------ Simulation
   update(dt, t) {
     const race = this.race, track = race.track;
     // Kisten (Instanzen: drehen, schweben, beim Treffen verschwinden, nach 2,4 s wieder da)
-    if (this.boxMesh) {
-      const m = _m, q = _q, e = _e, sc = _s;
-      for (const b of this.boxes) {
-        if (!b.active) {
-          b.respawn -= dt;
-          if (b.respawn <= 0) { b.active = true; b.pop = 0; }
-        } else {
-          b.pop = Math.min(1, b.pop + dt * 3);
-          if (!race.netGuest) for (const r of race.racers) {
-            if (r.out) continue;
-            const dx = r.pos.x - b.pos.x, dz = r.pos.z - b.pos.z;
-            if (dx * dx + dz * dz < (1.2 + r.radius * 0.6) ** 2 && Math.abs(r.pos.y - b.pos.y) < 2.5) {
-              b.active = false; b.respawn = 2.4;
-              race.effects.sparkle(b.pos, 0xfff2a0, 16, 4);
-              if (r.isPlayer) race.audio.sfx('blockhit');
-              this.giveItem(r);
-              break;
-            }
-          }
-        }
-        const sz = b.active ? 0.95 * (b.pop < 1 ? Math.sin(b.pop * Math.PI * 0.75) / Math.sin(Math.PI * 0.75) : 1) : 0.0001;
-        e.set(0.25 * Math.sin(t * 1.3 + b.phase), t * 1.2 + b.phase, 0);
-        q.setFromEuler(e);
-        tmpV.set(b.pos.x, b.pos.y + 0.45 + 0.18 * Math.sin(t * 2.2 + b.phase), b.pos.z);
-        sc.setScalar(Math.max(0.0001, sz));
-        m.compose(tmpV, q, sc);
-        this.boxMesh.setMatrixAt(b.k, m);
-      }
-      this.boxMesh.instanceMatrix.needsUpdate = true;
-    }
+    if (this.boxMesh) { this.pickBoxes(dt); this.animBoxes(t); }
     // Glücksrad der Fahrer (beim Gast kommt der Gegenstand vom Gastgeber)
-    if (!race.netGuest) for (const r of race.racers) {
+    if (!race.netGuest) for (let ri = 0; ri < race.racers.length; ri++) {
+      const r = race.racers[ri];
       if (r.roulette > 0) {
         r.roulette -= dt;
         if (r.roulette <= 0) {
@@ -347,56 +442,33 @@ export class Items {
       }
     }
     // Bitcoins
-    if (this.coins.length) {
-      const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3();
-      this.coins.forEach((c, k) => {
-        if (!c.active && !race.netGuest) { c.respawn -= dt; if (c.respawn <= 0) c.active = true; }
-        if (c.active && !race.netGuest) {
-          for (const r of race.racers) {
-            if (r.out) continue;
-            const dx = r.pos.x - c.pos.x, dz = r.pos.z - c.pos.z;
-            if (dx * dx + dz * dz < (0.9 + r.radius * 0.5) ** 2 && Math.abs(r.pos.y + 0.6 - c.pos.y) < 1.6) {
-              c.active = false; c.respawn = 14;
-              if (r.coins < 10) r.coins++;
-              if (r.isPlayer) race.audio.sfx('coin');
-              r.boost(0.18, 0xffc21a, 1.0);
-              race.effects.sparkle(c.pos, 0xffc040, 8, 2);
-              break;
-            }
-          }
-        }
-        e.set(0, t * 3 + k * 0.4, 0);
-        q.setFromEuler(e);
-        sc.setScalar(c.active ? 1.25 : 0.0001);
-        tmpV.copy(c.pos); tmpV.y += 0.08 * Math.sin(t * 3 + k);
-        m.compose(tmpV, q, sc);
-        this.coinBody.setMatrixAt(k, m);
-        this.coinFace.setMatrixAt(k, m);
-      });
-      this.coinBody.instanceMatrix.needsUpdate = true;
-      this.coinFace.instanceMatrix.needsUpdate = true;
-    }
+    if (this.coins.length) { this.pickCoins(dt); this.animCoins(t); }
     // Turbo-Felder und Schanzen
-    for (const r of race.racers) {
+    for (let ri = 0; ri < race.racers.length; ri++) {
+      const r = race.racers[ri];
       if (r.out || r.remote || r.puppet) continue;
-      for (const p of this.pads) {
+      for (let pi = 0; pi < this.pads.length; pi++) {
+        const p = this.pads[pi];
         if (Math.abs(r.pos.x - p.x) > 6 || Math.abs(r.pos.z - p.z) > 6) continue;
         if (inRect(r.pos.x, r.pos.z, p.x, p.z, p.yaw, p.len / 2 + 0.3, p.w / 2 + 0.3) && !r.air) r.boost(1.1, 0xffc21a, 1.25);
       }
-      for (const p of this.ramps) {
+      for (let pi = 0; pi < this.ramps.length; pi++) {
+        const p = this.ramps[pi];
         if (Math.abs(r.pos.x - p.x) > 6 || Math.abs(r.pos.z - p.z) > 6) continue;
         if (inRect(r.pos.x, r.pos.z, p.x, p.z, p.yaw, p.len / 2, p.w / 2) && r.speed > 5) r.launch(8.5 + Math.min(3, r.speed * 0.08));
       }
     }
-    for (const p of this.pads) p.model.update(dt, 'idle');
+    for (let pi = 0; pi < this.pads.length; pi++) this.pads[pi].model.update(dt, 'idle');
     // Geschosse
-    for (const p of this.projectiles) {
+    const ps = this.projectiles;
+    for (let k = 0; k < ps.length; k++) {
+      const p = ps[k];
       if (p.dead || p.puppet) continue;
       p.age += dt;
       if (p.age > p.life) { this.remove(p); continue; }
       this.step(p, dt, t);
     }
-    this.projectiles = this.projectiles.filter((p) => !p.dead);
+    if (ps.some(isDead)) this.projectiles = ps.filter(notDead);
   }
 
   step(p, dt, t) {

@@ -149,8 +149,17 @@ export class Racer {
   // ------------------------------------------------------------------ Simulation
   update(dt, input) {
     const P = this.phys, track = this.path, world = this.race.world;
-    const timers = ['boostT', 'starT', 'giantT', 'spinT', 'tumbleT', 'squishT', 'invulnT', 'throwT', 'bumpCooldown', 'wetT'];
-    for (const k of timers) if (this[k] > 0) this[k] = Math.max(0, this[k] - dt);
+    // Zeitgeber herunterzählen (ausgeschrieben: keine Liste und kein dynamischer Zugriff je Bild)
+    if (this.boostT > 0) this.boostT = Math.max(0, this.boostT - dt);
+    if (this.starT > 0) this.starT = Math.max(0, this.starT - dt);
+    if (this.giantT > 0) this.giantT = Math.max(0, this.giantT - dt);
+    if (this.spinT > 0) this.spinT = Math.max(0, this.spinT - dt);
+    if (this.tumbleT > 0) this.tumbleT = Math.max(0, this.tumbleT - dt);
+    if (this.squishT > 0) this.squishT = Math.max(0, this.squishT - dt);
+    if (this.invulnT > 0) this.invulnT = Math.max(0, this.invulnT - dt);
+    if (this.throwT > 0) this.throwT = Math.max(0, this.throwT - dt);
+    if (this.bumpCooldown > 0) this.bumpCooldown = Math.max(0, this.bumpCooldown - dt);
+    if (this.wetT > 0) this.wetT = Math.max(0, this.wetT - dt);
 
     const loc = track ? track.locate(this.pos.x, this.pos.z, this.lastI, this.loc) : this.loc;
     const surface = world.surfaceAt(this.pos.x, this.pos.z, this.pos.y);
@@ -363,10 +372,10 @@ export class Racer {
     const rails = this.race.app?.worldView?.rails;
     if (!rails) return false;
     const fx = Math.cos(this.yaw), fz = -Math.sin(this.yaw);
-    for (const rail of rails) {
-      const S = rail.samples;
+    for (let ri = 0; ri < rails.length; ri++) {
+      const rail = rails[ri], S = rail.samples;
       for (let k = 0; k < S.length; k += 1) {
-        const [x, y, z] = S[k];
+        const sk = S[k], x = sk[0], y = sk[1], z = sk[2];
         const dx = this.pos.x - x, dz = this.pos.z - z;
         if (dx * dx + dz * dz > 1.6 * 1.6) continue;
         if (this.pos.y < y - 0.8 || this.pos.y > y + 2.2) continue;
@@ -438,9 +447,8 @@ export class Racer {
     }
     const fx = Math.cos(this.yaw), fz = -Math.sin(this.yaw);
     // Neigung aus dem Gelände (auf dem Wasser: leichtes Schaukeln)
-    const g = (x, z) => this.groundAt(x, z);
-    const h0 = g(this.pos.x - fx * 0.8, this.pos.z - fz * 0.8), h1 = g(this.pos.x + fx * 0.8, this.pos.z + fz * 0.8);
-    const r0 = g(this.pos.x + fz * 0.6, this.pos.z - fx * 0.6), r1 = g(this.pos.x - fz * 0.6, this.pos.z + fx * 0.6);
+    const h0 = this.groundAt(this.pos.x - fx * 0.8, this.pos.z - fz * 0.8), h1 = this.groundAt(this.pos.x + fx * 0.8, this.pos.z + fz * 0.8);
+    const r0 = this.groundAt(this.pos.x + fz * 0.6, this.pos.z - fx * 0.6), r1 = this.groundAt(this.pos.x - fz * 0.6, this.pos.z + fx * 0.6);
     const pitch = Math.atan2(h1 - h0, 1.6), roll = Math.atan2(r0 - r1, 1.2);
     this.root.position.copy(this.pos);
     // Fahrbahn und Curbs liegen ein paar Zentimeter über dem Gelände: Räder darauf stellen statt hinein

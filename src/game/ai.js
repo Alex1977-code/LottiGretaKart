@@ -20,6 +20,8 @@ export function initAI(racer, skill, rnd) {
 }
 
 /** Eingabe für einen Computer-Fahrer (auch für die Spielerin nach dem Zieleinlauf). */
+const STONES = [], NONE = [];   // wiederverwendet (keine neuen Listen je Bild)
+
 export function aiInput(racer, race, dt) {
   const ai = racer.ai, track = racer.path, inp = { steer: 0, throttle: 1, brake: 0, drift: false, item: false };
   const N = track.N, i = racer.loc.i;
@@ -39,8 +41,11 @@ export function aiInput(racer, race, dt) {
   const inside = clamp(Math.sign(curv) * Math.min(1, Math.abs(curv) * 22), -0.75, 0.75) * (0.4 + 0.5 * ai.skill);
   let laneF = offTrack ? clamp(racer.loc.lat / track.hw[i], -0.5, 0.5) : clamp(ai.lane * (1 - Math.abs(inside)) + inside, -0.78, 0.78);
   // Stampfsteine umfahren: freie Spur suchen, die der gewünschten am nächsten liegt
-  const stones = [];
-  for (const h of race.hazards?.list ?? []) {
+  const stones = STONES;
+  stones.length = 0;
+  const hl = race.hazards?.list ?? NONE;
+  for (let hk = 0; hk < hl.length; hk++) {
+    const h = hl[hk];
     // Stampfsteine immer, Schnappblumen und Schneebälle nur geschickte Fahrer
     const snap = h.kind === 'snapper' || h.kind === 'roller';
     if (h.kind !== 'stampfstein' && !(snap && ai.skill > 0.5) || !h.p) continue;
