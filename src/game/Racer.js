@@ -67,7 +67,7 @@ export class Racer {
     this.root.add(this.kart.root);
     this.driver = createDriver(race.view, def, this.kart);
     this.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-    if (race.night) this.headlights = addHeadlights(this.kart);
+    if (race.night || race.weather === 'rain') this.headlights = addHeadlights(this.kart);
     // Funkelstern-Schein (eigenes Material: Farbe läuft durch den Regenbogen)
     this.starGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffffff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
     this.starGlow.scale.setScalar(3.4);

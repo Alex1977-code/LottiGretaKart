@@ -58,6 +58,8 @@ const CASES = [
   { id: 'gp-nacht-city', q: 'mode=gp&from=mitternacht&race=palmencity&laps=1&racer=greta', rows: 12 },
   { id: 'ko-mitternacht', q: 'mode=ko&tour=mitternacht&racer=lotti', rows: 12, ko: true },
   { id: 'nacht-kraxelwiese', q: 'race=kraxelwiese&laps=1&racer=greta&night=1', rows: 12 },
+  { id: 'regen-strand', q: 'race=strand&laps=1&racer=lotti&weather=rain', rows: 12 },
+  { id: 'calima-wueste', q: 'race=wueste&laps=1&racer=greta&weather=calima&night=1', rows: 12 },
   { id: 'ko-tauchgang', q: 'mode=ko&tour=tauchgang&racer=lotti', rows: 12, ko: true },
 ].filter((c) => !only || c.id === only);
 const browser = await pw.chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });

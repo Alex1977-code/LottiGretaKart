@@ -23,6 +23,7 @@ import { getTheme } from './world/themes.js';
 import { KO_TOURS } from './world/worldDef.js';
 import { logoHTML } from './ui/logo.js';
 import { setNight } from './world/night.js';
+import { setWeatherSetting } from './world/weather.js';
 import { Post } from './world/post.js';
 import { installRimLight } from './world/trackDetail.js';
 
@@ -146,6 +147,7 @@ ctx.endRace = () => {
 
 const menus = new Menus(ctx);
 if (params.has('night')) setNight(params.get('night') === '1');
+if (params.has('weather')) setWeatherSetting(params.get('weather'));
 ctx.menus = menus;
 // App im Hintergrund (Tab gewechselt, Handy gesperrt): Rennen anhalten
 document.addEventListener('visibilitychange', () => {

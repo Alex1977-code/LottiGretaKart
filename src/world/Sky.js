@@ -132,8 +132,10 @@ export class Sky {
     const disc = mixNum((t) => (t.sunDisc ? 1 : 0));
     if (this.sunParts) for (const m of this.sunParts) m.visible = disc > 0.5;
     const nk = mixNum((t) => (t.isNight ? 1 : 0));
+    const wx = weights[0]?.theme.weather ?? null;
     if (this.clouds) this.clouds.visible = nk < 0.5 && mixNum((t) => (t.clouds ? 1 : 0)) > 0.4;
     this.setNightLook(nk);
+    this.setWeatherLook(wx, nk > 0.5);
     if (key === this.blendKey) return;
     this.blendKey = key;
     const P = this.dome.geometry.attributes.position, Col = this.dome.geometry.attributes.color;
@@ -161,6 +163,33 @@ export class Sky {
       disc.scale.setScalar(on ? 0.62 : 1);
       glow.material.color.setHex(on ? 0x8fa8ff : 0xffffff);
       glow.scale.setScalar(on ? 120 : 190);
+    }
+  }
+
+  /** Wetter: Regenwolken dunkelgrau und dicht, keine Sterne; Calima: blasse orange Sonne, keine Sterne. */
+  setWeatherLook(kind, night) {
+    const key = `${kind}:${night}`;
+    if (key === this.weatherKey) return;
+    this.weatherKey = key;
+    if (this.stars && kind) this.stars.visible = false;
+    else if (this.stars) this.stars.visible = night;
+    if (this.clouds) {
+      const rain = kind === 'rain';
+      this.clouds.material.color.setHex(rain ? 0xaab2bc : 0xffffff);
+      this.clouds.material.emissive.setHex(rain ? 0x5a626c : 0x9fb8d0);
+      this.clouds.scale.set(rain ? 1.25 : 1, rain ? 0.7 : 1, rain ? 1.25 : 1);
+    }
+    if (this.sunParts) {
+      const [disc, glow] = this.sunParts;
+      if (kind === 'calima') {
+        disc.material.color.setHex(night ? 0xe8d0b0 : 0xffe2b8);
+        glow.material.color.setHex(0xffa850);
+        glow.scale.setScalar(night ? 140 : 260);
+      } else if (!night) {
+        disc.material.color.setHex(0xfff7d2);
+        glow.material.color.setHex(0xffffff);
+        glow.scale.setScalar(190);
+      }
     }
   }
 

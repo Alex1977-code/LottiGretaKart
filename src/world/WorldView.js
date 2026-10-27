@@ -179,7 +179,7 @@ export class WorldView {
     for (const c of w.connectors) {
       const tr = c.track, th = tr.theme;
       const cR = lin(0x9a96a8), cR2 = lin(0x948fa3);
-      const mat = addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), { grain: 0.1, scale: 1.8, key: 'conn' });
+      const mat = addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), { grain: 0.1, scale: 1.8, key: 'conn', rain: 1 });
       const skip = (i) => tr.water[i] || tr.water[Math.min(tr.N - 1, i + 1)];
       const hw = (i) => tr.hw[i];
       const parts = [

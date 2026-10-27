@@ -36,6 +36,7 @@ class GameAudio {
   /** Kart-Motor: Drehzahl folgt dem Tempo, Turbo macht ihn heller. */
   setMotor(on, speed = 0, top = 25, boost = 0, offroad = false) {
     if (!engine.ready) return;
+    if (this.pendingWeather !== undefined) { const k = this.pendingWeather; this.pendingWeather = undefined; this.setWeather(k); }
     const ctx = engine.ctx;
     if (!this.motor && on) {
       const a = ctx.createOscillator(), b = ctx.createOscillator();
@@ -56,6 +57,32 @@ class GameAudio {
     m.b.frequency.setTargetAtTime(f * 0.5 + 2, t, 0.05);
     m.lp.frequency.setTargetAtTime(380 + 900 * k + 1200 * boost, t, 0.05);
     m.gain.gain.setTargetAtTime(on ? 0.07 + 0.05 * k : 0, t, 0.08);
+  }
+
+  /** Wetter-Geräusch: Regenrauschen (gefiltertes Rauschen) oder Wind bei Calima; null = still. */
+  setWeather(kind) {
+    if (!engine.ready) { this.pendingWeather = kind; return; }
+    const ctx = engine.ctx;
+    if (this.weatherNode) {
+      const w = this.weatherNode;
+      try { w.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.3); setTimeout(() => { try { w.src.stop(); w.gain.disconnect(); } catch (_) { /* egal */ } }, 1500); } catch (_) { /* egal */ }
+      this.weatherNode = null;
+    }
+    if (kind !== 'rain' && kind !== 'calima') return;
+    // zwei Sekunden Rauschen, endlos wiederholt
+    const len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buf; src.loop = true;
+    const f = ctx.createBiquadFilter();
+    if (kind === 'rain') { f.type = 'bandpass'; f.frequency.value = 2400; f.Q.value = 0.5; }
+    else { f.type = 'lowpass'; f.frequency.value = 420; f.Q.value = 0.8; }
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+    src.connect(f); f.connect(gain); gain.connect(engine.sfxBus);
+    src.start();
+    gain.gain.setTargetAtTime(kind === 'rain' ? 0.05 : 0.035, ctx.currentTime, 0.8);
+    this.weatherNode = { src, gain };
   }
 
   stopMotor() {

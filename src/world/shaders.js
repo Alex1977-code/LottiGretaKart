@@ -8,6 +8,8 @@
 import * as THREE from 'three';
 
 export const SHADER_TIME = { value: 0 };
+/** Nässe durch Regen (0 … 1, vom Wetter gesetzt): Fahrbahn dunkler und spiegelnd mit Pfützen, Gelände dunkler. */
+export const RAIN_WET = { value: 0 };
 
 const NOISE = /* glsl */ `
 float lgkHash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
@@ -32,14 +34,15 @@ function addVarying(shader) {
   shader.vertexShader = shader.vertexShader
     .replace('#include <common>', '#include <common>\nvarying vec3 vLgkW;\nvarying float vLgkD;')
     .replace('#include <project_vertex>', '#include <project_vertex>\n  vLgkW = (modelMatrix * vec4(transformed, 1.0)).xyz;\n  vLgkD = -mvPosition.z;');
-  shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>\nvarying vec3 vLgkW;\nvarying float vLgkD;\nuniform float uLgkTime;\n${NOISE}`);
+  shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>\nvarying vec3 vLgkW;\nvarying float vLgkD;\nuniform float uLgkTime;\nuniform float uLgkRain;\n${NOISE}`);
   shader.uniforms.uLgkTime = SHADER_TIME;
+  shader.uniforms.uLgkRain = RAIN_WET;
 }
 
 /**
  * Detail-Korn und Unterwasser-Look für Gelände/Fahrbahn. grain = Stärke des Korns (0,1 … 0,3), scale = Körnung.
  */
-export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patches = false, wet = false } = {}) {
+export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patches = false, wet = false, rain = 0.35 } = {}) {
   mat.onBeforeCompile = (shader) => {
     addVarying(shader);
     shader.fragmentShader = shader.fragmentShader
@@ -57,21 +60,26 @@ export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patche
     }` : ''}
     ${wet ? `// nasser Asphalt: Pfützen dunkler (und unten glatter = spiegelnd)
     float lgkPud = smoothstep(0.48, 0.66, lgkNoise(vLgkW.xz * 0.07) * 0.6 + lgkNoise(vLgkW.xz * 0.29 + 5.0) * 0.4);
-    diffuseColor.rgb *= mix(0.92, 0.62, lgkPud);` : ''}
+    diffuseColor.rgb *= mix(0.92, 0.62, lgkPud);` : `// Regen: nass und dunkler, auf der Fahrbahn Pfützen
+    if (uLgkRain > 0.0) {
+      float lgkPud = smoothstep(0.48, 0.66, lgkNoise(vLgkW.xz * 0.07) * 0.6 + lgkNoise(vLgkW.xz * 0.29 + 5.0) * 0.4);
+      diffuseColor.rgb *= 1.0 - uLgkRain * ${rain.toFixed(2)} * (0.3 + 0.35 * lgkPud);
+    }`}
     if (vLgkW.y < -0.15) {
       float dep = clamp(-vLgkW.y / 8.0, 0.0, 1.0);
       diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.5, 0.82, 0.95), 0.4 + 0.5 * dep);
     }
   }`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-  ${wet ? 'roughnessFactor = mix(0.4, 0.05, smoothstep(0.48, 0.66, lgkNoise(vLgkW.xz * 0.07) * 0.6 + lgkNoise(vLgkW.xz * 0.29 + 5.0) * 0.4));' : ''}`)
+  ${wet ? 'roughnessFactor = mix(0.4, 0.05, smoothstep(0.48, 0.66, lgkNoise(vLgkW.xz * 0.07) * 0.6 + lgkNoise(vLgkW.xz * 0.29 + 5.0) * 0.4));'
+    : `if (uLgkRain > 0.0) roughnessFactor = mix(roughnessFactor, mix(0.45, 0.06, smoothstep(0.48, 0.66, lgkNoise(vLgkW.xz * 0.07) * 0.6 + lgkNoise(vLgkW.xz * 0.29 + 5.0) * 0.4)), uLgkRain * ${rain.toFixed(2)});`}`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
   if (vLgkW.y < -0.3) {
     float dep = clamp(-vLgkW.y / 3.0, 0.0, 1.0) * (1.0 - smoothstep(30.0, 90.0, vLgkD));
     totalEmissiveRadiance += vec3(0.42, 0.7, 0.75) * lgkCaustic(vLgkW.xz, uLgkTime) * 0.55 * dep;
   }`);
   };
-  mat.customProgramCacheKey = () => `lgk-ground-${key}-${grain}-${scale}-${patches}-${wet}`;
+  mat.customProgramCacheKey = () => `lgk-ground-${key}-${grain}-${scale}-${patches}-${wet}-${rain}`;
   return mat;
 }
 

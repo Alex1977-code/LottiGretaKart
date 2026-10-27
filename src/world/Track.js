@@ -311,7 +311,7 @@ export class Track {
     const cR = lin(th.road), cR2 = lin(th.road2), cL = lin(th.line), cA = lin(th.curbA), cB = lin(th.curbB);
     const mat = th.wetRoad
       ? addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.35, side: THREE.DoubleSide }), { grain: 0.1, scale: 1.8, key: 'roadwet', wet: true })
-      : addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide }), { grain: 0.1, scale: 1.8, key: 'road' });
+      : addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.0, side: THREE.DoubleSide }), { grain: 0.1, scale: 1.8, key: 'road', rain: 1 });
     const add = (g, name, shadow = true) => {
       const m = new THREE.Mesh(g, mat);
       m.receiveShadow = shadow; m.name = name;

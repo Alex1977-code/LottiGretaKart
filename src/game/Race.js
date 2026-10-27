@@ -21,6 +21,7 @@ import { SPARK_COLORS } from './kartModel.js';
 import { getModel } from '../lgw/course/models/index.js';
 import { getTheme } from '../world/themes.js';
 import { isNight, nightTheme, applyNightGlow } from '../world/night.js';
+import { resolveWeather, weatherTheme, WeatherFx, setRoadWetness } from '../world/weather.js';
 
 const SIDES = [-1, 1];
 const NET_TIMERS = ['boostT', 'starT', 'giantT', 'spinT', 'tumbleT', 'squishT', 'invulnT', 'throwT', 'bumpCooldown'];
@@ -103,6 +104,11 @@ export class Race {
     this.night = o.night ?? (isNight() || !!this.def?.night);
     app.post?.setNight(this.night ? 1 : 0);
     applyNightGlow(this.night);
+    // Wetter: Sonne, Regen oder Calima (Einstellung oder Zufall)
+    this.weather = o.weather ?? resolveWeather(this.def, this.rnd);
+    setRoadWetness(this.weather);
+    app.post?.setWeather?.(this.weather);
+    this.audio?.setWeather?.(this.weather);
     if (app.worldView?.nightLamps) app.worldView.nightLamps.visible = this.night;
 
     // Gruppe für alles Rennen-eigene (wird mit dispose entfernt)
@@ -110,6 +116,7 @@ export class Race {
     this.scene.name = 'rennen';
     app.scene.add(this.scene);
     this.effects = new Effects(this.scene);
+    this.weatherFx = new WeatherFx(this.scene, this.weather, app.quality ?? 2);
     this.items = new Items(this);
     this.items.build(w, { boxes: !this.trial });
     this.hazards = new Hazards(this);
@@ -487,6 +494,7 @@ export class Race {
       if (this.stateT > (this.ko && this.humans.every((h) => h.out) ? 5 : 7) || (allDone && this.stateT > 4)) { this.state = 'done'; this.complete(); }
     }
     this.updateCamera(dt, t);
+    this.weatherFx.update(dt, this.views?.[0]?.cam ?? this.camera);
     this.updateAmbience(dt);
     this.netTick(dt);
     if (!this.demo) for (const v of this.views) if (v.hud && v.racer) v.hud.update(dt, this, v.racer);
@@ -553,7 +561,7 @@ export class Race {
     if (this.ambT > 0) return;
     this.ambT = 0.15;
     const f = this.focus ?? this.camera.position;
-    const ws = this.world.ambienceAt(f.x, f.z).map((x) => ({ theme: this.night ? nightTheme(getTheme(x.theme)) : getTheme(x.theme), w: x.w, name: x.theme }));
+    const ws = this.world.ambienceAt(f.x, f.z).map((x) => ({ theme: weatherTheme(this.night ? nightTheme(getTheme(x.theme)) : getTheme(x.theme), this.weather), w: x.w, name: x.theme }));
     this.app.sky.blend(ws);
     const dark = (this.night ? 0.5 : 0) + ws.reduce((a, x) => a + ((x.name === 'cave' || x.name === 'circus') ? x.w : x.name === 'castle' || x.name === 'halloween' ? x.w * 0.6 : x.name === 'volcano' ? x.w * 0.35 : 0), 0);
     this.playerLight.intensity = 26 * dark;
@@ -690,6 +698,11 @@ export class Race {
       if (r.offroad && Math.abs(r.speed) > 4 && Math.random() < 0.5) fx.dust(bx, r.pos.y, bz, 0xe8d8b0, 0.9);
       if (r.onWater && Math.abs(r.speed) > 3 && Math.random() < 0.8) {
         for (const side of SIDES) fx.dust(bx + s * side * 0.6, r.pos.y + 0.1, bz - c * side * 0.6, 0xeaf8ff, 1.1);
+      }
+      // Regen: Gischt hinter den Rädern
+      if (this.weather === 'rain' && !r.onWater && Math.abs(r.speed) > 9 && Math.random() < 0.3) {
+        const side = Math.random() < 0.5 ? -1 : 1;
+        fx.spray(bx + s * side * 0.55, r.pos.y + 0.05, bz - c * side * 0.55, 0.4 + Math.abs(r.speed) * 0.012);
       }
       if (r.starT > 0 && Math.random() < 0.8) fx.rainbow(r.pos);
     }
@@ -882,6 +895,9 @@ export class Race {
     this.items.dispose();
     this.hazards.dispose();
     this.effects.dispose();
+    this.weatherFx.dispose();
+    setRoadWetness('sun');
+    this.audio?.setWeather?.(null);
     this.trafficLight?.model.dispose();
     for (const c of this.starCoins ?? []) c.m.dispose();
     if (this.splitRoot) { for (const v of this.views) v.hud?.dispose(); this.splitRoot.remove(); }

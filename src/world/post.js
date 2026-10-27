@@ -14,13 +14,13 @@ const GradeShader = {
   uniforms: {
     tDiffuse: { value: null },
     sat: { value: 1.16 }, contrast: { value: 1.07 }, bright: { value: 0.0 }, vig: { value: 0.22 },
-    warm: { value: 1.0 },
+    warm: { value: 1.0 }, tint: { value: new THREE.Color(1, 1, 1) },
   },
   vertexShader: /* glsl */ `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */ `
-    uniform sampler2D tDiffuse; uniform float sat, contrast, bright, vig, warm; varying vec2 vUv;
+    uniform sampler2D tDiffuse; uniform float sat, contrast, bright, vig, warm; uniform vec3 tint; varying vec2 vUv;
     void main() {
-      vec3 c = texture2D(tDiffuse, vUv).rgb;
+      vec3 c = texture2D(tDiffuse, vUv).rgb * tint;
       float l = dot(c, vec3(0.299, 0.587, 0.114));
       c = mix(vec3(l), c, sat);
       c = (c - 0.5) * contrast + 0.5 + bright;
@@ -59,10 +59,24 @@ export class Post {
   /** Nacht (0 … 1): stärkeres Leuchten, dunklere Ränder. */
   setNight(k) {
     this.night = k;
-    this.bloom.strength = 0.3 + 0.45 * k;
-    this.bloom.threshold = 1.7 - 0.95 * k;
-    this.grade.uniforms.vig.value = 0.22 + 0.16 * k;
-    this.grade.uniforms.sat.value = 1.16 + 0.08 * k;
+    this.apply();
+  }
+
+  /** Wetter: Regen kühler und etwas blasser, Calima warm-ocker mit weichem Kontrast. */
+  setWeather(kind) {
+    this.weather = kind;
+    this.apply();
+  }
+
+  apply() {
+    const k = this.night ?? 0, w = this.weather, u = this.grade.uniforms;
+    this.bloom.strength = 0.3 + 0.45 * k + (w === 'calima' ? 0.12 : 0);
+    this.bloom.threshold = 1.7 - 0.95 * k - (w === 'calima' ? 0.2 : 0);
+    u.vig.value = 0.22 + 0.16 * k + (w === 'rain' ? 0.06 : 0);
+    u.sat.value = 1.16 + 0.08 * k + (w === 'rain' ? -0.18 : w === 'calima' ? -0.08 : 0);
+    u.contrast.value = 1.07 + (w === 'rain' ? -0.02 : w === 'calima' ? -0.07 : 0);
+    u.warm.value = w === 'rain' ? -0.6 : w === 'calima' ? 2.2 : 1.0;
+    u.tint.value.setRGB(...(w === 'rain' ? [0.95, 0.98, 1.03] : w === 'calima' ? [1.06, 0.98, 0.86] : [1, 1, 1]));
   }
 
   render(scene, camera) {

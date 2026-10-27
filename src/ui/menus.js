@@ -9,6 +9,7 @@ import { Ceremony } from '../game/Ceremony.js';
 import { Track } from '../world/Track.js';
 import { getTheme } from '../world/themes.js';
 import { setNight } from '../world/night.js';
+import { setWeatherSetting } from '../world/weather.js';
 import { racerIcon, preloadIcons } from './icons.js';
 import { logoHTML } from './logo.js';
 import { NetSession } from '../net/session.js';
@@ -45,6 +46,7 @@ export class Menus {
     this.cups = load(CUP_KEY, {});
     ctx.touch.setAutoGas(this.settings.autoGas);
     setNight(this.settings.night);
+    setWeatherSetting(this.settings.weather ?? 'sun');
     this.mode = 'gp';
     this.gp = null;
     this.screen = null;
@@ -216,6 +218,7 @@ export class Menus {
               <button class="opt ${!s.night ? 'on' : ''}" data-night="0">☀️ Tag</button>
               <button class="opt ${s.night ? 'on' : ''}" data-night="1">🌙 Nacht<small>Laternen, Scheinwerfer, Neon</small></button>
             </div>
+            <h3>Wetter</h3><div class="row">${[['sun', '☀️ Sonne', ''], ['rain', '🌧️ Regen', 'nasse Straße, Gischt'], ['calima', '🌫️ Calima', 'Saharastaub-Dunst'], ['random', '🎲 Zufall', 'jedes Rennen anders']].map(([v, n, d]) => `<button class="opt ${(s.weather ?? 'sun') === v ? 'on' : ''}" data-weather="${v}">${n}${d ? `<small>${d}</small>` : ''}</button>`).join('')}</div>
             <h3>Grafik</h3><div class="row">${qBtns}</div>
           </div>
           <div class="row"><button class="small" data-act="reset">Bestzeiten löschen</button><button class="go" data-back data-focus>Fertig</button></div>
@@ -227,6 +230,7 @@ export class Menus {
       try { localStorage.setItem('lgkart.quality', String(v)); } catch (_) { /* egal */ }
       location.reload();   // die Insel wird mit der neuen Detailstufe neu gebaut
     });
+    this.on('[data-weather]', (b) => { s.weather = b.dataset.weather; setWeatherSetting(s.weather); save(SAVE_KEY, s); this.showSettings(); });
     this.on('[data-night]', (b) => { s.night = b.dataset.night === '1'; setNight(s.night); save(SAVE_KEY, s); this.showSettings(); });
     this.on('[data-cc]', (b) => { s.cc = Number(b.dataset.cc); save(SAVE_KEY, s); this.showSettings(); });
     this.on('[data-laps]', (b) => { s.laps = Number(b.dataset.laps); save(SAVE_KEY, s); this.showSettings(); });

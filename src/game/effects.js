@@ -126,7 +126,7 @@ const C = new THREE.Color();
 const COLS = new Map();
 /** Farbe als { r, g, b } (zwischengespeichert je Farbwert). */
 const rgb = (hex) => { let c = COLS.get(hex); if (!c) { C.setHex(hex); c = { r: C.r, g: C.g, b: C.b }; COLS.set(hex, c); } return c; };
-const HSL = { r: 1, g: 1, b: 1 }, BUBBLE = { r: 0.85, g: 0.95, b: 1 };
+const HSL = { r: 1, g: 1, b: 1 }, BUBBLE = { r: 0.85, g: 0.95, b: 1 }, SPRAY = { r: 0.86, g: 0.9, b: 0.95 };
 const R = (a, b) => a + Math.random() * (b - a);
 
 export class Effects {
@@ -153,6 +153,11 @@ export class Effects {
   dust(x, y, z, color = 0xe8d8b0, size = 0.9) {
     const c = rgb(color);
     this.soft.emit(x + R(-0.2, 0.2), y + 0.1, z + R(-0.2, 0.2), R(-0.6, 0.6), R(0.4, 1.4), R(-0.6, 0.6), R(0.4, 0.8), size * 0.5, size * 1.6, 0, 1.5, 0.55, c);
+  }
+
+  /** Gischt hinter den Rädern bei Regen (zart, verweht schnell). */
+  spray(x, y, z, size = 0.6) {
+    this.soft.emit(x + R(-0.2, 0.2), y + 0.1, z + R(-0.2, 0.2), R(-0.5, 0.5), R(0.6, 1.6), R(-0.5, 0.5), R(0.25, 0.45), size * 0.5, size * 1.4, 2, 2, 0.32, SPRAY);
   }
 
   /** Luftblasen unter Wasser: steigen auf und wackeln. */
