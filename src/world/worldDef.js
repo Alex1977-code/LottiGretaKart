@@ -1,4 +1,4 @@
-// Die Grüne Blockinsel als zusammenhängende Welt (wie Mario Kart World): fünfzehn Rennstrecken als Regionen, verbunden
+// Die Grüne Blockinsel als zusammenhängende Welt (wie Mario Kart World): neunzehn Rennstrecken als Regionen, verbunden
 // durch Landstraßen, ein See (darauf fährt man über das Wasser), Berge, Küste. Koordinaten in Metern, x = Osten,
 // z = Süden, Meeresspiegel y = 0.
 //
@@ -24,12 +24,22 @@ import loroparque from '../tracks/loroparque.js';
 import piratenbucht from '../tracks/piratenbucht.js';
 import dinodschungel from '../tracks/dinodschungel.js';
 import wrackriff from '../tracks/wrackriff.js';
+import spukinsel from '../tracks/spukinsel.js';
+import katzeninsel from '../tracks/katzeninsel.js';
+import hasenhuegel from '../tracks/hasenhuegel.js';
+import palmencity from '../tracks/palmencity.js';
 
 export const WORLD = {
   name: 'Grüne Blockinsel',
   // Insel als Ellipse mit welliger Küste
   island: { cx: 70, cz: -10, rx: 1100, rz: 800 },
-  bounds: { minX: -1180, maxX: 1320, minZ: -1090, maxZ: 900 },
+  bounds: { minX: -1300, maxX: 1740, minZ: -1090, maxZ: 930 },
+  // Nachbarinseln vor der Küste (über Straßen auf dem Wasser erreichbar)
+  islets: [
+    { name: 'Spukinsel', x: -900, z: -730, rx: 200, rz: 165 },
+    { name: 'Katzeninsel', x: -1040, z: 720, rx: 195, rz: 165 },
+    { name: 'Palmen-City', x: 1470, z: 300, rx: 235, rz: 195 },
+  ],
   courses: [
     { def: kraxelwiese, ox: -20, oz: -60 },
     { def: herbstwald, ox: 0, oz: -278 },
@@ -46,6 +56,10 @@ export const WORLD = {
     { def: piratenbucht, ox: -320, oz: 590 },
     { def: dinodschungel, ox: 350, oz: -610 },
     { def: wrackriff, ox: 40, oz: -770 },
+    { def: spukinsel, ox: -900, oz: -730 },
+    { def: katzeninsel, ox: -1040, oz: 720 },
+    { def: hasenhuegel, ox: -870, oz: 40 },
+    { def: palmencity, ox: 1470, oz: 300 },
   ],
   connectors: [
     { id: 'wiese-wald', a: ['kraxelwiese', 0.075, -1], b: ['herbstwald', 0.045, 1], via: [[40, -140], [10, -190]], hw: 6.5, items: [0.5], coins: [[0.3, 0.4]] },
@@ -74,6 +88,11 @@ export const WORLD = {
     { id: 'dino-gipfel', a: ['dinodschungel', 0.2, -1], b: ['gipfel', 0.5, 1], via: [[480, -470]], hw: 6.5, items: [0.5] },
     { id: 'riff-dino', a: ['wrackriff', 0.14, 1], b: ['dinodschungel', 0.45, -1], via: [[200, -690], [270, -610]], hw: 6.5, items: [0.5], coins: [[0.35, 0.45]] },
     { id: 'burg-riff', a: ['burg', 0.85, -1], b: ['wrackriff', 0.95, 1], via: [[-170, -660]], hw: 6.5, items: [0.5], coins: [[0.55, 0.65]] },
+    { id: 'spuk-bonbon', a: ['spukinsel', 0.15, 1], b: ['bonbon', 0.67, 1], via: [], hw: 6.5, items: [0.5], coins: [[0.35, 0.45]] },
+    { id: 'katzen-vulkan', a: ['katzeninsel', 0.93, -1], b: ['vulkan', 0.69, -1], via: [], hw: 6.5, items: [0.5], coins: [[0.55, 0.65]] },
+    { id: 'hasen-vulkan', a: ['hasenhuegel', 0.91, -1], b: ['vulkan', 0.81, -1], via: [[-835, 335]], hw: 6.5, items: [0.5] },
+    { id: 'hasen-grotte', a: ['hasenhuegel', 0.61, -1], b: ['laternengrotte', 0.8, 1], via: [[-700, -45]], hw: 6.5, items: [0.5], coins: [[0.35, 0.45]] },
+    { id: 'city-wueste', a: ['palmencity', 0.91, -1], b: ['wueste', 0.25, 1], via: [[1200, 130]], hw: 7, items: [0.35, 0.7], coins: [[0.45, 0.55]] },
     { id: 'piraten-strand', a: ['piratenbucht', 0.29, 1], b: ['strand', 0.78, -1], via: [[-60, 560]], hw: 6.5, items: [0.45], coins: [[0.55, 0.65]] },
   ],
   lakes: [
@@ -100,6 +119,11 @@ export const WORLD = {
     { x: -320, z: 590, r: 190, h: 2 },       // Piratenbucht
     { x: 455, z: -610, r: 200, h: 4 },       // Dino-Dschungel
     { x: 10, z: -742, r: 70, h: 3 },         // Hafen am Wrack-Riff
+    { x: -900, z: -730, r: 150, h: 4 },      // Spukinsel
+    { x: -1040, z: 720, r: 145, h: 3 },      // Katzeninsel
+    { x: -870, z: -100, r: 115, h: 4 },      // Hasenhügel (Nord)
+    { x: -870, z: 160, r: 115, h: 3 },       // Hasenhügel (Süd)
+    { x: 1470, z: 300, r: 175, h: 3 },       // Palmen-City
   ],
   hills: [
     [180, -120, 70, 14], [-200, -200, 80, 18], [330, -540, 80, 22], [-460, -580, 70, 30], [-650, -300, 120, 45],
@@ -130,6 +154,10 @@ export const WORLD = {
     { theme: 'pirate', x: -320, z: 590, r: 180, fade: 80 },
     { theme: 'jungle', x: 455, z: -610, r: 190, fade: 80 },
     { theme: 'reef', x: 30, z: -880, r: 170, fade: 90 },
+    { theme: 'halloween', x: -900, z: -730, r: 200, fade: 90 },
+    { theme: 'cats', x: -1040, z: 720, r: 190, fade: 90 },
+    { theme: 'bunny', x: -870, z: 40, r: 170, fade: 90 },
+    { theme: 'city', x: 1470, z: 300, r: 230, fade: 90 },
   ],
   // Grind-Schienen: über den See (Abkürzung) und neben der Waldstraße
   rails: [
@@ -150,6 +178,7 @@ export const WORLD = {
     [-250, 470], [-440, 690],
     [300, -470], [600, -620],
     [-60, -980], [156, -880],
+    [-900, -745], [-1040, 650], [-860, 40], [1530, 300],
   ],
 };
 
@@ -165,6 +194,9 @@ export const WORLD_CUPS = [
   { id: 'piraten', name: 'Piraten-Cup', tracks: ['manege', 'piratenbucht', 'vulkan', 'laternengrotte'] },
   { id: 'dino', name: 'Dino-Cup', tracks: ['herbstwald', 'dinodschungel', 'gipfel', 'wueste'] },
   { id: 'ozean', name: 'Ozean-Cup', tracks: ['burg', 'wrackriff', 'dinodschungel', 'herbstwald'] },
+  { id: 'grusel', name: 'Grusel-Cup', tracks: ['herbstwald', 'burg', 'bonbon', 'spukinsel'] },
+  { id: 'kuschel', name: 'Kuschel-Cup', tracks: ['katzeninsel', 'vulkan', 'hasenhuegel', 'laternengrotte'] },
+  { id: 'neon', name: 'Neon-Cup', tracks: ['strand', 'autobahn', 'wueste', 'palmencity'] },
 ];
 
 /** K.-o.-Tour: Rallye quer über die Insel; an jedem Checkpoint scheiden die Letzten aus. */
@@ -198,6 +230,21 @@ export const KO_TOURS = [
   {
     id: 'schatz', name: 'Schatzsuche',
     stops: ['strand', 'piratenbucht', 'manege', 'kraxelwiese'],
+    survivors: [8, 4],
+  },
+  {
+    id: 'grusel', name: 'Gruselnacht',
+    stops: ['herbstwald', 'burg', 'bonbon', 'spukinsel'],
+    survivors: [8, 4],
+  },
+  {
+    id: 'tierfreunde', name: 'Tierfreunde',
+    stops: ['katzeninsel', 'vulkan', 'hasenhuegel', 'laternengrotte', 'kraxelwiese'],
+    survivors: [9, 6, 4],
+  },
+  {
+    id: 'verfolgung', name: 'Verfolgungsjagd',
+    stops: ['kraxelwiese', 'autobahn', 'wueste', 'palmencity'],
     survivors: [8, 4],
   },
   {

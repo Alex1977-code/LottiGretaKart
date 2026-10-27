@@ -65,6 +65,21 @@ export class Hazards {
           const R = d.size ?? 2.2;
           // Aussehen: Schneeball (Standard), Steppenläufer (Wüste, Zweig-Gitter) oder Kaugummikugel (Bonbonland)
           const style = d.style ?? 'snow';
+          if (style === 'model') {
+            // beliebiges rundes Modell (Kürbis, Wollknäuel, Riesen-Ei): Ursprung = Mitte, Radius 1
+            const bm = getModel(d.model, d.opts ?? {});
+            bm.root.scale.setScalar(R);
+            const wrap = new THREE.Group();
+            wrap.add(bm.root);
+            h.model = { root: wrap, update: (dt) => bm.update(dt, 'roll'), dispose() { bm.dispose(); } };
+            h.holder = new THREE.Group();
+            h.holder.add(wrap);
+            h.R = R; h.radius = R * 0.85;
+            h.lat = (Math.random() * 2 - 1) * base.hw;
+            h.dir = Math.random() < 0.5 ? -1 : 1;
+            h.speed = d.speed ?? 6;
+            break;
+          }
           if (style === 'barrel') {
             // rollendes Pulverfass (Piratenbucht): Fass liegt quer, Achse entlang der Strecke
             const bm = getModel('barrel'), sc = R / 0.54;

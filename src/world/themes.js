@@ -190,6 +190,67 @@ const PIRATE = {
   bridge: 0x6a4424, bridgePillar: 0x5a3a20, bridgeTop: 0xb08a5a, bridgeTop2: 0xa07c4e,
 };
 
+// Spukinsel (Halloween): Vollmondnacht, lila Nebel, orange Kürbislicht, Kopfsteinpflaster, Banden orange-schwarz
+const HALLOWEEN = {
+  ...GRASS,
+  label: 'Spukinsel',
+  sky: [[1, 0x07061a], [0.45, 0x17123a], [0.15, 0x3a1e5a], [0.04, 0x6a2a6a], [0, 0x8a3a5a], [-0.1, 0x2a1a3a], [-1, 0x0e0a18]],
+  background: 0x2a1a40,
+  fog: { color: 0x2e2048, near: 55, far: 300 },
+  hemi: { sky: 0x9a8ad8, ground: 0x3a2a3a, intensity: 1.0 },
+  sun: { color: 0xb8c0ff, intensity: 1.35, dir: [0.35, 0.9, -0.45] },
+  sunDisc: false, clouds: false, hills: 0x2a3a2a, hills2: 0x3a3048,
+  grass: 0x3a5a32, grass2: 0x34522e, grassFar: 0x2a3a2a, offroad: 0x4a3a34, offroad2: 0x42342e,   // Erde und Laub
+  road: 0x5a5466, road2: 0x544e60, line: 0xff9a2a, curbA: 0xff7a1a, curbB: 0x1a1420,
+  wallA: 0xff7a1a, wallB: 0x2a1a30, wallTop: 0x9a5aff, wallH: 0.95,
+  bridge: 0x3a2a22, bridgePillar: 0x2a2028, bridgeTop: 0x5a4434, bridgeTop2: 0x52402e,
+};
+
+// Katzeninsel: zuckerwattig-warmer Nachmittag, rosa und lila, Fahrbahn wie ein Teppich mit Pfoten-Tupfern
+const CATS = {
+  ...GRASS,
+  label: 'Katzeninsel',
+  sky: [[1, 0x5a7af0], [0.45, 0x8aa8f8], [0.15, 0xd0c8ff], [0.03, 0xffd8f0], [0, 0xffe8f4], [-0.1, 0xf0c8e0], [-1, 0xc8a0d0]],
+  background: 0xf8dcf0,
+  fog: { color: 0xf4d8ee, near: 95, far: 420 },
+  hemi: { sky: 0xffe8f8, ground: 0xc890b0, intensity: 1.45 },
+  sun: { color: 0xfff0e8, intensity: 2.8, dir: [-0.4, 1, 0.35] },
+  grass: 0x8ad86a, grass2: 0x80ce62, grassFar: 0x74c05a, offroad: 0xf4c8e0, offroad2: 0xeabcd6,   // rosa Kissenboden
+  road: 0x9a8ab8, road2: 0x9282b0, line: 0xffffff, curbA: 0xff6aa8, curbB: 0xffffff,
+  wallA: 0xff8ac0, wallB: 0xfff0f8, wallTop: 0xffd23a, wallH: 0.8,
+};
+
+// Hasenhügel: Frühlingswiese, Erdweg, Banden wie Möhren (orange mit grünem Kraut)
+const BUNNY = {
+  ...GRASS,
+  label: 'Hasenhügel',
+  sky: [[1, 0x2a8ae8], [0.45, 0x52b0fa], [0.15, 0x9ad8ff], [0.03, 0xd8f4ff], [0, 0xeefaff], [-0.1, 0xd0ecd0], [-1, 0xa8d0a0]],
+  background: 0xd8f0f8,
+  fog: { color: 0xdaf0f6, near: 100, far: 440 },
+  hemi: { sky: 0xd0f0ff, ground: 0x80b850, intensity: 1.35 },
+  sun: { color: 0xfff4d8, intensity: 2.8, dir: [-0.3, 1, 0.45] },
+  grass: 0x7ad84a, grass2: 0x70cc44, grassFar: 0x62bc3c, offroad: 0x9a7048, offroad2: 0x8e6640,   // Erde
+  road: 0xb08a5e, road2: 0xa88258, line: 0xfff4d8, curbA: 0xff8a1a, curbB: 0x4fb833,
+  wallA: 0xff8a1a, wallB: 0xffa83a, wallTop: 0x4fb833, wallH: 0.8,
+  bridge: 0x8a5a32, bridgePillar: 0x6a4428, bridgeTop: 0xb08a5e, bridgeTop2: 0xa88258,
+};
+
+// Palmen-City: Sonnenuntergang über der Großstadt, Neonlicht, breite Asphaltstraßen, Betonbanden
+const CITY = {
+  ...GRASS,
+  label: 'Palmen-City',
+  sky: [[1, 0x2a1a5a], [0.55, 0x5a2a8a], [0.28, 0xc04a9a], [0.12, 0xff6a7a], [0.04, 0xffa05a], [0, 0xffc870], [-0.08, 0xd86a7a], [-1, 0x3a2050]],
+  background: 0xf08a7a,
+  fog: { color: 0xe08a8a, near: 120, far: 500 },
+  hemi: { sky: 0xffd0d8, ground: 0x6a4a7a, intensity: 1.6 },
+  sun: { color: 0xffb880, intensity: 2.8, dir: [0.6, 0.6, 0.5] },
+  hills: null, city: [0x2c2448, 0x3a2f5c, 0x47386a, 0x332a52], cityWindow: 0xffd88a,
+  grass: 0x5aa84a, grass2: 0x52a044, grassFar: 0x4a8a40, offroad: 0xb8b0c0, offroad2: 0xaea6b8,   // Gehweg
+  road: 0x4a4858, road2: 0x46445a, line: 0xffffff, lineYellow: 0xffcf3a, curbA: 0xffd23a, curbB: 0x1a1a22,
+  wallA: 0xd8dce4, wallB: 0xd8dce4, wallTop: 0xff3a8a, wallH: 0.9,
+  bridge: 0x8a8a96, bridgePillar: 0x7a7a86, bridgeTop: 0x6a6878, bridgeTop2: 0x646272,
+};
+
 // Wrack-Riff: strahlender Hafen an der Nordküste, Kai aus Beton, Bojen-Banden rot-weiß; das Deck der Fähre aus Stahl
 const REEF = {
   ...GRASS,
@@ -222,5 +283,5 @@ const JUNGLE = {
   bridge: 0x7a5a32, bridgePillar: 0x6a4a2a, bridgeTop: 0x9a7a4a, bridgeTop2: 0x8e6e42,
 };
 
-export const THEMES = { reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
+export const THEMES = { halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
 export const getTheme = (n) => THEMES[n] ?? GRASS;

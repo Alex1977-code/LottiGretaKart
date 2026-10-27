@@ -14,6 +14,10 @@ import loroparque from './loroparque.js';
 import piratenbucht from './piratenbucht.js';
 import dinodschungel from './dinodschungel.js';
 import wrackriff from './wrackriff.js';
+import spukinsel from './spukinsel.js';
+import katzeninsel from './katzeninsel.js';
+import hasenhuegel from './hasenhuegel.js';
+import palmencity from './palmencity.js';
 
-export const TRACKS = [kraxelwiese, herbstwald, laternengrotte, manege, autobahn, strand, gipfel, burg, wueste, vulkan, bonbon, loroparque, piratenbucht, dinodschungel, wrackriff];
+export const TRACKS = [kraxelwiese, herbstwald, laternengrotte, manege, autobahn, strand, gipfel, burg, wueste, vulkan, bonbon, loroparque, piratenbucht, dinodschungel, wrackriff, spukinsel, katzeninsel, hasenhuegel, palmencity];
 export const TRACK_BY_ID = Object.fromEntries(TRACKS.map((t) => [t.id, t]));

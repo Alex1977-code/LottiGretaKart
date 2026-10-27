@@ -60,7 +60,14 @@ export class World {
       const w = smooth(l.r + 30, l.r - 15, Math.hypot(x - l.x, z - l.z));
       land += (-l.depth - land) * w;
     }
-    const L = smooth(1.07, 0.95, dd);
+    let L = smooth(1.07, 0.95, dd);
+    // kleine Nachbarinseln (Spukinsel, Katzeninsel, Palmen-City) – gleiche Landschaft, eigene Küste
+    for (const t of d.islets ?? []) {
+      const ix = (x - t.x) / t.rx, iz = (z - t.z) / t.rz;
+      const ith = Math.atan2(iz, ix);
+      const re = 1 + 0.06 * Math.sin(4 * ith + t.x * 0.01) + 0.03 * Math.sin(9 * ith);
+      L = Math.max(L, smooth(1.07, 0.93, Math.sqrt(ix * ix + iz * iz) / re));
+    }
     return -9 + (land + 9) * L;
   }
 
@@ -263,14 +270,23 @@ export class World {
       const r = this.nearestRoad(x, z, 1, this._nr ?? (this._nr = {}));
       return r.road && !r.water && r.d <= r.hw + 1.0 ? 'road' : 'off';
     }
-    const is = this.def.island;
-    const ex = (x - is.cx) / is.rx, ez = (z - is.cz) / is.rz;
-    if (ex * ex + ez * ez > 1.3 * 1.3) return 'sea';
+    if (this.inOpenSea(x, z)) return 'sea';
     const h = this.heightAt(x, z);
     if (h < -0.05) return 'water';
     const r = this.nearestRoad(x, z, 1, this._nr ?? (this._nr = {}));
     if (r.road && !r.water && r.d <= r.hw + 1.0) return 'road';
     return 'off';
+  }
+
+  /** Offenes Meer: weit draußen vor der Hauptinsel und vor allen Nachbarinseln. */
+  inOpenSea(x, z) {
+    const is = this.def.island;
+    const ex = (x - is.cx) / is.rx, ez = (z - is.cz) / is.rz;
+    if (ex * ex + ez * ez <= 1.3 * 1.3) return false;
+    for (const t of this.def.islets ?? []) if (((x - t.x) / t.rx) ** 2 + ((z - t.z) / t.rz) ** 2 <= 1.45 * 1.45) return false;
+    // Verbindungsstraßen über das Wasser zu den Inseln sind kein offenes Meer
+    const r = this.nearestRoad(x, z, 1, this._nr3 ?? (this._nr3 = {}));
+    return !(r.road && r.d < r.hw + 6);
   }
 
   /** Freier Platz für Kulisse: weit genug von allen Straßen und nicht im Wasser. */

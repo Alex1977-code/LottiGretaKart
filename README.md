@@ -26,8 +26,8 @@ neue Sitzpose `kart` für die Heldinnen in `src/lgw/three/avatars/hero.js`).
 
 ## Die Insel (wie in Mario Kart World)
 
-Alle fünfzehn Strecken liegen auf **einer zusammenhängenden Insel** – der Grünen Blockinsel – und sind durch Landstraßen
-verbunden. Man kann von Strecke zu Strecke fahren, über den See (auf dem Wasser), durch den Höhlenberg und ins
+Alle neunzehn Strecken liegen auf **der Grünen Blockinsel und drei kleinen Nachbarinseln** (Spukinsel, Katzeninsel,
+Palmen-City) und sind durch Landstraßen verbunden – zu den Nachbarinseln führen Straßen über das Wasser. Man kann von Strecke zu Strecke fahren, über den See (auf dem Wasser), durch den Höhlenberg und ins
 Zirkuszelt. Himmel, Licht und Nebel blenden beim Fahren je Region über (Sonne über der Wiese, goldener Herbst,
 dunkle Höhle, Zirkus-Scheinwerfer, Abendrot über der Stadt, Strand, Schnee, Burg im Mondlicht).
 Das Meer bewegt sich (Wellen im Shader, türkis im Flachen, tiefblau draußen, Schaum-Säume am Strand), Wiesen und
@@ -53,15 +53,19 @@ Schmetterlinge um das eigene Kart (`src/world/life.js`).
 | Piratenbucht | Südküste | **Eine Acht**: in der Mitte unten durch, später oben über die Holzbrücke. Piratenschiff in der Lagune, Piratenkanonen schießen Kanonenkugeln (roter Ring = Einschlag), rollende Pulverfässer, Krabben, Schatzinsel mit Totenkopf-Felsen, Leuchtturm |
 | Dino-Dschungel | Nordküste | **Schleife mit Looping**: großer Bogen, enge innere Schleife ums Dino-Nest, zurück über die Lianenbrücke genau über die eigene Strecke. T-Rex stapft über die Fahrbahn (platt!), Flugsaurier, Triceratops-Herde, rollende Felsbrocken, Brachiosaurier, Wasserfall |
 | Wrack-Riff | Nordküste, **halb unter Wasser** (wie in Mario Kart 8) | Start am Hafenkai mit Containerkränen, über die Heckrampe **mitten durch die große Fähre** (Autodeck mit Lampen und Containern, rollende Fässer), aus der offenen Bugklappe **Sprung ins Meer** – dann über den Meeresgrund: Korallengarten, schwebende Quallen, Kugelfische, Fischschwärme, Schildkröten, Mantarochen, gelbes U-Boot, **durch ein versunkenes Schiffswrack** und einen Felsbogen, durch den Seetangwald und den Strand wieder hinauf. Unter Wasser schweben Sprünge länger, das Kart zieht Luftblasen, alles wird blau |
+| Spukinsel | Nachbarinsel im Nordwesten, **Halloween** bei Vollmond | Kürbisfeld mit Vogelscheuchen, Friedhof mit Gespenstern, **mitten durch das Spukhaus** (Kronleuchter, Ahnenbilder, die Hexe fliegt durch die Halle), kahler Wald, Hexenkessel, Spinnennetze; Gespenster schweben über die Fahrbahn, Fledermäuse, rollende Kürbisse |
+| Katzeninsel | Nachbarinsel im Südwesten | Die Strecke ist ein **großes Herz**: riesige schlafende Katze in der Mitte (atmet, Zzz), **Karton-Tunnel „MIAU!“** (oben spazieren Katzen), Kratzbäume, Winkekatzen, Näpfe, Kissen, Katzen in allen Fellfarben; Wollknäuel rollen, Mäuse flitzen, Kätzchen tapsen über die Fahrbahn |
+| Hasenhügel | Westküste | Lange Schlängelrunde durch die Frühlingswiese: Möhrenbeete, Riesenmöhren, Hasenställe, Hasenlöcher mit Kaninchen, Windmühle, **durch den großen Hasenbau** (Erdröhre mit Wurzeln und Glühwürmchen); Kaninchen hoppeln über die Fahrbahn, bemalte Riesen-Eier rollen |
+| Palmen-City | Nachbarinsel im Osten, **Großstadt** im Sonnenuntergang | **Acht mit Stadtautobahn-Brücke**, Hochhäuser, Neon-Türme und Neon-Schilder, Palmen, Tankstelle; **Verfolgungsjagd**: Polizeiautos mit Blaulicht und Stadtverkehr kreuzen die Fahrbahn, der Polizeihubschrauber kreist mit Suchscheinwerfer, Absperrungen, Sprungschanze |
 
 **Modi**
-- **Grand Prix** (Beeren-, Brummbär-, Muschel-, Kronen-, Bonbon-, Wüsten-, Tierpark-, Piraten-, Dino- und Ozean-Cup): das erste Rennen sind Runden, ab dem zweiten startet man an der
+- **Grand Prix** (Beeren-, Brummbär-, Muschel-, Kronen-, Bonbon-, Wüsten-, Tierpark-, Piraten-, Dino-, Ozean-, Grusel-, Kuschel- und Neon-Cup): das erste Rennen sind Runden, ab dem zweiten startet man an der
   vorigen Strecke und fährt über die Verbindungsstraße zur nächsten (Anfahrt + Runden). Punkte für 12 Fahrer,
   am Ende Siegerehrung mit Pokal.
-- **K.-o.-Tour** (Große Inseltour, Kleine Runde, Küste und Gipfel, Wilde Weltreise, Tierpark-Safari, Schatzsuche, Tauchgang): eine Rallye quer über die Insel mit 12 Fahrern; an jedem
+- **K.-o.-Tour** (Große Inseltour, Kleine Runde, Küste und Gipfel, Wilde Weltreise, Tierpark-Safari, Schatzsuche, Gruselnacht, Tierfreunde, Verfolgungsjagd, Tauchgang): eine Rallye quer über die Insel mit 12 Fahrern; an jedem
   Checkpoint scheiden die Letzten aus.
 - **Einzelrennen** und **Zeitfahren** (mit drei Turbo-Beeren, Bestzeiten werden gespeichert).
-- **Freie Fahrt**: die ganze Insel erkunden und 50 versteckte Sternmünzen finden (werden gespeichert).
+- **Freie Fahrt**: die ganze Insel erkunden und 54 versteckte Sternmünzen finden (werden gespeichert).
 
 - **Mehrere Handys** (bis zu 12 Fahrer, Rest Computer): ein Handy ist Gastgeber und rechnet das Rennen, jeder Gast
   fährt sein eigenes Kart direkt (keine Eingabeverzögerung) und sieht die anderen nach Schnappschüssen des Gastgebers.

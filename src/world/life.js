@@ -40,7 +40,7 @@ export class IslandLife {
       const [sc, st] = sails[k % sails.length];
       const m = new THREE.Mesh(boatGeo(sc, st), vcol(0.5, { side: THREE.DoubleSide }, 'boat'));
       m.castShadow = true;
-      const a0 = rnd.frac() * TAU, rr = 1.12 + rnd.frac() * 0.12;
+      const a0 = rnd.frac() * TAU, rr = 1.6 + rnd.frac() * 0.12;   // außerhalb der Nachbarinseln
       this.boats.push({ m, a0, rr, w: (rnd.frac() < 0.5 ? -1 : 1) * (0.004 + rnd.frac() * 0.004), ph: rnd.frac() * 10 });
       this.group.add(m);
     }
@@ -119,7 +119,7 @@ export class IslandLife {
       const w = this.world;
       const ok = focus.y > 0.3 && !(w.hasUnderwater && w.underwaterAt(focus.x, focus.z));
       const amb = ok ? w.ambienceAt(focus.x, focus.z) : [];
-      const meadow = ok && !amb.some((r) => ['snow', 'desert', 'volcano', 'cave', 'castle'].includes(r.theme) && r.w > 0.35);
+      const meadow = ok && !amb.some((r) => ['snow', 'desert', 'volcano', 'cave', 'castle', 'halloween', 'city'].includes(r.theme) && r.w > 0.35);
       this.wingL.visible = this.wingR.visible = meadow;
       if (meadow) {
         this.flies.forEach((b, i) => {

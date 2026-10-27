@@ -393,6 +393,9 @@ export class WorldView {
       else if (top === 'desert') d.add(pick < 0.45 ? 'cactus' : pick < 0.6 ? 'mesa' : 'rock', x, h, z, pick < 0.45 ? s * 1.2 : pick < 0.6 ? s * 0.9 : s * 1.4, pick < 0.45 ? 0x4f9a3a : 0xd9733a, rnd.frac() * 6);
       else if (top === 'volcano') d.add(pick < 0.35 ? 'pineTree' : 'rock', x, h, z, s * (pick < 0.35 ? 1.1 : 1.8), pick < 0.35 ? 0x2a2420 : 0x2e2830, rnd.frac() * 6);
       else if (top === 'candy') d.add(pick < 0.35 ? 'lollipop' : pick < 0.55 ? 'candycane' : pick < 0.7 ? 'donut' : 'gumdrop', x, h, z, s * (pick < 0.55 ? 1.3 : 1.2), pick < 0.35 ? [0xff5aa8, 0x5ab8ff, 0xffd21f, 0x8fe060][Math.floor(rnd.frac() * 4)] : pick < 0.55 ? 0xffffff : pick < 0.7 ? [0xff8ac8, 0x8a5a3a, 0xfff0f8][Math.floor(rnd.frac() * 3)] : [0xff5a5a, 0xffd21f, 0x5ad86a, 0xb47fe6][Math.floor(rnd.frac() * 4)], rnd.frac() * 6);
+      else if (top === 'halloween') d.add(pick < 0.7 ? 'pineTree' : 'rock', x, h, z, s * 1.2, pick < 0.7 ? [0x1e3a2a, 0x24402e, 0x2a3a30][Math.floor(rnd.frac() * 3)] : 0x4a4656, rnd.frac() * 6);
+      else if (top === 'cats') d.add(pick < 0.6 ? 'roundTree' : 'bush', x, h, z, s, [0xff9ac8, 0xb88ad8, 0x8ad86a, 0xffb8d8][Math.floor(rnd.frac() * 4)], rnd.frac() * 6);
+      else if (top === 'city') d.add(pick < 0.6 ? 'palm' : 'bush', x, h, z, s, pick < 0.6 ? 0x3fa02a : 0x4a8a40, rnd.frac() * 6);
       else if (top === 'castle') d.add(pick < 0.7 ? 'pineTree' : 'rock', x, h, z, s * 1.2, pick < 0.7 ? [0x2a4a3a, 0x324e40][Math.floor(rnd.frac() * 2)] : 0x6a6478, rnd.frac() * 6);
       else if (pick < 0.55) {
         d.add('roundTree', x, h, z, s * 1.1, green[Math.floor(rnd.frac() * green.length)], rnd.frac() * 6);

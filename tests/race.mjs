@@ -23,7 +23,7 @@ if (!base) {
 const only = process.argv[2];
 // Fälle: Runden auf jeder Strecke, Grand Prix mit Anfahrt (inkl. Seeüberquerung), K.-o.-Tour
 const CASES = [
-  ...['kraxelwiese', 'herbstwald', 'laternengrotte', 'manege', 'autobahn', 'strand', 'gipfel', 'burg', 'wueste', 'vulkan', 'bonbon', 'loroparque', 'piratenbucht', 'dinodschungel', 'wrackriff'].map((t) => ({ id: t, q: `race=${t}&laps=1&racer=greta`, rows: 12 })),
+  ...['kraxelwiese', 'herbstwald', 'laternengrotte', 'manege', 'autobahn', 'strand', 'gipfel', 'burg', 'wueste', 'vulkan', 'bonbon', 'loroparque', 'piratenbucht', 'dinodschungel', 'wrackriff', 'spukinsel', 'katzeninsel', 'hasenhuegel', 'palmencity'].map((t) => ({ id: t, q: `race=${t}&laps=1&racer=greta`, rows: 12 })),
   { id: 'gp-wiese-wald', q: 'mode=gp&from=kraxelwiese&race=herbstwald&laps=1&racer=lotti', rows: 12 },
   { id: 'gp-zirkus-wiese', q: 'mode=gp&from=manege&race=kraxelwiese&laps=1&racer=pflaume', rows: 12 },
   { id: 'gp-wiese-strand', q: 'mode=gp&from=kraxelwiese&race=strand&laps=1&racer=kobold', rows: 12 },
@@ -48,6 +48,12 @@ const CASES = [
   { id: 'gp-dino-gipfel', q: 'mode=gp&from=dinodschungel&race=gipfel&laps=1&racer=greta', rows: 12 },
   { id: 'gp-burg-riff', q: 'mode=gp&from=burg&race=wrackriff&laps=1&racer=lotti', rows: 12 },
   { id: 'gp-riff-dino', q: 'mode=gp&from=wrackriff&race=dinodschungel&laps=1&racer=greta', rows: 12 },
+  { id: 'gp-bonbon-spuk', q: 'mode=gp&from=bonbon&race=spukinsel&laps=1&racer=lotti', rows: 12 },
+  { id: 'gp-katzen-vulkan', q: 'mode=gp&from=katzeninsel&race=vulkan&laps=1&racer=greta', rows: 12 },
+  { id: 'gp-vulkan-hasen', q: 'mode=gp&from=vulkan&race=hasenhuegel&laps=1&racer=lotti', rows: 12 },
+  { id: 'gp-hasen-grotte', q: 'mode=gp&from=hasenhuegel&race=laternengrotte&laps=1&racer=greta', rows: 12 },
+  { id: 'gp-wueste-city', q: 'mode=gp&from=wueste&race=palmencity&laps=1&racer=lotti', rows: 12 },
+  { id: 'ko-verfolgung', q: 'mode=ko&tour=verfolgung&racer=greta', rows: 12, ko: true },
   { id: 'ko-tauchgang', q: 'mode=ko&tour=tauchgang&racer=lotti', rows: 12, ko: true },
 ].filter((c) => !only || c.id === only);
 const browser = await pw.chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
