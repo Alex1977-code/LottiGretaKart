@@ -15,6 +15,7 @@ export default {
   margin: 4,
   seed: 412,
   weatherOdds: [0.15, 0.35],   // Zufallswetter: hier öfter Calima als Regen
+  wallGaps: [{ at: [-20, 180], side: -1, half: 22 }],   // Auffahrt zum Hotel Bahía Príncipe San Felipe
   ctrl: [
     // Strandpromenade ostwärts
     [-120, 172], [-20, 180], [80, 176], [150, 160], [200, 112],
@@ -67,18 +68,70 @@ export default {
     // ---- Strandpromenade: Palmen, Laternen, Cafés, Strand mit Schirmen
     D.scatter('palm', 40, { u0: uProm0, u1: uProm1, dist0: 0.5, dist1: 6, s0: 1.2, s1: 1.8, colors: [0x3fa02a, 0x4fb833], size: 1.2 });
     for (let k = 0; k < 14; k++) D.model('street_lamp', { u: uProm0 + (uProm1 - uProm0) * (k + 0.5) / 14, side: 1, dist: 0.6 }, { face: 'track' });
-    for (let k = 0; k < 7; k++) D.model('cafe_set', { u: uProm0 + (uProm1 - uProm0) * (k + 0.3) / 7, side: -1, dist: 3.5 }, { opts: { color: [0xe8392d, 0x2a6ab8, 0xf2c14e, 0x2aa84a][k % 4] } });
+    for (let k = 0; k < 7; k++) D.model('cafe_set', { u: uProm0 + (uProm1 - uProm0) * (k + 0.3) / 7, side: 1, dist: 4 }, { opts: { color: [0xe8392d, 0x2a6ab8, 0xf2c14e, 0x2aa84a][k % 4] } });
     for (let k = 0; k < 5; k++) D.model('strelitzia', { u: uProm0 + (uProm1 - uProm0) * (k + 0.7) / 5, side: -1, dist: 1.2 }, { face: 'along' });
     D.scatter('umbrella', 46, { u0: uProm0, u1: uProm1, side: 1, dist0: 8, dist1: 34, s0: 1, s1: 1.3, colors: [0xe8392d, 0x2a8ae8, 0xffc21a, 0x4fb833, 0xff6aa8], size: 2 });
     D.scatter('starfish', 20, { u0: uProm0, u1: uProm1, side: 1, dist0: 10, dist1: 40, s0: 1, s1: 1.4, colors: [0xff8a3a, 0xff6aa8], size: 0.6 });
     // Hotel Bahía Príncipe San Felipe mit Poolterrasse (wie in Puerto de la Cruz), davor am Meer der Lago Martiánez
     const uHotel = uAt(-20, 180), uLago = uAt(60, 176);
-    D.model('hotel_san_felipe', { u: uHotel, side: -1, dist: 40 }, { face: 'track', always: true });
+    const hotel = D.model('hotel_san_felipe', { u: uHotel, side: -1, dist: 33 }, { face: 'track', always: true });
+    {
+      // Hotelgebäude ist massiv (die Auffahrt davor ist offen)
+      const r = hotel.model.root, c = Math.cos(r.rotation.y), sn = Math.sin(r.rotation.y);
+      const P = (x, z) => [r.position.x + x * c + z * sn, r.position.z - x * sn + z * c];
+      const pts = [P(8.5, -40), P(8.5, 40), P(-10, 40), P(-10, -40)];
+      for (let k = 0; k < 4; k++) { const a = pts[k], b = pts[(k + 1) % 4]; D.world.addSeg(a[0], a[1], b[0], b[1]); }
+    }
     D.model('lago_martianez', { u: uLago, side: 1, dist: 26 }, { face: 'track' });
+
+    // ---- Loro Parque gleich neben dem Hotel (wie in Puerto de la Cruz): Thai-Eingang, Papageien, Flamingos,
+    //      Orca-Becken mit springendem Orca, Planet Penguin, Gorillas
+    const uLP0 = uAt(40, 178), uLP = (f) => uLP0 + (uAt(140, 163) - uLP0) * f;
+    D.model('zoo_sign', { u: uLP(0.04), side: -1, dist: 2 }, { opts: { text: 'Loro Parque', color: '#e8392d' }, face: 'track' });
+    D.model('thai_pavilion', { u: uLP(0.0), side: -1, dist: 9 }, { face: 'track', scale: 1.2 });
+    D.model('thai_pavilion', { u: uLP(0.1), side: -1, dist: 9 }, { face: 'track', scale: 1.2 });
+    for (const [f, cols] of [[0.2, ['scarlet', 'blue', 'green']], [0.3, ['blue', 'scarlet']]]) {
+      const av = D.model('aviary', { u: uLP(f), side: -1, dist: 8 }, { opts: { r: 5 } });
+      const c = av.model.root.position;
+      cols.forEach((col, k) => {
+        const a = k * 2.1;
+        D.model('parrot', { x: c.x + Math.cos(a) * 2.2, z: c.z + Math.sin(a) * 2.2 }, { opts: { color: col }, y: 1.6 + k * 0.6, yaw: a + Math.PI / 2, scale: 1.4, state: 'perch' });
+      });
+    }
+    {
+      const lg = D.model('lagoon', { u: uLP(0.18), side: -1, dist: 28 }, { opts: { r: 9, color: 0x3ac0d8 } });
+      const c = lg.model.root.position;
+      for (let k = 0; k < 6; k++) { const a = k * 1.05, r = 2 + (k % 3) * 2.2; D.model('flamingo', { x: c.x + Math.cos(a) * r, z: c.z + Math.sin(a) * r }, { y: 0.25, yaw: a * 1.7, scale: 1.7 }); }
+    }
+    {
+      const op = D.model('orca_pool', { u: uLP(0.52), side: -1, dist: 26 }, { opts: { r: 15 }, face: 'track' });
+      const c = op.model.root.position;
+      // Orca schwimmt im Kreis und springt ab und zu
+      const orca = D.model('orca', { x: c.x, z: c.z }, { scale: 1.3, state: { anim: 'swim' } });
+      orca.tick = (e, dt, t) => {
+        const a = t * 0.45 + e.t, ph = (t * 0.45) % (Math.PI * 2);
+        const jump = Math.max(0, Math.sin(ph * 2)) ** 3 * (ph > Math.PI ? 1 : 0);
+        e.model.root.position.set(c.x + Math.cos(a) * 9, c.y + 0.3 + jump * 6, c.z + Math.sin(a) * 9);
+        e.model.root.rotation.set(0, -a - Math.PI / 2, jump > 0.05 ? Math.cos(ph * 2) * 0.6 : 0);
+        e.model.update(dt, { anim: 'swim' });
+      };
+    }
+    {
+      const ph = D.model('penguin_house', { u: uLP(0.8), side: -1, dist: 22 }, {});
+      const c = ph.model.root.position;
+      for (let k = 0; k < 6; k++) { const a = k * 0.8 + 0.4, r = 10.5 + (k % 2) * 1.4; D.model('penguin', { x: c.x + Math.cos(a) * r, z: c.z + Math.sin(a) * r }, { yaw: a + 1.5, scale: 1.6, state: 'idle' }); }
+    }
+    {
+      const en = D.model('enclosure', { u: uLP(0.97), side: -1, dist: 9 }, { opts: { r: 9 } });
+      const c = en.model.root.position;
+      D.model('gorilla', { x: c.x, z: c.z }, { scale: 1.9, yaw: 0.8, state: 'beat' });
+      D.model('zoo_sign', { u: uLP(0.93), side: -1, dist: 1.5 }, { opts: { text: 'Gorillas', color: '#5a3a2a' } });
+    }
+    for (const [f, col] of [[0.06, 'scarlet'], [0.4, 'green'], [0.66, 'blue']]) D.model('parrot', { u: uLP(f), side: -1, dist: 1.2 }, { opts: { color: col }, y: 1.6, scale: 1.6, state: 'perch' });
     // weitere Hotels und Apartments hinter der Promenade
     for (let k = 0; k < 6; k++) {
       const u = uProm0 + (uProm1 - uProm0) * (k + 0.5) / 6;
-      if (Math.abs(u - uHotel) < 0.045) continue;
+      if (Math.abs(u - uHotel) < 0.05 || (u > uLP0 - 0.01 && u < uLP(1) + 0.01)) continue;
       D.model('canary_house', { u, side: -1, dist: 14 }, { opts: { color: [0xfaf6ee, 0xf2c14e, 0x8ad0e8, 0xf0a8a0][k % 4], w: 14, d: 10, floors: 4, roof: 'flat', balcony: true } });
     }
 
@@ -91,10 +144,10 @@ export default {
     D.scatter('flower', 120, { dist0: 0.5, dist1: 22, s0: 1, s1: 1.4, colors: [0xff6aa8, 0xffd21f, 0xb47fe6, 0xffffff], size: 0.3 });
     // Dorf im Inneren: weiße und bunte Häuser mit Flachdach, dazwischen Drachenbäume
     for (let k = 0; k < 14; k++) {
-      const p = W(-95 + (k % 5) * 22 + ((k * 37) % 17) - 8, 70 + Math.floor(k / 5) * 26 + ((k * 23) % 15) - 7);
+      const p = W(-125 + (k % 5) * 20 + ((k * 37) % 13) - 6, 20 + Math.floor(k / 5) * 24 + ((k * 23) % 11) - 5);
       if (D.clear(p.x, p.z, 7)) D.model('canary_house', p, { yaw: (k % 4) * Math.PI / 2, opts: { color: [0xfaf6ee, 0xfaf6ee, 0xf2c14e, 0x8ad0e8, 0xf0a8c8][k % 5], w: 7, d: 7, floors: 1 + (k % 3 === 0 ? 1 : 0), roof: k % 3 ? 'flat' : 'tile', balcony: k % 3 === 0 } });
     }
-    D.model('drago', W(-40, 100), { scale: 1.2 });
+    D.model('drago', W(-70, 50), { scale: 1.2 });
     // ---- Bananenplantage im Inneren
     for (let r = 0; r < 4; r++) for (let c = 0; c < 8; c++) {
       const p = W(30 + c * 14, 50 + r * 18);

@@ -30,6 +30,13 @@ export class World {
     // Lava-Seen der Strecken (Strecken-Koordinaten → Welt)
     this.lava = this.courses.flatMap((c) => (c.def.lava ?? []).map(([x, z, r]) => ({ x: x + c.ox, z: z + c.oz, r })));
     this.connectors = def.connectors.map((c) => this.makeConnector(c));
+    // Banden-Lücken der Strecken selbst (z. B. Hotel-Auffahrt): { at: [x, z] (Strecken-Koordinaten), side, half }
+    for (const c of this.courses) for (const g of c.def.wallGaps ?? []) {
+      const tr = c.track, X = c.ox + g.at[0], Z = c.oz + g.at[1];
+      let best = 0, bd = Infinity;
+      for (let i = 0; i < tr.N; i++) { const d = (tr.px[i] - X) ** 2 + (tr.pz[i] - Z) ** 2; if (d < bd) { bd = d; best = i; } }
+      tr.gaps.push({ side: g.side, s: best * tr.ds, half: g.half });
+    }
     // 2. Höhenfeld mit eingeebneten Straßen
     this.buildHeightfield();
     for (const c of this.courses) c.track.heightFn = this.heightAt;

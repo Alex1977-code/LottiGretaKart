@@ -14,9 +14,11 @@
 // teleferico     Seilbahn-Kabine an einem Mast, schaukelt.
 // guagua         Kanarischer Linienbus (grün-weiß, ≈ 10 m), Front nach +X.
 // cabra          Ziege (läuft über die Serpentinen).  state 'walk'|'idle'|'squashed'
-// hotel_san_felipe  Das Hotel Bahía Príncipe San Felipe in Puerto de la Cruz: weißes Hochhaus mit durchgehenden
-//                Balkonen und Glasgeländern, niedrigere Seitenflügel, Leuchtschrift auf dem Dach, Eingang mit
-//                Vordach und Fahnen, davor (Richtung +X) Poolterrasse mit Liegen, Schirmen und Palmen (≈ 76 × 40 m).
+// hotel_san_felipe  Das Hotel Bahía Príncipe San Felipe in Puerto de la Cruz: weißes Hochhaus (17 Ebenen) mit
+//                durchgehenden Balkonen und Glasgeländern, niedrigere Seitenflügel, Leuchtschrift auf dem Dach.
+//                Vorn (+X, zur Straße) die Auffahrt mit Wendeschleife, Mittelinsel, Schild, Vordach, Fahnen und
+//                Taxi; hinten (−X) der Poolgarten: großer Lagunen-Pool mit Holzbrücke, mittlerer Pool,
+//                Kinderbecken, Liegen, Schirme, Palmen (≈ 80 × 76 m, von x −52 bis +32).
 // lago_martianez Meerwasserbecken des Lago Martiánez: geschwungene blaue Becken mit weißem Rand, Insel mit
 //                Palmen und Fontäne, Liegen (≈ 44 × 30 m).
 
@@ -397,60 +399,91 @@ function balconyBlock(b, x0, z0, L, D, n, glassRail) {
 
 function hotelSanFelipe() {
   const root = new THREE.Group();
-  const glassRail = new Build(), win = new Build();
+  const glassRail = new Build();
+  const FLOORS = 17, WING = 12;
   root.add(mesh(cached('can:sanfelipe', () => {
     const b = new Build();
-    // Hauptturm (13 Stockwerke) und zwei Seitenflügel (9), leicht zur See gedreht
-    const H = balconyBlock(b, 0, 0, 34, 15, 13, glassRail);
+    // Hauptturm (17 Ebenen) und zwei niedrigere Seitenflügel, leicht nach hinten gedreht; Balkone auf beiden Seiten
+    const H = balconyBlock(b, 0, 0, 34, 15, FLOORS, glassRail);
+    const back = new Build(), backRail = new Build();
+    balconyBlock(back, 0, 0, 34, 15, FLOORS, backRail);
+    addBuilt(b, back, { r: [0, Math.PI, 0] });
+    addBuilt(glassRail, backRail, { r: [0, Math.PI, 0] });
     for (const s of [1, -1]) {
       const g = new Build(), gr = new Build();
-      balconyBlock(g, 0, 0, 22, 14, 9, gr);
-      addBuilt(b, g, { p: [-3, 0, s * 27], r: [0, -s * 0.22, 0] });
-      addBuilt(glassRail, gr, { p: [-3, 0, s * 27], r: [0, -s * 0.22, 0] });
+      balconyBlock(g, 0, 0, 22, 14, WING, gr);
+      addBuilt(b, g, { p: [-3, 0, s * 27], r: [0, Math.PI - s * 0.22, 0] });   // Balkone der Flügel zum Pool (hinten), Flügel knicken nach hinten
+      addBuilt(glassRail, gr, { p: [-3, 0, s * 27], r: [0, Math.PI - s * 0.22, 0] });
     }
-    // Technikaufbau auf dem Dach
-    b.box(8, 3, 12, 0xe8e4da, { p: [-2, H + 2.4, 0] }, 0.1);
-    // Erdgeschoss: verglaste Lobby, Vordach mit Stützen, Treppe
-    b.box(1, 3.4, 30, 0x6a9ab8, { p: [7.9, 1.7, 0] }, 0.05);
-    b.box(7, 0.4, 12, 0xffffff, { p: [11, 4.2, 0] }, 0.1);
-    for (const z of [-5.5, 5.5]) b.box(0.4, 4, 0.4, 0xd8d2c4, { p: [14, 2, z] }, 0.05);
-    b.box(3, 0.5, 14, 0xd8d2c4, { p: [9.5, 0.25, 0] }, 0.05);
-    // Poolterrasse vor dem Hotel: Deck, zwei Becken (blau), Liegen
-    b.box(26, 0.6, 72, 0xe8dcc0, { p: [21, 0.3, 0] }, 0.1, 1);
-    for (const [z, l] of [[-18, 26], [17, 22]]) {
-      b.box(12, 0.25, l + 1.2, 0xffffff, { p: [24, 0.68, z] }, 0.1);
+    b.box(8, 3, 12, 0xe8e4da, { p: [-2, H + 2.4, 0] }, 0.1);   // Technikaufbau
+
+    // ---- vorn (+X, zur Straße): Auffahrt mit Wendeschleife, Vordach, Fahnen, Schild
+    b.box(1, 3.6, 30, 0x6a9ab8, { p: [7.9, 1.8, 0] }, 0.05);                   // verglaste Lobby
+    b.box(8, 0.5, 14, 0xffffff, { p: [11.5, 4.4, 0] }, 0.12);                   // Vordach
+    for (const z of [-6, 6]) b.box(0.45, 4.2, 0.45, 0xd8d2c4, { p: [15, 2.1, z] }, 0.05);
+    b.box(24, 0.35, 44, 0x6a6a74, { p: [20, 0.18, 0] }, 0.05, 1);              // Asphalt der Auffahrt
+    b.box(3, 0.4, 16, 0xd8d2c4, { p: [9.5, 0.4, 0] }, 0.05);                    // Stufen zum Eingang
+    for (const z of [-21, 21]) b.box(24, 0.5, 1.2, 0xffffff, { p: [20, 0.3, z] }, 0.05);   // Bordsteine außen
+    // Mittelinsel mit Blumen, Palmen und dem Namensschild
+    b.cyl(1, 1, 0.6, 0xd8d2c4, { p: [22, 0.35, 0], s: [5.5, 1, 9] }, 24);
+    b.cyl(1, 1, 0.3, 0x5ab84a, { p: [22, 0.75, 0], s: [5, 1, 8.5] }, 24);
+    for (let k = 0; k < 9; k++) b.sphere(0.5, [0xff6aa8, 0xffd21f, 0xe8392d][k % 3], { p: [22 + Math.cos(k) * 3.5, 1.0, Math.sin(k) * 6.5], s: [1, 0.6, 1] }, 6, 4);
+    b.box(1.2, 2.6, 7, 0x3e3438, { p: [26, 1.6, 0] }, 0.1);                     // Schild-Sockel (Basalt)
+    // Pfeile auf der Auffahrt (rein links, raus rechts)
+    for (const [z, d] of [[-14, -1], [14, 1]]) b.box(3, 0.05, 0.5, 0xffffff, { p: [26, 0.38, z], r: [0, d * 0.5, 0] }, 0);
+    // Fahnenmasten
+    for (let k = 0; k < 5; k++) b.cyl(0.07, 0.07, 10, 0xe8e8e8, { p: [17, 5, -10 + k * 5] }, 6);
+    // Taxi und Auto vor dem Eingang
+    for (const [z, c] of [[-4, 0xffffff], [4, 0x2a6ab8]]) {
+      b.box(2, 0.9, 4.4, c, { p: [17.5, 0.8, z] }, 0.3);
+      b.box(1.8, 0.7, 2.4, c, { p: [17.5, 1.55, z - 0.2] }, 0.25);
+      b.box(1.85, 0.5, 2.0, 0x2a3a4a, { p: [17.5, 1.6, z - 0.2] }, 0.1);
+      for (const [dx, dz] of [[1, 1.4], [-1, 1.4], [1, -1.4], [-1, -1.4]]) b.cyl(0.38, 0.38, 0.3, 0x1a1a22, { p: [17.5 + dx * 0.95, 0.4, z + dz], r: [0, 0, Math.PI / 2] }, 12);
     }
-    for (let z = -32; z <= 32; z += 3.2) if (Math.abs(z) > 4) {
-      b.box(1.9, 0.25, 0.75, 0xffffff, { p: [32, 0.8, z] }, 0.05);
-      b.box(0.6, 0.45, 0.75, 0xffffff, { p: [31.2, 1.0, z], r: [0, 0, 0.6] }, 0.05);
+
+    // ---- hinten (−X): Poolgarten mit großem Lagunen-Pool (Holzbrücke), mittlerem Pool und Kinderbecken
+    b.box(44, 0.6, 76, 0xe8dcc0, { p: [-30, 0.3, 0] }, 0.1, 1);                 // Terrasse
+    for (const [x, z, rx, rz] of LAGOON) b.cyl(1, 1, 0.3, 0xffffff, { p: [x, 0.66, z], s: [rx + 0.7, 1, rz + 0.7] }, 32);
+    b.box(9.5, 0.3, 15, 0xffffff, { p: [-44, 0.66, 26] }, 0.1);                 // mittlerer Pool (Rand)
+    b.cyl(1, 1, 0.3, 0xffffff, { p: [-18, 0.66, 28], s: [3.4, 1, 3.4] }, 24);    // Kinderbecken (Rand)
+    // Holzbrücke über den Lagunen-Pool
+    b.box(18, 0.25, 2.2, 0x9a6a3a, { p: [-30, 1.35, -6], r: [0, 0.35, 0] }, 0.05);
+    for (const s2 of [1, -1]) b.box(18, 0.6, 0.12, 0x7a4a2a, { p: [-30 + Math.sin(0.35) * s2 * 1.05, 1.75, -6 + Math.cos(0.35) * s2 * 1.05], r: [0, 0.35, 0] }, 0.02);
+    // Liegen und Schirme rund um die Becken
+    for (let k = 0; k < 22; k++) {
+      const x = k < 11 ? -50 + k * 3.4 : -50 + (k - 11) * 3.4, z = k < 11 ? -34 : 35;
+      b.box(1.9, 0.25, 0.75, 0xffffff, { p: [x, 0.8, z], r: [0, Math.PI / 2, 0] }, 0.05);
+      if (k % 3 === 0) { b.cyl(0.05, 0.05, 2.4, 0xe8e8e8, { p: [x + 1.6, 1.8, z] }, 5); b.cone(1.5, 0.5, 0x1a4a8a, { p: [x + 1.6, 3.0, z] }, 12); }
     }
-    // Fahnenmasten am Eingang
-    for (let k = 0; k < 4; k++) b.cyl(0.07, 0.07, 9, 0xe8e8e8, { p: [16, 4.5, -7.5 + k * 5] }, 6);
     return b.geometry();
   }), vcol(0.6), {}, true));
   root.add(mesh(cached('can:sanfelipe:rail', () => glassRail.geometry()), std('can:glassrail', { vertexColors: true, transparent: true, opacity: 0.45, roughness: 0.1, metalness: 0.2, depthWrite: false })));
   // Wasser der Pools
   const water = std('can:poolwater', { color: 0x2ab4e8, roughness: 0.08, metalness: 0.1, emissive: 0x0a4a6a, emissiveIntensity: 0.4 });
-  for (const [z, l] of [[-18, 26], [17, 22]]) {
-    const w = new THREE.Mesh(new THREE.PlaneGeometry(10.6, l).rotateX(-Math.PI / 2), water);
-    w.position.set(24, 0.82, z);
-    w.userData.noShadow = true;
-    root.add(w);
+  for (const [x, z, rx, rz] of LAGOON) {
+    const w = new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), water);
+    w.scale.set(rx, 1, rz); w.position.set(x, 0.84, z); w.userData.noShadow = true; root.add(w);
   }
-  // Fenster der Zimmer (leuchten nachts warm)
+  {
+    const w = new THREE.Mesh(new THREE.PlaneGeometry(8.4, 13.8).rotateX(-Math.PI / 2), water);
+    w.position.set(-44, 0.84, 26); w.userData.noShadow = true; root.add(w);
+    const k = new THREE.Mesh(new THREE.CircleGeometry(2.8, 24).rotateX(-Math.PI / 2), water);
+    k.position.set(-18, 0.84, 28); k.userData.noShadow = true; root.add(k);
+  }
+  // Fenster der Zimmer (leuchten nachts warm) – vorn und hinten
   const winMat = std('can:sanfelipe:win', { color: 0x4a5a6a, emissive: 0xffd89a, emissiveIntensity: 0.05, roughness: 0.3 });
   nightGlow(winMat, 0.05, 0.9);
   root.add(mesh(cached('can:sanfelipe:win', () => {
     const b = new Build();
-    for (let f = 0; f < 13; f++) for (let z = -15; z < 15; z += 4) if ((f * 7 + z * 3) % 5 !== 0) b.box(0.06, 1.7, 2.6, 0xffffff, { p: [7.53, f * 3 + 1.4, z + 2] }, 0);
+    for (const side of [1, -1]) for (let f = 1; f < FLOORS; f++) for (let z = -15; z < 15; z += 4) if ((f * 7 + z * 3 + (side > 0 ? 0 : 2)) % 5 !== 0) b.box(0.06, 1.7, 2.6, 0xffffff, { p: [side * 7.53, f * 3 + 1.4, z + 2] }, 0);
     for (const s of [1, -1]) {
       const g = new Build();
-      for (let f = 0; f < 9; f++) for (let z = -9; z < 9; z += 4) if ((f * 5 + z) % 4 !== 0) g.box(0.06, 1.7, 2.6, 0xffffff, { p: [7.03, f * 3 + 1.4, z + 2] }, 0);
-      addBuilt(b, g, { p: [-3, 0, s * 27], r: [0, -s * 0.22, 0] });
+      for (let f = 1; f < WING; f++) for (let z = -9; z < 9; z += 4) if ((f * 5 + z) % 4 !== 0) g.box(0.06, 1.7, 2.6, 0xffffff, { p: [7.03, f * 3 + 1.4, z + 2] }, 0);
+      addBuilt(b, g, { p: [-3, 0, s * 27], r: [0, Math.PI - s * 0.22, 0] });
     }
     return b.geometry();
   }), winMat));
-  // Leuchtschrift auf dem Dach (beidseitig) und Fahnen
+  // Leuchtschrift auf dem Dach (nach vorn und nach hinten) und Schild an der Auffahrt
   const tex = canvasTexture('can:sanfelipe:sign', 1024, 256, (x) => {
     x.clearRect(0, 0, 1024, 256);
     x.textAlign = 'center'; x.textBaseline = 'middle';
@@ -459,24 +492,27 @@ function hotelSanFelipe() {
   });
   const signMat = std('can:sanfelipe:sign', { map: tex, transparent: true, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.25, side: THREE.DoubleSide, depthWrite: false });
   nightGlow(signMat, 0.25, 1.4);
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(26, 6.5), signMat);
-  sign.position.set(6, 13 * 3 + 4.6, 0); sign.rotation.y = Math.PI / 2;
-  sign.userData.noShadow = true;
-  root.add(sign);
-  const flagCols = [0xffffff, 0x1a4a8a, 0xffe03a, 0x1a4a8a];
+  for (const [x, y, w, ry] of [[7.6, FLOORS * 3 + 4.6, 26, Math.PI / 2], [-7.6, FLOORS * 3 + 4.6, 26, -Math.PI / 2], [26.65, 2.0, 6.6, Math.PI / 2]]) {
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(w, w / 4), signMat);
+    sign.position.set(x, y, 0); sign.rotation.y = ry;
+    sign.userData.noShadow = true;
+    root.add(sign);
+  }
+  const flagCols = [0xffffff, 0x1a4a8a, 0xffe03a, 0x1a4a8a, 0xc8962a];
   const flags = flagCols.map((c, k) => {
     const f = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.1), std(`can:flag:${c}`, { color: c, side: THREE.DoubleSide, roughness: 0.7 }));
-    f.position.set(16, 8.3, -7.5 + k * 5 + 0.9);
+    f.position.set(17, 9.3, -10 + k * 5 + 0.9);
     root.add(f); return f;
   });
-  // Palmen auf der Terrasse
+  // Palmen an der Auffahrt und im Poolgarten
   root.add(mesh(cached('can:sanfelipe:palms', () => {
     const b = new Build();
-    for (let k = 0; k < 10; k++) {
-      const x = 14 + (k % 2) * 18, z = -33 + k * 7.3, h = 6 + (k % 3);
+    const P = [[22, -4], [22, 4], [29, -19], [29, 19], [-12, -30], [-12, 30], [-24, -22], [-36, 16], [-50, -10], [-52, 10], [-20, 12], [-40, -26]];
+    P.forEach(([x, z], k) => {
+      const h = 6 + (k % 3) * 1.2;
       b.cyl(0.18, 0.28, h, 0x9a7a52, { p: [x, h / 2 + 0.6, z], r: [0, 0, (k % 2 ? 0.08 : -0.06)] }, 6);
       for (let j = 0; j < 7; j++) { const a = (j / 7) * TAU; b.box(2.8, 0.06, 0.5, 0x3a9a3a, { p: [x + cos(a) * 1.3, h + 0.6, z + sin(a) * 1.3], r: [0, -a, -0.35] }, 0.02); }
-    }
+    });
     return b.geometry();
   }), vcol(0.7), {}, true));
   const clk = new Clock();
@@ -485,6 +521,8 @@ function hotelSanFelipe() {
     flags.forEach((f, k) => { f.rotation.y = sin(clk.t * 2.2 + k) * 0.35; });
   });
 }
+/** Lagunen-Pool hinter dem Hotel: geschwungen aus mehreren Ellipsen (x, z, rx, rz). */
+const LAGOON = [[-30, -6, 12, 9], [-40, -16, 7, 6], [-20, 4, 7, 7], [-33, 8, 6, 5]];
 
 function lagoMartianez() {
   const root = new THREE.Group();
