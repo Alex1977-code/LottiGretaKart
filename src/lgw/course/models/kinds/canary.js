@@ -14,9 +14,15 @@
 // teleferico     Seilbahn-Kabine an einem Mast, schaukelt.
 // guagua         Kanarischer Linienbus (grün-weiß, ≈ 10 m), Front nach +X.
 // cabra          Ziege (läuft über die Serpentinen).  state 'walk'|'idle'|'squashed'
+// hotel_san_felipe  Das Hotel Bahía Príncipe San Felipe in Puerto de la Cruz: weißes Hochhaus mit durchgehenden
+//                Balkonen und Glasgeländern, niedrigere Seitenflügel, Leuchtschrift auf dem Dach, Eingang mit
+//                Vordach und Fahnen, davor (Richtung +X) Poolterrasse mit Liegen, Schirmen und Palmen (≈ 76 × 40 m).
+// lago_martianez Meerwasserbecken des Lago Martiánez: geschwungene blaue Becken mit weißem Rand, Insel mit
+//                Palmen und Fontäne, Liegen (≈ 44 × 30 m).
 
 import * as THREE from 'three';
-import { Build, mesh, vcol, std, basic, cached, joint, makeModel, Clock, TAU, canvasTexture, glowSprite } from '../lib/kit.js';
+import { Build, mesh, vcol, std, basic, cached, joint, makeModel, Clock, TAU, canvasTexture, glowSprite, xf } from '../lib/kit.js';
+import { nightGlow } from '../../../../world/night.js';
 
 const sin = Math.sin, cos = Math.cos;
 const BASALT = 0x4a4448, WHITE = 0xfaf6ee, WOOD = 0x5a3a22, SHUTTER = 0x2e6a3a, TILE = 0xb5532a;
@@ -365,7 +371,167 @@ function cabra() {
   });
 }
 
+/** Fertig gebaute (gefärbte) Teilgeometrie verschoben/gedreht übernehmen. */
+function addBuilt(b, sub, o) {
+  const g = sub.geometry();
+  g.applyMatrix4(xf(o));
+  b.parts.push(g.index ? g.toNonIndexed() : g);
+}
+
+/** Hochhausblock mit Balkonen: Länge L (entlang z), Tiefe D (x), n Stockwerke; Front nach +X. */
+function balconyBlock(b, x0, z0, L, D, n, glassRail) {
+  const FH = 3.0, H = n * FH;
+  b.box(D, H + 0.6, L, 0xf6f4ee, { p: [x0, (H + 0.6) / 2, z0] }, 0.2, 1);
+  for (let f = 1; f < n; f++) {
+    const y = f * FH;
+    // Balkonplatte über die ganze Front, Glasgeländer, Trennwände
+    b.box(1.8, 0.28, L - 0.6, 0xffffff, { p: [x0 + D / 2 + 0.9, y, z0] }, 0.05);
+    glassRail.box(0.08, 1.0, L - 0.8, 0xa8d8f0, { p: [x0 + D / 2 + 1.75, y + 0.65, z0] }, 0);
+    for (let z = -L / 2 + 4; z < L / 2 - 1; z += 4) b.box(1.7, 1.2, 0.12, 0xece8de, { p: [x0 + D / 2 + 0.85, y + 0.75, z0 + z] }, 0);
+  }
+  // Rückseite: Fensterreihen
+  for (let f = 0; f < n; f++) b.box(0.06, 1.2, L - 2, 0x3a4a5a, { p: [x0 - D / 2 - 0.02, f * FH + 1.6, z0] }, 0);
+  b.box(D + 0.6, 0.5, L + 0.6, 0xd8d2c4, { p: [x0, H + 0.6, z0] }, 0.05);   // Dachkante
+  return H;
+}
+
+function hotelSanFelipe() {
+  const root = new THREE.Group();
+  const glassRail = new Build(), win = new Build();
+  root.add(mesh(cached('can:sanfelipe', () => {
+    const b = new Build();
+    // Hauptturm (13 Stockwerke) und zwei Seitenflügel (9), leicht zur See gedreht
+    const H = balconyBlock(b, 0, 0, 34, 15, 13, glassRail);
+    for (const s of [1, -1]) {
+      const g = new Build(), gr = new Build();
+      balconyBlock(g, 0, 0, 22, 14, 9, gr);
+      addBuilt(b, g, { p: [-3, 0, s * 27], r: [0, -s * 0.22, 0] });
+      addBuilt(glassRail, gr, { p: [-3, 0, s * 27], r: [0, -s * 0.22, 0] });
+    }
+    // Technikaufbau auf dem Dach
+    b.box(8, 3, 12, 0xe8e4da, { p: [-2, H + 2.4, 0] }, 0.1);
+    // Erdgeschoss: verglaste Lobby, Vordach mit Stützen, Treppe
+    b.box(1, 3.4, 30, 0x6a9ab8, { p: [7.9, 1.7, 0] }, 0.05);
+    b.box(7, 0.4, 12, 0xffffff, { p: [11, 4.2, 0] }, 0.1);
+    for (const z of [-5.5, 5.5]) b.box(0.4, 4, 0.4, 0xd8d2c4, { p: [14, 2, z] }, 0.05);
+    b.box(3, 0.5, 14, 0xd8d2c4, { p: [9.5, 0.25, 0] }, 0.05);
+    // Poolterrasse vor dem Hotel: Deck, zwei Becken (blau), Liegen
+    b.box(26, 0.6, 72, 0xe8dcc0, { p: [21, 0.3, 0] }, 0.1, 1);
+    for (const [z, l] of [[-18, 26], [17, 22]]) {
+      b.box(12, 0.25, l + 1.2, 0xffffff, { p: [24, 0.68, z] }, 0.1);
+    }
+    for (let z = -32; z <= 32; z += 3.2) if (Math.abs(z) > 4) {
+      b.box(1.9, 0.25, 0.75, 0xffffff, { p: [32, 0.8, z] }, 0.05);
+      b.box(0.6, 0.45, 0.75, 0xffffff, { p: [31.2, 1.0, z], r: [0, 0, 0.6] }, 0.05);
+    }
+    // Fahnenmasten am Eingang
+    for (let k = 0; k < 4; k++) b.cyl(0.07, 0.07, 9, 0xe8e8e8, { p: [16, 4.5, -7.5 + k * 5] }, 6);
+    return b.geometry();
+  }), vcol(0.6), {}, true));
+  root.add(mesh(cached('can:sanfelipe:rail', () => glassRail.geometry()), std('can:glassrail', { vertexColors: true, transparent: true, opacity: 0.45, roughness: 0.1, metalness: 0.2, depthWrite: false })));
+  // Wasser der Pools
+  const water = std('can:poolwater', { color: 0x2ab4e8, roughness: 0.08, metalness: 0.1, emissive: 0x0a4a6a, emissiveIntensity: 0.4 });
+  for (const [z, l] of [[-18, 26], [17, 22]]) {
+    const w = new THREE.Mesh(new THREE.PlaneGeometry(10.6, l).rotateX(-Math.PI / 2), water);
+    w.position.set(24, 0.82, z);
+    w.userData.noShadow = true;
+    root.add(w);
+  }
+  // Fenster der Zimmer (leuchten nachts warm)
+  const winMat = std('can:sanfelipe:win', { color: 0x4a5a6a, emissive: 0xffd89a, emissiveIntensity: 0.05, roughness: 0.3 });
+  nightGlow(winMat, 0.05, 0.9);
+  root.add(mesh(cached('can:sanfelipe:win', () => {
+    const b = new Build();
+    for (let f = 0; f < 13; f++) for (let z = -15; z < 15; z += 4) if ((f * 7 + z * 3) % 5 !== 0) b.box(0.06, 1.7, 2.6, 0xffffff, { p: [7.53, f * 3 + 1.4, z + 2] }, 0);
+    for (const s of [1, -1]) {
+      const g = new Build();
+      for (let f = 0; f < 9; f++) for (let z = -9; z < 9; z += 4) if ((f * 5 + z) % 4 !== 0) g.box(0.06, 1.7, 2.6, 0xffffff, { p: [7.03, f * 3 + 1.4, z + 2] }, 0);
+      addBuilt(b, g, { p: [-3, 0, s * 27], r: [0, -s * 0.22, 0] });
+    }
+    return b.geometry();
+  }), winMat));
+  // Leuchtschrift auf dem Dach (beidseitig) und Fahnen
+  const tex = canvasTexture('can:sanfelipe:sign', 1024, 256, (x) => {
+    x.clearRect(0, 0, 1024, 256);
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.font = 'bold 118px "Lilita One", sans-serif'; x.fillStyle = '#1a4a8a'; x.fillText('BAHÍA PRINCIPE', 512, 92);
+    x.font = 'bold 86px "Lilita One", sans-serif'; x.fillStyle = '#c8962a'; x.fillText('SAN FELIPE', 512, 200);
+  });
+  const signMat = std('can:sanfelipe:sign', { map: tex, transparent: true, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.25, side: THREE.DoubleSide, depthWrite: false });
+  nightGlow(signMat, 0.25, 1.4);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(26, 6.5), signMat);
+  sign.position.set(6, 13 * 3 + 4.6, 0); sign.rotation.y = Math.PI / 2;
+  sign.userData.noShadow = true;
+  root.add(sign);
+  const flagCols = [0xffffff, 0x1a4a8a, 0xffe03a, 0x1a4a8a];
+  const flags = flagCols.map((c, k) => {
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.1), std(`can:flag:${c}`, { color: c, side: THREE.DoubleSide, roughness: 0.7 }));
+    f.position.set(16, 8.3, -7.5 + k * 5 + 0.9);
+    root.add(f); return f;
+  });
+  // Palmen auf der Terrasse
+  root.add(mesh(cached('can:sanfelipe:palms', () => {
+    const b = new Build();
+    for (let k = 0; k < 10; k++) {
+      const x = 14 + (k % 2) * 18, z = -33 + k * 7.3, h = 6 + (k % 3);
+      b.cyl(0.18, 0.28, h, 0x9a7a52, { p: [x, h / 2 + 0.6, z], r: [0, 0, (k % 2 ? 0.08 : -0.06)] }, 6);
+      for (let j = 0; j < 7; j++) { const a = (j / 7) * TAU; b.box(2.8, 0.06, 0.5, 0x3a9a3a, { p: [x + cos(a) * 1.3, h + 0.6, z + sin(a) * 1.3], r: [0, -a, -0.35] }, 0.02); }
+    }
+    return b.geometry();
+  }), vcol(0.7), {}, true));
+  const clk = new Clock();
+  return makeModel('hotel_san_felipe', root, (dt) => {
+    clk.tick(dt, 'idle');
+    flags.forEach((f, k) => { f.rotation.y = sin(clk.t * 2.2 + k) * 0.35; });
+  });
+}
+
+function lagoMartianez() {
+  const root = new THREE.Group();
+  const pools = [[0, 0, 13, 9], [-14, 6, 8, 6], [14, -5, 9, 7], [6, 12, 6, 5]];
+  root.add(mesh(cached('can:lago', () => {
+    const b = new Build();
+    b.box(46, 0.8, 34, 0xd8d0c0, { p: [0, -0.1, 0] }, 0.3, 1);   // Plattform aus hellem Stein
+    for (const [x, z, rx, rz] of pools) {
+      b.cyl(1, 1, 0.5, 0xffffff, { p: [x, 0.35, z], s: [rx + 0.8, 1, rz + 0.8] }, 28);   // weißer Rand
+    }
+    // Insel mit Palmen und Lavastein-Skulptur
+    b.cyl(1, 1, 0.9, 0x3e3438, { p: [0, 0.6, 0], s: [3.2, 1, 2.4] }, 16);
+    for (let k = 0; k < 3; k++) {
+      const x = cos(k * 2.1) * 1.8, z = sin(k * 2.1) * 1.2, h = 5 + k;
+      b.cyl(0.15, 0.22, h, 0x9a7a52, { p: [x, 1 + h / 2, z] }, 6);
+      for (let j = 0; j < 7; j++) { const a = (j / 7) * TAU; b.box(2.4, 0.05, 0.45, 0x3a9a3a, { p: [x + cos(a) * 1.1, 1 + h, z + sin(a) * 1.1], r: [0, -a, -0.35] }, 0.02); }
+    }
+    b.sphere(0.9, 0x2a2428, { p: [-1, 1.6, -0.5], s: [1, 1.6, 0.8] }, 10, 8);
+    // Liegen
+    for (let k = 0; k < 14; k++) {
+      const x = -20 + (k % 7) * 6.5, z = k < 7 ? -15 : 15.5;
+      b.box(1.9, 0.25, 0.75, 0xffffff, { p: [x, 0.5, z] }, 0.05);
+      b.box(0.6, 0.45, 0.75, 0xffffff, { p: [x - 0.8, 0.7, z], r: [0, 0, 0.6] }, 0.05);
+    }
+    return b.geometry();
+  }), vcol(0.6), {}, true));
+  const water = std('can:lagowater', { color: 0x1aa8e8, roughness: 0.06, metalness: 0.1, emissive: 0x0a4a7a, emissiveIntensity: 0.45 });
+  for (const [x, z, rx, rz] of pools) {
+    const w = new THREE.Mesh(new THREE.CircleGeometry(1, 32).rotateX(-Math.PI / 2), water);
+    w.scale.set(rx, 1, rz);
+    w.position.set(x, 0.62, z);
+    w.userData.noShadow = true;
+    root.add(w);
+  }
+  // Fontäne
+  const fountain = glowSprite(0xe8f8ff, 3.2, 0.7);
+  fountain.position.set(-1, 3.2, -0.5);
+  root.add(fountain);
+  const clk = new Clock();
+  return makeModel('lago_martianez', root, (dt) => {
+    clk.tick(dt, 'idle');
+    fountain.scale.set(2.2 + sin(clk.t * 3) * 0.3, 3.4 + sin(clk.t * 5) * 0.6, 1);
+  });
+}
+
 export const MODELS = {
   canary_house: canaryHouse, canary_church: canaryChurch, mall, drago, banana_plant: bananaPlant,
   teide_peak: teidePeak, cafe_set: cafeSet, strelitzia, teleferico, guagua, cabra,
+  hotel_san_felipe: hotelSanFelipe, lago_martianez: lagoMartianez,
 };

@@ -1,5 +1,5 @@
 // Strecke 21: Teneriffa – Rundfahrt über die Kanaren-Insel im Südosten. Start auf der Strandpromenade (Palmen,
-// Cafés, Sonnenschirme, Liegen am Strand), durch das Einkaufszentrum „Centro Comercial“, dann in Serpentinen den
+// Cafés, Sonnenschirme, Liegen am Strand, Hotel Bahía Príncipe San Felipe und Lago Martiánez wie in Puerto de la Cruz), durch das Einkaufszentrum „Centro Comercial“, dann in Serpentinen den
 // Teide hinauf (Haarnadelkurven, Ziegen auf der Straße, Seilbahn, Blick auf den schneebedeckten Gipfel), über
 // den Kamm und hinunter in die Altstadt mit engen Gassen zwischen bunten Häusern mit Holzbalkonen, Kirche und
 // Drachenbaum – zurück zur Promenade. Stadtverkehr: grüne Guaguas (Linienbusse) und Autos.
@@ -71,9 +71,14 @@ export default {
     for (let k = 0; k < 5; k++) D.model('strelitzia', { u: uProm0 + (uProm1 - uProm0) * (k + 0.7) / 5, side: -1, dist: 1.2 }, { face: 'along' });
     D.scatter('umbrella', 46, { u0: uProm0, u1: uProm1, side: 1, dist0: 8, dist1: 34, s0: 1, s1: 1.3, colors: [0xe8392d, 0x2a8ae8, 0xffc21a, 0x4fb833, 0xff6aa8], size: 2 });
     D.scatter('starfish', 20, { u0: uProm0, u1: uProm1, side: 1, dist0: 10, dist1: 40, s0: 1, s1: 1.4, colors: [0xff8a3a, 0xff6aa8], size: 0.6 });
-    // Hotels und Apartments hinter der Promenade
+    // Hotel Bahía Príncipe San Felipe mit Poolterrasse (wie in Puerto de la Cruz), davor am Meer der Lago Martiánez
+    const uHotel = uAt(-20, 180), uLago = uAt(60, 176);
+    D.model('hotel_san_felipe', { u: uHotel, side: -1, dist: 40 }, { face: 'track', always: true });
+    D.model('lago_martianez', { u: uLago, side: 1, dist: 26 }, { face: 'track' });
+    // weitere Hotels und Apartments hinter der Promenade
     for (let k = 0; k < 6; k++) {
       const u = uProm0 + (uProm1 - uProm0) * (k + 0.5) / 6;
+      if (Math.abs(u - uHotel) < 0.045) continue;
       D.model('canary_house', { u, side: -1, dist: 14 }, { opts: { color: [0xfaf6ee, 0xf2c14e, 0x8ad0e8, 0xf0a8a0][k % 4], w: 14, d: 10, floors: 4, roof: 'flat', balcony: true } });
     }
 

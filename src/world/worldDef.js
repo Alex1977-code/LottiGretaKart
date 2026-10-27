@@ -137,6 +137,8 @@ export const WORLD = {
     { x: 1300, z: -430, r: 200, h: 3 },      // Mitternachts-Highway
     { x: 1005, z: 885, r: 55, h: 3 },        // Teneriffa: Altstadt
     { x: 1395, z: 850, r: 45, h: 3 },        // Teneriffa: Einkaufszentrum
+    { x: 1161, z: 949, r: 45, h: 3.8 },      // Teneriffa: Hotel Bahía Príncipe San Felipe
+    { x: 1244, z: 1035, r: 28, h: 2.2 },     // Teneriffa: Lago Martiánez
   ],
   hills: [
     [180, -120, 70, 14], [-200, -200, 80, 18], [330, -540, 80, 22], [-460, -580, 70, 30], [-650, -300, 120, 45],
