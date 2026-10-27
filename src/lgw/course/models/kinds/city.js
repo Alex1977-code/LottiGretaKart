@@ -12,6 +12,9 @@
 // traffic_cone   Leitkegel.
 // neon_tower     Hochhaus mit leuchtenden Kanten und Antenne.  opts { h (60), color }
 // hydrant        Hydrant.
+// road_tunnel    Beton-Tunnel zum Durchfahren mit orangen Tunnellampen und Portalen.  opts { length (50), width (26), text }
+// highway_sign   Schilderbrücke über der Autobahn mit grünen Wegweisern.  opts { width (26), signs: [[text, sub], …] }
+// container_stack Hafen-Container gestapelt.  opts { seed }
 
 import * as THREE from 'three';
 import { Build, mesh, vcol, std, basic, cached, joint, makeModel, Clock, TAU, glowSprite, canvasTexture } from '../lib/kit.js';
@@ -249,7 +252,112 @@ function hydrant() {
   return makeModel('hydrant', root, () => {});
 }
 
+function roadTunnel(opts = {}) {
+  const L = opts.length ?? 50, W = (opts.width ?? 26) / 2, H = 8.5, T = 1.4;
+  const root = new THREE.Group();
+  root.add(mesh(cached(`city:tunnel:${L}:${W}`, () => {
+    const b = new Build();
+    const tile = (x, y) => (Math.floor(y / 0.9) % 2 ? 0xc8ccd4 : 0xb8bcc8);
+    // Wände (innen gekachelt) und Decke
+    for (const s of [1, -1]) {
+      b.box(L, H, T, tile, { p: [0, H / 2, s * (W + T / 2)] }, 0, 1);
+      b.box(L, 0.5, 0.25, 0xffc21a, { p: [0, 1.1, s * (W - 0.12)] }, 0, 1);
+    }
+    b.box(L, T, W * 2 + T * 2, 0x6a6a74, { p: [0, H + T / 2, 0] }, 0, 1);
+    // Portale aus Beton mit Rahmen
+    for (const xe of [-L / 2, L / 2]) {
+      for (const s of [1, -1]) b.box(2, H + 4.5, 4, 0x8a8a94, { p: [xe, (H + 4.5) / 2, s * (W + 2)] }, 0.2, 1);
+      b.box(2, 4.5, W * 2 + 8, 0x8a8a94, { p: [xe, H + 2.25, 0] }, 0.2, 1);
+      for (let k = -W; k < W; k += 2.6) b.box(2.05, 0.6, 1.3, (Math.round((k + W) / 2.6) % 2) ? 0xffc21a : 0x1a1a22, { p: [xe, H + 0.2, k + 1.3] }, 0, 1);
+    }
+    // Erdhügel/Bebauung über dem Tunnel
+    b.box(L - 2, 3, W * 2 + 6, 0x4a4a54, { p: [0, H + T + 1.5, 0] }, 0.6, 1);
+    return b.geometry();
+  }), vcol(0.75), {}, true));
+  // Tunnellampen (orange, Natriumdampf) in zwei Reihen an der Decke
+  const n = Math.max(4, Math.round(L / 6));
+  root.add(mesh(cached(`city:tunnellamps:${L}:${W}`, () => {
+    const b = new Build();
+    for (let k = 0; k < n; k++) for (const s of [1, -1]) b.box(2.2, 0.18, 0.4, 0xffb050, { p: [-L / 2 + (k + 0.5) * (L / n), H - 0.12, s * (W - 2.5)] }, 0, 1);
+    return b.geometry();
+  }), basic('city:tunnellamp', { vertexColors: true })));
+  const glows = [];
+  for (let k = 0; k < n; k += 2) for (const s of [1, -1]) {
+    const g = glowSprite(0xffa040, 4.5, 0.5);
+    g.position.set(-L / 2 + (k + 0.5) * (L / n), H - 0.6, s * (W - 2.5));
+    root.add(g); glows.push(g);
+  }
+  // Schrift über der Einfahrt
+  if (opts.text) {
+    const tex = canvasTexture(`city:tunneltext:${opts.text}`, 1024, 160, (x) => {
+      x.fillStyle = '#1a1a24'; x.fillRect(0, 0, 1024, 160);
+      x.font = 'bold 110px "Lilita One", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillStyle = '#ffc24a'; x.fillText(opts.text, 512, 84);
+    });
+    for (const s of [1, -1]) {
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(14, 2.2), basic(`city:tunneltext:${opts.text}`, { map: tex, color: 0x9a9a9a }));
+      pl.position.set(s * (L / 2 + 1.02), H + 2.2, 0);
+      pl.rotation.y = s * Math.PI / 2;
+      root.add(pl);
+    }
+  }
+  return makeModel('road_tunnel', root, () => {});
+}
+
+function highwaySign(opts = {}) {
+  const W = (opts.width ?? 26) / 2, H = 7.6;
+  const signs = opts.signs ?? [['HAFEN', '↑ 2 km'], ['CITY', '→']];
+  const root = new THREE.Group();
+  root.add(mesh(cached(`city:gantry:${W}`, () => {
+    const b = new Build();
+    for (const s of [1, -1]) b.box(0.5, H + 0.8, 0.5, 0x8a8e9a, { p: [0, (H + 0.8) / 2, s * (W + 0.6)] }, 0.05);
+    for (const y of [H, H + 0.8]) b.box(0.3, 0.3, W * 2 + 1.6, 0x8a8e9a, { p: [0, y, 0] }, 0.03);
+    for (let k = -W; k <= W; k += 2) b.box(0.12, 0.8, 0.12, 0x8a8e9a, { p: [0, H + 0.4, k] }, 0.01);
+    return b.geometry();
+  }), vcol(0.4, { metalness: 0.5 }, 'gantry'), {}, true));
+  const n = signs.length, sw = Math.min(8, (W * 2 - 2) / n);
+  signs.forEach(([t, sub], k) => {
+    const tex = canvasTexture(`city:hwsign:${t}:${sub}`, 512, 256, (x) => {
+      x.fillStyle = '#0e6a3a'; x.fillRect(0, 0, 512, 256);
+      x.strokeStyle = '#ffffff'; x.lineWidth = 10; x.strokeRect(14, 14, 484, 228);
+      x.fillStyle = '#ffffff'; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.font = 'bold 96px "Lilita One", sans-serif'; x.fillText(t, 256, 100);
+      x.font = 'bold 64px "Lilita One", sans-serif'; x.fillText(sub, 256, 190);
+    });
+    const z = -W + 1 + sw * (k + 0.5) + (W * 2 - 2 - sw * n) / 2;
+    for (const s of [1, -1]) {
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(sw - 0.4, (sw - 0.4) * 0.5), std(`city:hwsign:${t}:${sub}`, { map: tex, roughness: 0.4, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.25 }));
+      pl.position.set(s * 0.2, H + 0.4 - (sw - 0.4) * 0.25 + 0.6, z);
+      pl.rotation.y = s * Math.PI / 2;
+      root.add(pl);
+    }
+  });
+  return makeModel('highway_sign', root, () => {});
+}
+
+function containerStack(opts = {}) {
+  const seed = opts.seed ?? 1;
+  const cols = [0xe8392d, 0x2a7ad8, 0x3aa84a, 0xff8a1a, 0x8a3ad8, 0xd8d8e0];
+  const root = new THREE.Group();
+  root.add(mesh(cached(`city:containers:${seed}`, () => {
+    const b = new Build();
+    let r = seed * 9301 + 49297;
+    const rnd = () => { r = (r * 9301 + 49297) % 233280; return r / 233280; };
+    for (let i = 0; i < 3; i++) {
+      const hgt = 1 + Math.floor(rnd() * 3);
+      for (let k = 0; k < hgt; k++) {
+        const c = cols[Math.floor(rnd() * cols.length)], c2 = new THREE.Color(c).multiplyScalar(0.75).getHex();
+        // gerippte Seitenwände
+        b.box(6, 2.5, 2.4, (x) => (Math.floor((x + 3) * 2.2) % 2 ? c : c2), { p: [0, 1.25 + k * 2.55, (i - 1) * 2.5] }, 0.05, 1);
+      }
+    }
+    return b.geometry();
+  }), vcol(0.6), {}, true));
+  return makeModel('container_stack', root, () => {});
+}
+
 export const MODELS = {
   police_car: policeCar, city_car: cityCar, police_heli: policeHeli, neon_sign: neonSign, street_lamp: streetLamp,
   traffic_light: trafficLight, gas_station: gasStation, barricade, traffic_cone: trafficCone, neon_tower: neonTower, hydrant,
+  road_tunnel: roadTunnel, highway_sign: highwaySign, container_stack: containerStack,
 };

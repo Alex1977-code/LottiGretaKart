@@ -8,6 +8,7 @@ import { CC } from '../game/Race.js';
 import { Ceremony } from '../game/Ceremony.js';
 import { Track } from '../world/Track.js';
 import { getTheme } from '../world/themes.js';
+import { setNight } from '../world/night.js';
 import { racerIcon, preloadIcons } from './icons.js';
 import { logoHTML } from './logo.js';
 import { NetSession } from '../net/session.js';
@@ -43,6 +44,7 @@ export class Menus {
     this.best = load(BEST_KEY, {});
     this.cups = load(CUP_KEY, {});
     ctx.touch.setAutoGas(this.settings.autoGas);
+    setNight(this.settings.night);
     this.mode = 'gp';
     this.gp = null;
     this.screen = null;
@@ -210,6 +212,10 @@ export class Menus {
               <button class="opt ${!s.autoGas ? 'on' : ''}" data-gas="0">Knopf<small>2× Gas = Drift, halten = weiterdriften</small></button>
               <button class="opt ${s.autoGas ? 'on' : ''}" data-gas="1">automatisch</button>
             </div>
+            <h3>Tageszeit</h3><div class="row">
+              <button class="opt ${!s.night ? 'on' : ''}" data-night="0">☀️ Tag</button>
+              <button class="opt ${s.night ? 'on' : ''}" data-night="1">🌙 Nacht<small>Laternen, Scheinwerfer, Neon</small></button>
+            </div>
             <h3>Grafik</h3><div class="row">${qBtns}</div>
           </div>
           <div class="row"><button class="small" data-act="reset">Bestzeiten löschen</button><button class="go" data-back data-focus>Fertig</button></div>
@@ -221,6 +227,7 @@ export class Menus {
       try { localStorage.setItem('lgkart.quality', String(v)); } catch (_) { /* egal */ }
       location.reload();   // die Insel wird mit der neuen Detailstufe neu gebaut
     });
+    this.on('[data-night]', (b) => { s.night = b.dataset.night === '1'; setNight(s.night); save(SAVE_KEY, s); this.showSettings(); });
     this.on('[data-cc]', (b) => { s.cc = Number(b.dataset.cc); save(SAVE_KEY, s); this.showSettings(); });
     this.on('[data-laps]', (b) => { s.laps = Number(b.dataset.laps); save(SAVE_KEY, s); this.showSettings(); });
     this.on('[data-assist]', (b) => { s.assist = b.dataset.assist === '1'; save(SAVE_KEY, s); this.showSettings(); });

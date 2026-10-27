@@ -8,10 +8,14 @@
 //   orca        Orca-Show (Loro Parque): der Schwertwal springt aus dem Becken neben der Strecke und spritzt eine
 //               Riesenwelle über die Fahrbahn (blauer Ring = gleich!) – wer nass wird, wird langsamer.
 //               { u, side (Beckenseite), dist (Becken-Mitte hinter der Bande), r (Beckenradius), every }
+//   traffic     Stadtverkehr (Need-for-Speed-Nacht): Autos fahren auf ihren Spuren mit der Strecke mit, mit
+//               Scheinwerfern und Rücklichtern; Polizei (police: true) ist schneller und wechselt die Spur.
+//               { u, lane (Querversatz in m), speed (m/s), model, opts, police }
 // Definition in der Strecke: hazards: [{ kind, u, model?, speed?, lat?, side?, every? }]
 
 import * as THREE from 'three';
 import { getModel } from '../lgw/course/models/index.js';
+import { addCarLights } from '../world/night.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
@@ -41,6 +45,19 @@ export class Hazards {
           h.dir = Math.random() < 0.5 ? -1 : 1;
           h.speed = d.speed ?? 2.2;
           h.radius = d.radius ?? 0.7;
+          h.down = 0;
+          break;
+        }
+        case 'traffic': {
+          h.model = getModel(d.model ?? (d.police ? 'police_car' : 'city_car'), d.opts ?? {});
+          h.holder = new THREE.Group();
+          h.holder.add(h.model.root);
+          h.holder.scale.setScalar(d.scale ?? 1.0);
+          addCarLights(h.holder);
+          h.s = d.u * track.length;
+          h.lat = h.lane = d.lane ?? 0;
+          h.speed = d.speed ?? 14;
+          h.radius = 1.15;
           h.down = 0;
           break;
         }
@@ -241,6 +258,7 @@ export class Hazards {
           }
           break;
         }
+        case 'traffic': this.updateTraffic(h, dt); break;
         case 'snapper': {
           const p = track.pointAt(h.u, h.lat, h.p ?? (h.p = {}));
           h.holder.position.set(p.x, p.y, p.z);
@@ -423,6 +441,50 @@ export class Hazards {
   }
 
   /** Orca-Show: schwimmen → Anlauf (Warnring) → Sprung → Welle über die Fahrbahn → abtauchen. */
+  /** Stadtverkehr: fährt die Strecke entlang; wer auffährt oder gerammt wird, dreht sich. Polizei wechselt die Spur. */
+  updateTraffic(h, dt) {
+    const race = this.race, track = h.track;
+    if (h.down > 0) {
+      h.down -= dt;
+      h.model.update(dt, 'squashed');
+      h.holder.visible = h.down > 2.4 || h.down <= 0;
+      return;
+    }
+    const L = track.length;
+    h.s = (h.s + h.speed * dt) % L;
+    h.u = h.s / L;
+    const hw = track.hw[Math.min(track.N - 1, Math.floor(h.u * track.N))];
+    if (h.police) {
+      // Spurwechsel: langsam zwischen den Spuren hin und her
+      h.lat = h.lane + Math.sin(h.t * 0.45 + h.u * 20) * hw * 0.55;
+    }
+    h.lat = clamp(h.lat, -hw + 1.4, hw - 1.4);
+    const p = track.pointAt(h.u, h.lat, h.p ?? (h.p = {}));
+    // Fahrtrichtung und leichte Neigung beim Spurwechsel
+    h.holder.position.set(p.x, p.y, p.z);
+    h.holder.rotation.set(0, p.yaw + (h.police ? Math.cos(h.t * 0.45 + h.u * 20) * 0.12 : 0), 0);
+    h.model.update(dt, h.police ? { anim: 'walk' } : { anim: 'idle' });
+    // Kollision: zwei Kreise (vorn, hinten) entlang des Autos
+    const fx = Math.cos(p.yaw), fz = -Math.sin(p.yaw);
+    for (const r of race.racers) {
+      if (r.out || r.remote || r.puppet) continue;
+      if (Math.abs(r.pos.y - p.y) > 2.2) continue;
+      for (const o of [-1.25, 1.25]) {
+        const cx = p.x + fx * o, cz = p.z + fz * o;
+        const dx = r.pos.x - cx, dz = r.pos.z - cz, rr = r.radius + h.radius;
+        if (dx * dx + dz * dz > rr * rr) continue;
+        if (r.invincible) { h.down = 3; race.effects.sparkle(h.holder.position, 0xffffff, 14, 3); if (r.isPlayer) race.audio.sfx('stomp'); }
+        else if (r.hit('spin', null)) {
+          // vom Auto weggeschoben
+          const l = Math.hypot(dx, dz) || 1;
+          r.pos.x += (dx / l) * 0.6; r.pos.z += (dz / l) * 0.6;
+          race.effects.sparkle(r.pos, 0xffe08a, 10, 2);
+        }
+        break;
+      }
+    }
+  }
+
   updateOrca(h, dt) {
     const race = this.race, o = h.orca, c = h.center, R = h.R, dir = h.dir;
     const running = race.state === 'race' || race.state === 'finish' || race.state === 'free' || race.state === 'demo';

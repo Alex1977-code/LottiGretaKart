@@ -39,7 +39,7 @@ function addVarying(shader) {
 /**
  * Detail-Korn und Unterwasser-Look für Gelände/Fahrbahn. grain = Stärke des Korns (0,1 … 0,3), scale = Körnung.
  */
-export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patches = false } = {}) {
+export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patches = false, wet = false } = {}) {
   mat.onBeforeCompile = (shader) => {
     addVarying(shader);
     shader.fragmentShader = shader.fragmentShader
@@ -55,18 +55,23 @@ export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patche
       float c = smoothstep(0.72, 0.8, lgkNoise(vLgkW.xz * 0.6 + 3.0)) * fade;
       diffuseColor.rgb *= 1.0 - c * 0.12;
     }` : ''}
+    ${wet ? `// nasser Asphalt: Pfützen dunkler (und unten glatter = spiegelnd)
+    float lgkPud = smoothstep(0.48, 0.66, lgkNoise(vLgkW.xz * 0.07) * 0.6 + lgkNoise(vLgkW.xz * 0.29 + 5.0) * 0.4);
+    diffuseColor.rgb *= mix(0.92, 0.62, lgkPud);` : ''}
     if (vLgkW.y < -0.15) {
       float dep = clamp(-vLgkW.y / 8.0, 0.0, 1.0);
       diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.5, 0.82, 0.95), 0.4 + 0.5 * dep);
     }
   }`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+  ${wet ? 'roughnessFactor = mix(0.4, 0.05, smoothstep(0.48, 0.66, lgkNoise(vLgkW.xz * 0.07) * 0.6 + lgkNoise(vLgkW.xz * 0.29 + 5.0) * 0.4));' : ''}`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
   if (vLgkW.y < -0.3) {
     float dep = clamp(-vLgkW.y / 3.0, 0.0, 1.0) * (1.0 - smoothstep(30.0, 90.0, vLgkD));
     totalEmissiveRadiance += vec3(0.42, 0.7, 0.75) * lgkCaustic(vLgkW.xz, uLgkTime) * 0.55 * dep;
   }`);
   };
-  mat.customProgramCacheKey = () => `lgk-ground-${key}-${grain}-${scale}-${patches}`;
+  mat.customProgramCacheKey = () => `lgk-ground-${key}-${grain}-${scale}-${patches}-${wet}`;
   return mat;
 }
 

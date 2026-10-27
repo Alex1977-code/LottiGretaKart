@@ -9,6 +9,8 @@ import { lin } from '../lgw/three/world/geometry.js';
 import { Rnd } from '../lgw/three/world/geometry.js';
 import { addGroundDetail, makeWaterMaterial, SHADER_TIME } from './shaders.js';
 import { IslandLife } from './life.js';
+import { buildTrackDetails } from './trackDetail.js';
+import { buildNightLamps } from './night.js';
 
 const TILE = 60; // Kachelgröße in Höhenfeld-Zellen (3 m → 180 m)
 
@@ -32,6 +34,8 @@ export class WorldView {
       ['Strecken', () => this.buildRoads()],
       ['Höhlenberg und Zirkuszelt', () => this.buildStructures()],
       ['Kulisse', () => this.buildDecor()],
+      ['Kurvenschilder und Wimpel', () => buildTrackDetails(this.group, this.world, this.quality)],
+      ['Laternen für die Nacht', () => { const l = buildNightLamps(this.world, this.quality); this.nightLamps = l.night; this.group.add(l.night, l.always); }],
       ['Wälder', () => this.buildForests()],
       ['Boote, Vögel und Schmetterlinge', () => { this.life = new IslandLife(this.group, this.world, this.quality); }],
     ];

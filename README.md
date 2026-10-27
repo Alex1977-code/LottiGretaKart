@@ -26,8 +26,8 @@ neue Sitzpose `kart` für die Heldinnen in `src/lgw/three/avatars/hero.js`).
 
 ## Die Insel (wie in Mario Kart World)
 
-Alle neunzehn Strecken liegen auf **der Grünen Blockinsel und drei kleinen Nachbarinseln** (Spukinsel, Katzeninsel,
-Palmen-City) und sind durch Landstraßen verbunden – zu den Nachbarinseln führen Straßen über das Wasser. Man kann von Strecke zu Strecke fahren, über den See (auf dem Wasser), durch den Höhlenberg und ins
+Alle zwanzig Strecken liegen auf **der Grünen Blockinsel und vier kleinen Nachbarinseln** (Spukinsel, Katzeninsel,
+Palmen-City, Neon-Insel) und sind durch Landstraßen verbunden – zu den Nachbarinseln führen Straßen über das Wasser. Man kann von Strecke zu Strecke fahren, über den See (auf dem Wasser), durch den Höhlenberg und ins
 Zirkuszelt. Himmel, Licht und Nebel blenden beim Fahren je Region über (Sonne über der Wiese, goldener Herbst,
 dunkle Höhle, Zirkus-Scheinwerfer, Abendrot über der Stadt, Strand, Schnee, Burg im Mondlicht).
 Das Meer bewegt sich (Wellen im Shader, türkis im Flachen, tiefblau draußen, Schaum-Säume am Strand), Wiesen und
@@ -57,15 +57,16 @@ Schmetterlinge um das eigene Kart (`src/world/life.js`).
 | Katzeninsel | Nachbarinsel im Südwesten | Die Strecke ist ein **großes Herz**: riesige schlafende Katze in der Mitte (atmet, Zzz), **Karton-Tunnel „MIAU!“** (oben spazieren Katzen), Kratzbäume, Winkekatzen, Näpfe, Kissen, Katzen in allen Fellfarben; Wollknäuel rollen, Mäuse flitzen, Kätzchen tapsen über die Fahrbahn |
 | Hasenhügel | Westküste | Lange Schlängelrunde durch die Frühlingswiese: Möhrenbeete, Riesenmöhren, Hasenställe, Hasenlöcher mit Kaninchen, Windmühle, **durch den großen Hasenbau** (Erdröhre mit Wurzeln und Glühwürmchen); Kaninchen hoppeln über die Fahrbahn, bemalte Riesen-Eier rollen |
 | Palmen-City | Nachbarinsel im Osten, **Großstadt** im Sonnenuntergang | **Acht mit Stadtautobahn-Brücke**, Hochhäuser, Neon-Türme und Neon-Schilder, Palmen, Tankstelle; **Verfolgungsjagd**: Polizeiautos mit Blaulicht und Stadtverkehr kreuzen die Fahrbahn, der Polizeihubschrauber kreist mit Suchscheinwerfer, Absperrungen, Sprungschanze |
+| Mitternachts-Highway | Neon-Insel im Nordosten, **immer Nacht** (wie Need for Speed) | Breiter Boulevard durch den **Hafentunnel** mit orangen Tunnellampen, Haarnadel am Hafen, **Hochstraße** auf Stelzen mit grünen Schilderbrücken; **nasser, spiegelnder Asphalt** (Laternen und Neon spiegeln sich auf der Straße), Hochhäuser mit leuchtenden Fenstern, Neon-Reklame, Container; **Stadtverkehr fährt auf den Spuren mit** (mit Scheinwerfern und Rücklichtern), **Polizei mit Blaulicht** ist schneller und wechselt die Spur, Hubschrauber mit Suchscheinwerfer. Straßen zur Wüste und über das Meer nach Palmen-City |
 
 **Modi**
-- **Grand Prix** (Beeren-, Brummbär-, Muschel-, Kronen-, Bonbon-, Wüsten-, Tierpark-, Piraten-, Dino-, Ozean-, Grusel-, Kuschel- und Neon-Cup): das erste Rennen sind Runden, ab dem zweiten startet man an der
+- **Grand Prix** (Beeren-, Brummbär-, Muschel-, Kronen-, Bonbon-, Wüsten-, Tierpark-, Piraten-, Dino-, Ozean-, Grusel-, Kuschel-, Neon- und Mitternachts-Cup): das erste Rennen sind Runden, ab dem zweiten startet man an der
   vorigen Strecke und fährt über die Verbindungsstraße zur nächsten (Anfahrt + Runden). Punkte für 12 Fahrer,
   am Ende Siegerehrung mit Pokal.
-- **K.-o.-Tour** (Große Inseltour, Kleine Runde, Küste und Gipfel, Wilde Weltreise, Tierpark-Safari, Schatzsuche, Gruselnacht, Tierfreunde, Verfolgungsjagd, Tauchgang): eine Rallye quer über die Insel mit 12 Fahrern; an jedem
+- **K.-o.-Tour** (Große Inseltour, Kleine Runde, Küste und Gipfel, Wilde Weltreise, Tierpark-Safari, Schatzsuche, Gruselnacht, Tierfreunde, Verfolgungsjagd, Mitternachtsjagd, Tauchgang): eine Rallye quer über die Insel mit 12 Fahrern; an jedem
   Checkpoint scheiden die Letzten aus.
 - **Einzelrennen** und **Zeitfahren** (mit drei Turbo-Beeren, Bestzeiten werden gespeichert).
-- **Freie Fahrt**: die ganze Insel erkunden und 54 versteckte Sternmünzen finden (werden gespeichert).
+- **Freie Fahrt**: die ganze Insel erkunden und 55 versteckte Sternmünzen finden (werden gespeichert).
 
 - **Mehrere Handys** (bis zu 12 Fahrer, Rest Computer): ein Handy ist Gastgeber und rechnet das Rennen, jeder Gast
   fährt sein eigenes Kart direkt (keine Eingabeverzögerung) und sieht die anderen nach Schnappschüssen des Gastgebers.
@@ -86,6 +87,15 @@ Schmetterlinge um das eigene Kart (`src/world/life.js`).
   ohne Internet, also auch im Flugzeug.
 
 Klassen: Gemütlich (50 ccm), Flott (100 ccm), Rasant (150 ccm).
+
+**Grafik wie Mario Kart 8** (ab Grafikstufe „Hoch“): weiches Leuchten (Bloom) für helle und leuchtende Dinge,
+kräftige Farben und Kontraste, warme Lichter und kühle Schatten, Vignette, Kantenglättung; helles **Randlicht** an
+Figuren, Karts, Bäumen und Bauten. Auf allen Strecken: rot-weiße **Pfeilschilder** außen an engen Kurven,
+**Reifenspuren** auf der Ideallinie, bunte **Wimpelketten** über den Geraden.
+
+**Tag und Nacht** (Einstellungen → Tageszeit): nachts haben alle Strecken einen Sternenhimmel mit Mond, entlang
+aller Straßen leuchten **Laternen** mit warmen Lichtkegeln, die Karts fahren mit **Scheinwerfern**, Fenster, Neon und
+Laternen strahlen. Zum Ausprobieren: `?night=1` an die Adresse hängen.
 
 **Karte**: Die Nahkarte dreht mit (vorn ist oben), der Weg voraus ist gelb mit Pfeilen; Antippen/Klicken wechselt
 zur ganzen Insel. Kommt eine Kurve oder ist man abseits, zeigt ein gelber Pfeil „Hier entlang“.

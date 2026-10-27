@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { buildKart, SPARK_COLORS } from './kartModel.js';
+import { addHeadlights } from '../world/night.js';
 import { createDriver } from './drivers.js';
 import { physicsOf } from './racers.js';
 import { glowTexture } from '../lgw/course/models/lib/kit.js';
@@ -66,6 +67,7 @@ export class Racer {
     this.root.add(this.kart.root);
     this.driver = createDriver(race.view, def, this.kart);
     this.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    if (race.night) this.headlights = addHeadlights(this.kart);
     // Funkelstern-Schein (eigenes Material: Farbe läuft durch den Regenbogen)
     this.starGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffffff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
     this.starGlow.scale.setScalar(3.4);
@@ -432,7 +434,7 @@ export class Racer {
       if (far) return;
       // Schatten nur nah an der Kamera (der Schattenbereich ist ohnehin klein)
       const near = d2 < 45 * 45;
-      if (near !== this.castsShadow) { this.castsShadow = near; this.root.traverse((o) => { if (o.isMesh) o.castShadow = near; }); }
+      if (near !== this.castsShadow) { this.castsShadow = near; this.root.traverse((o) => { if (o.isMesh && !o.userData.noShadow) o.castShadow = near; }); }
     }
     const fx = Math.cos(this.yaw), fz = -Math.sin(this.yaw);
     // Neigung aus dem Gelände (auf dem Wasser: leichtes Schaukeln)

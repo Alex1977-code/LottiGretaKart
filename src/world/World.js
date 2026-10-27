@@ -194,7 +194,10 @@ export class World {
     const hw = c.hw ?? 6.5;
     const ctrl = [[...ga.center, hw], [...ga.mid, hw], [...ga.outer, hw], ...c.via.map(([x, z]) => [x, z, hw]), [...gb.outer, hw], [...gb.mid, hw], [...gb.center, hw]];
     const theme = getTheme('grass');
-    const track = new Track({ id: c.id, ctrl, hw, margin: 3 }, { ...theme, road: 0x9a96a8, road2: 0x948fa3 }, { closed: false, heightFn: this.base });
+    // zu einer Nachtstrecke: dunkler, nasser Asphalt und Laternen immer an
+    const night = !!(A.def.night || B.def.night);
+    const look = night ? { ...theme, road: 0x3a3946, road2: 0x363542, wetRoad: true } : { ...theme, road: 0x9a96a8, road2: 0x948fa3 };
+    const track = new Track({ id: c.id, ctrl, hw, margin: 3, night }, look, { closed: false, heightFn: this.base });
     // Banden-Lücken an beiden Toren
     for (const g of [ga, gb]) g.course.track.gaps.push({ side: g.side, s: g.s, half: hw + 5 });
     return { id: c.id, def: c, a: ga, b: gb, hw, track };

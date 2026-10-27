@@ -20,6 +20,7 @@ import { hostSnapshot, applyRemote, guestState, guestApply, guestPuppets } from 
 import { SPARK_COLORS } from './kartModel.js';
 import { getModel } from '../lgw/course/models/index.js';
 import { getTheme } from '../world/themes.js';
+import { isNight, nightTheme, applyNightGlow } from '../world/night.js';
 
 const TAU = Math.PI * 2;
 const wrapA = (a) => { a %= TAU; if (a > Math.PI) a -= TAU; else if (a < -Math.PI) a += TAU; return a; };
@@ -94,6 +95,11 @@ export class Race {
     this.def = this.course.def;
     this.theme = this.course.theme;
     this.label = this.track?.label ?? 'Freie Fahrt';
+    // Nacht: Strecke (oder Einstellung) bestimmt es; Laternen, Scheinwerfer, stärkeres Leuchten
+    this.night = o.night ?? (isNight() || !!this.def?.night);
+    app.post?.setNight(this.night ? 1 : 0);
+    applyNightGlow(this.night);
+    if (app.worldView?.nightLamps) app.worldView.nightLamps.visible = this.night;
 
     // Gruppe für alles Rennen-eigene (wird mit dispose entfernt)
     this.scene = new THREE.Group();
@@ -131,6 +137,13 @@ export class Race {
     this.locals.forEach((h, k) => { h.pi = k; });
     this.player = this.locals[0] ?? null;
     this.split = this.locals.length > 1;
+    // nachts: echter Scheinwerfer an den Karts der Spieler an diesem Gerät
+    if (this.night) for (const h of this.locals) {
+      const sp = new THREE.SpotLight(0xe6ecff, 45, 46, 0.52, 0.6, 1.3);
+      sp.position.set(0.9, 1.1, 0);
+      sp.target.position.set(14, -1, 0);
+      h.root.add(sp, sp.target);
+    }
     if (this.free) this.setupFree(); else this.grid();
     if (this.trial) for (const h of this.humans) h.item = { id: 'beere3', charges: 3 };
     // Start-Ampel neben der Startlinie
@@ -534,12 +547,12 @@ export class Race {
     if (this.ambT > 0) return;
     this.ambT = 0.15;
     const f = this.focus ?? this.camera.position;
-    const ws = this.world.ambienceAt(f.x, f.z).map((x) => ({ theme: getTheme(x.theme), w: x.w, name: x.theme }));
+    const ws = this.world.ambienceAt(f.x, f.z).map((x) => ({ theme: this.night ? nightTheme(getTheme(x.theme)) : getTheme(x.theme), w: x.w, name: x.theme }));
     this.app.sky.blend(ws);
-    const dark = ws.reduce((a, x) => a + ((x.name === 'cave' || x.name === 'circus') ? x.w : x.name === 'castle' || x.name === 'halloween' ? x.w * 0.6 : x.name === 'volcano' ? x.w * 0.35 : 0), 0);
+    const dark = (this.night ? 0.5 : 0) + ws.reduce((a, x) => a + ((x.name === 'cave' || x.name === 'circus') ? x.w : x.name === 'castle' || x.name === 'halloween' ? x.w * 0.6 : x.name === 'volcano' ? x.w * 0.35 : 0), 0);
     this.playerLight.intensity = 26 * dark;
     // in Höhle und Zelt kaum Studio-Reflexionen
-    if (this.app.scene.environment) this.app.scene.environmentIntensity = (this.app.envIntensity ?? 0.42) * (1 - 0.7 * Math.min(1, dark));
+    if (this.app.scene.environment) this.app.scene.environmentIntensity = (this.app.envIntensity ?? 0.42) * (1 - 0.7 * Math.min(1, dark)) * (this.night ? 0.45 : 1);
     this.darkness = dark;
   }
 
@@ -807,7 +820,9 @@ export class Race {
   drawView(renderer, cam) {
     const sc = this.app.scene, p = cam.position;
     const under = p.y < -0.15 && this.world.hasUnderwater && this.world.underwaterAt(p.x, p.z);
-    if (!under) { renderer.render(sc, cam); return; }
+    const post = !this.split ? this.app.post : null;
+    const draw = () => (post ? post.render(sc, cam) : renderer.render(sc, cam));
+    if (!under) { draw(); return; }
     const sky = this.app.sky, fog = sc.fog;
     const save = this._uwSave ?? (this._uwSave = { bg: new THREE.Color(), fog: new THREE.Color() });
     save.bg.copy(sc.background); save.fog.copy(fog.color); save.near = fog.near; save.far = fog.far;
@@ -818,7 +833,7 @@ export class Race {
     fog.near = 3; fog.far = 85 - 25 * dep;
     if (sky?.domeGroup) sky.domeGroup.visible = false;
     if (sky?.hemi) sky.hemi.intensity *= 1.15;
-    renderer.render(sc, cam);
+    draw();
     sc.background.copy(save.bg); fog.color.copy(save.fog); fog.near = save.near; fog.far = save.far;
     if (sky?.domeGroup) sky.domeGroup.visible = save.dome;
     if (sky?.hemi) sky.hemi.intensity = save.hemi;

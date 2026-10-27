@@ -22,6 +22,9 @@ import { Sky } from './world/Sky.js';
 import { getTheme } from './world/themes.js';
 import { KO_TOURS } from './world/worldDef.js';
 import { logoHTML } from './ui/logo.js';
+import { setNight } from './world/night.js';
+import { Post } from './world/post.js';
+import { installRimLight } from './world/trackDetail.js';
 
 const params = new URLSearchParams(location.search);
 const app = document.getElementById('app');
@@ -45,6 +48,9 @@ const ctx = {
   race: null,
   paused: false,
 };
+// Nachbearbeitung wie bei Mario Kart 8 (Leuchten, Farben, Kontrast) ab Grafikstufe „Hoch“
+if (quality >= 2 && params.get('post') !== '0') ctx.post = new Post(renderer, quality);
+if (quality >= 2) installRimLight();
 window.__kart = ctx; // Tests/Fehlersuche
 ctx.ai = { aiInput, initAI }; // Tests: Spielerin von der KI fahren lassen
 // Tests: Rennen deterministisch um n Schritte vorspulen (ohne Bildaufbau dazwischen)
@@ -59,6 +65,7 @@ function resize() {
   ratio = Math.min(ratio, Math.sqrt(maxPx / (w * h))) * pixelScale;
   renderer.setPixelRatio(ratio);
   renderer.setSize(w, h, false);
+  ctx.post?.setSize(w, h, ratio);
   canvas.style.width = `${w}px`; canvas.style.height = `${h}px`;
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
@@ -117,6 +124,7 @@ ctx.endRace = () => {
 };
 
 const menus = new Menus(ctx);
+if (params.has('night')) setNight(params.get('night') === '1');
 ctx.menus = menus;
 // App im Hintergrund (Tab gewechselt, Handy gesperrt): Rennen anhalten
 document.addEventListener('visibilitychange', () => {

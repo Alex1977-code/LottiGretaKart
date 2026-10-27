@@ -251,6 +251,25 @@ const CITY = {
   bridge: 0x8a8a96, bridgePillar: 0x7a7a86, bridgeTop: 0x6a6878, bridgeTop2: 0x646272,
 };
 
+// Mitternachts-Highway: Großstadt bei Nacht wie in Need for Speed – nasser, spiegelnder Asphalt, Neon in Pink und
+// Türkis, Natriumlicht im Tunnel, Lichtglocke der Stadt am Horizont. Immer Nacht.
+const NIGHTCITY = {
+  ...CITY,
+  label: 'Mitternachts-Highway',
+  sky: [[1, 0x04051a], [0.45, 0x0b0f30], [0.15, 0x1e1648], [0.03, 0x4a2462], [0, 0x5a2a68], [-0.1, 0x221634], [-1, 0x08060f]],
+  background: 0x2a1a44,
+  fog: { color: 0x241a40, near: 70, far: 360 },
+  hemi: { sky: 0x5a64b8, ground: 0x2a1e3a, intensity: 0.75 },
+  sun: { color: 0x9fb2ff, intensity: 0.85, dir: [-0.4, 0.8, -0.5] },
+  sunDisc: true, clouds: false, isNight: true,
+  city: [0x1a1830, 0x22203c, 0x2a2446, 0x1e1a34, 0x302a4e], cityWindow: 0xffd88a,
+  grass: 0x2e4a3a, grass2: 0x2a4436, grassFar: 0x24382e, offroad: 0x4a4858, offroad2: 0x44425a,   // Gehweg
+  road: 0x33323e, road2: 0x302f3c, line: 0xf2f2f6, lineYellow: 0xffcf3a, curbA: 0xff3a8a, curbB: 0x1a1a22,
+  wallA: 0x8a8e9a, wallB: 0x8a8e9a, wallTop: 0x3ad8ff, wallH: 1.0,
+  bridge: 0x6a6a76, bridgePillar: 0x5a5a66, bridgeTop: 0x4a4858, bridgeTop2: 0x46445a,
+  wetRoad: true,
+};
+
 // Wrack-Riff: strahlender Hafen an der Nordküste, Kai aus Beton, Bojen-Banden rot-weiß; das Deck der Fähre aus Stahl
 const REEF = {
   ...GRASS,
@@ -283,5 +302,5 @@ const JUNGLE = {
   bridge: 0x7a5a32, bridgePillar: 0x6a4a2a, bridgeTop: 0x9a7a4a, bridgeTop2: 0x8e6e42,
 };
 
-export const THEMES = { halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
+export const THEMES = { nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
 export const getTheme = (n) => THEMES[n] ?? GRASS;

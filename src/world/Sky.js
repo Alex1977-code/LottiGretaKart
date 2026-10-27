@@ -131,7 +131,9 @@ export class Sky {
     this.sun.intensity = mixNum((t) => t.sun.intensity);
     const disc = mixNum((t) => (t.sunDisc ? 1 : 0));
     if (this.sunParts) for (const m of this.sunParts) m.visible = disc > 0.5;
-    if (this.clouds) this.clouds.visible = mixNum((t) => (t.clouds ? 1 : 0)) > 0.4;
+    const nk = mixNum((t) => (t.isNight ? 1 : 0));
+    if (this.clouds) this.clouds.visible = nk < 0.5 && mixNum((t) => (t.clouds ? 1 : 0)) > 0.4;
+    this.setNightLook(nk);
     if (key === this.blendKey) return;
     this.blendKey = key;
     const P = this.dome.geometry.attributes.position, Col = this.dome.geometry.attributes.color;
@@ -144,6 +146,41 @@ export class Sky {
       Col.setXYZ(i, r / sum, g / sum, b / sum);
     }
     Col.needsUpdate = true;
+  }
+
+  /** Nachts: Sterne, Mond statt Sonne (kühl, kleiner Hof), keine Wolken. */
+  setNightLook(k) {
+    const on = k > 0.5;
+    if (on === this.nightOn) return;
+    this.nightOn = on;
+    if (on && !this.stars) this.buildStars();
+    if (this.stars) this.stars.visible = on;
+    if (this.sunParts) {
+      const [disc, glow] = this.sunParts;
+      disc.material.color.setHex(on ? 0xe8eeff : 0xfff7d2);
+      disc.scale.setScalar(on ? 0.62 : 1);
+      glow.material.color.setHex(on ? 0x8fa8ff : 0xffffff);
+      glow.scale.setScalar(on ? 120 : 190);
+    }
+  }
+
+  buildStars() {
+    const rnd = new Rnd(4242), n = 900;
+    const pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const a = rnd.frac() * Math.PI * 2, h = 0.06 + Math.pow(rnd.frac(), 0.7) * 0.94;
+      const r = Math.sqrt(1 - h * h) * SKY_R * 0.95;
+      pos.set([Math.cos(a) * r, h * SKY_R * 0.95, Math.sin(a) * r], i * 3);
+      const b = 0.45 + rnd.frac() * 0.9, warm = rnd.frac();
+      col.set([b * (0.85 + 0.15 * warm), b * 0.92, b * (1.05 - 0.2 * warm)], i * 3);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    this.stars = new THREE.Points(g, new THREE.PointsMaterial({ size: 2.2, sizeAttenuation: false, vertexColors: true, fog: false, depthWrite: false, transparent: true }));
+    this.stars.frustumCulled = false;
+    this.stars.renderOrder = -9;
+    this.domeGroup.add(this.stars);
   }
 
   /** Kuppel und Schattenkamera folgen dem Fokus (Spieler). */

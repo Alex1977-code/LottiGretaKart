@@ -5,6 +5,7 @@
 // Platzierung immer außerhalb der Banden (Abstand wird geprüft).
 
 import * as THREE from 'three';
+import { nightGlow } from './night.js';
 import { Build, vcol } from '../lgw/course/models/lib/kit.js';
 import { getModel } from '../lgw/course/models/index.js';
 import { Rnd } from '../lgw/three/world/geometry.js';
@@ -306,7 +307,7 @@ export class Decor {
   /** Stadt in der Insel-Welt: Hochhäuser innerhalb und rund um die Autobahn, nie auf Straßen; Häuser sind Hindernisse. */
   worldCity(colors, windowColor, n) {
     const b = this.track.bounds, w = this.world;
-    const parts = new Build();
+    const parts = new Build(), wins = [];
     let placed = 0, tries = 0;
     while (placed < n && tries < n * 30) {
       tries++;
@@ -316,9 +317,12 @@ export class Decor {
       const gy = w.heightAt(x, z);
       const col = colors[placed % colors.length];
       parts.box(s, h, s, col, { p: [x, gy + h / 2 - 2, z] }, 0.5, 1);
-      for (let y = 5; y < h - 4; y += 6) {
-        if (this.r() < 0.35) continue;
-        parts.box(s * 1.01, 1.1, s * 1.01, windowColor, { p: [x, gy + y - 2, z] }, 0, 1);
+      // einzelne Fenster (Vierecke) auf allen vier Seiten, zufällig beleuchtet
+      const nw = Math.max(2, Math.round(s / 3.2)), pitch = s / nw;
+      for (let y = 4; y < h - 4; y += 3.6) for (let f = 0; f < 4; f++) for (let k = 0; k < nw; k++) {
+        if (this.r() < 0.42) continue;
+        const along = -s / 2 + pitch * (k + 0.5);
+        wins.push([x, gy + y - 2, z, f, along, s / 2 + 0.04, pitch * 0.55, this.r() < 0.22 ? 0xbfe4ff : windowColor]);
       }
       parts.box(s * 0.5, 2, s * 0.5, 0x8a8aa0, { p: [x, gy + h - 1, z] }, 0.2, 1);
       const hs = s / 2;
@@ -331,6 +335,15 @@ export class Decor {
     m.castShadow = true; m.receiveShadow = true;
     m.name = 'stadt';
     this.group.add(m);
+    // Fensterbänder leuchten (nachts stark – siehe night.js)
+    const wm = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, emissive: 0xffffff, emissiveIntensity: 0.18 });
+    wm.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance *= vColor.rgb;\n#include <emissivemap_fragment>'); };
+    wm.customProgramCacheKey = () => 'lgkWindows';
+    nightGlow(wm, 0.15, 1.05);
+    const wmesh = new THREE.Mesh(windowQuads(wins), wm);
+    wmesh.receiveShadow = true;
+    wmesh.name = 'stadtfenster';
+    this.group.add(wmesh);
   }
 
   /** Einzelnes Modell aus der Welt; at = { u, side, dist (über die Bande hinaus) } oder { x, z }. */
@@ -341,6 +354,7 @@ export class Decor {
     else {
       const p0 = tr.pointAt(at.u, 0);
       const lat = at.lat !== undefined ? at.lat * p0.hw : (at.side ?? 1) * (tr.wallAt(p0.i) + (at.dist ?? 2));
+      if (at.lat === 0) (tr.overRoad ??= []).push(at.u);   // Bauwerk über der Fahrbahn (Tunnel, Fähre …)
       const p = tr.pointAt(at.u, lat);
       x = p.x; z = p.z; base = p;
       if (yaw === null) {
@@ -673,4 +687,31 @@ export class Decor {
     this.group.traverse((o) => { if (o.isInstancedMesh) o.dispose(); });
     this.group.removeFromParent();
   }
+}
+
+/** Fenster als Vierecke: [x, y, z, Seite 0–3, Versatz entlang der Seite, Abstand zur Mitte, Breite, Farbe]. */
+function windowQuads(list) {
+  const pos = new Float32Array(list.length * 18), nor = new Float32Array(list.length * 18), col = new Float32Array(list.length * 18);
+  const c = new THREE.Color();
+  const H = 1.25;
+  list.forEach(([x, y, z, f, a, d, w, hex], i) => {
+    // Seite f: Normale (nx, nz), Richtung entlang (tx, tz)
+    const nx = [1, 0, -1, 0][f], nz = [0, 1, 0, -1][f], tx = -nz, tz = nx;
+    const cx = x + nx * d + tx * a, cz = z + nz * d + tz * a;
+    const P = [[-w / 2, -H / 2], [w / 2, -H / 2], [w / 2, H / 2], [-w / 2, -H / 2], [w / 2, H / 2], [-w / 2, H / 2]];
+    c.setHex(hex);
+    P.forEach(([u, v], j) => {
+      // gegen den Uhrzeigersinn von außen gesehen
+      const o = (i * 6 + j) * 3;
+      pos[o] = cx - tx * u; pos[o + 1] = y + v; pos[o + 2] = cz - tz * u;
+      nor[o] = nx; nor[o + 1] = 0; nor[o + 2] = nz;
+      col[o] = c.r; col[o + 1] = c.g; col[o + 2] = c.b;
+    });
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.computeBoundingSphere();
+  return g;
 }
