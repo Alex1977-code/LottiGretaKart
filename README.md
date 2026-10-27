@@ -26,8 +26,8 @@ neue Sitzpose `kart` für die Heldinnen in `src/lgw/three/avatars/hero.js`).
 
 ## Die Insel (wie in Mario Kart World)
 
-Alle zwanzig Strecken liegen auf **der Grünen Blockinsel und vier kleinen Nachbarinseln** (Spukinsel, Katzeninsel,
-Palmen-City, Neon-Insel) und sind durch Landstraßen verbunden – zu den Nachbarinseln führen Straßen über das Wasser. Man kann von Strecke zu Strecke fahren, über den See (auf dem Wasser), durch den Höhlenberg und ins
+Alle einundzwanzig Strecken liegen auf **der Grünen Blockinsel und fünf Nachbarinseln** (Spukinsel, Katzeninsel,
+Palmen-City, Neon-Insel, Teneriffa) und sind durch Landstraßen verbunden – zu den Nachbarinseln führen Straßen über das Wasser. Man kann von Strecke zu Strecke fahren, über den See (auf dem Wasser), durch den Höhlenberg und ins
 Zirkuszelt. Himmel, Licht und Nebel blenden beim Fahren je Region über (Sonne über der Wiese, goldener Herbst,
 dunkle Höhle, Zirkus-Scheinwerfer, Abendrot über der Stadt, Strand, Schnee, Burg im Mondlicht).
 Das Meer bewegt sich (Wellen im Shader, türkis im Flachen, tiefblau draußen, Schaum-Säume am Strand), Wiesen und
@@ -58,15 +58,16 @@ Schmetterlinge um das eigene Kart (`src/world/life.js`).
 | Hasenhügel | Westküste | Lange Schlängelrunde durch die Frühlingswiese: Möhrenbeete, Riesenmöhren, Hasenställe, Hasenlöcher mit Kaninchen, Windmühle, **durch den großen Hasenbau** (Erdröhre mit Wurzeln und Glühwürmchen); Kaninchen hoppeln über die Fahrbahn, bemalte Riesen-Eier rollen |
 | Palmen-City | Nachbarinsel im Osten, **Großstadt** im Sonnenuntergang | **Acht mit Stadtautobahn-Brücke**, Hochhäuser, Neon-Türme und Neon-Schilder, Palmen, Tankstelle; **Verfolgungsjagd**: Polizeiautos mit Blaulicht und Stadtverkehr kreuzen die Fahrbahn, der Polizeihubschrauber kreist mit Suchscheinwerfer, Absperrungen, Sprungschanze |
 | Mitternachts-Highway | Neon-Insel im Nordosten, **immer Nacht** (wie Need for Speed) | Breiter Boulevard durch den **Hafentunnel** mit orangen Tunnellampen, Haarnadel am Hafen, **Hochstraße** auf Stelzen mit grünen Schilderbrücken; **nasser, spiegelnder Asphalt** (Laternen und Neon spiegeln sich auf der Straße), Hochhäuser mit leuchtenden Fenstern, Neon-Reklame, Container; **Stadtverkehr fährt auf den Spuren mit** (mit Scheinwerfern und Rücklichtern), **Polizei mit Blaulicht** ist schneller und wechselt die Spur, Hubschrauber mit Suchscheinwerfer. Straßen zur Wüste und über das Meer nach Palmen-City |
+| Teneriffa | Kanaren-Insel im Südosten | Start auf der **Strandpromenade** (Palmen, Laternen, Cafés, Paradiesvogelblumen, Sonnenschirme am Strand, Hotels), Durchfahrt durch das **Einkaufszentrum** „Centro Comercial“ (Ladenzeilen auf zwei Etagen, Glasdach), **Serpentinen** mit Haarnadelkurven den **Teide** hinauf (Schneegipfel, Seilbahn, Kanarenkiefern, Lavafelsen, Ziegen auf der Straße), über den Kamm und hinunter in die **Altstadt mit engen Gassen** zwischen bunten Häusern mit Holzbalkonen, Kirche und Drachenbaum. Grüne **Guaguas** (Linienbusse) und Autos fahren mit. Straßen zum Loro Parque und nach Palmen-City |
 
 **Modi**
-- **Grand Prix** (Beeren-, Brummbär-, Muschel-, Kronen-, Bonbon-, Wüsten-, Tierpark-, Piraten-, Dino-, Ozean-, Grusel-, Kuschel-, Neon- und Mitternachts-Cup): das erste Rennen sind Runden, ab dem zweiten startet man an der
+- **Grand Prix** (Beeren-, Brummbär-, Muschel-, Kronen-, Bonbon-, Wüsten-, Tierpark-, Piraten-, Dino-, Ozean-, Grusel-, Kuschel-, Neon-, Mitternachts- und Kanaren-Cup): das erste Rennen sind Runden, ab dem zweiten startet man an der
   vorigen Strecke und fährt über die Verbindungsstraße zur nächsten (Anfahrt + Runden). Punkte für 12 Fahrer,
   am Ende Siegerehrung mit Pokal.
-- **K.-o.-Tour** (Große Inseltour, Kleine Runde, Küste und Gipfel, Wilde Weltreise, Tierpark-Safari, Schatzsuche, Gruselnacht, Tierfreunde, Verfolgungsjagd, Mitternachtsjagd, Tauchgang): eine Rallye quer über die Insel mit 12 Fahrern; an jedem
+- **K.-o.-Tour** (Große Inseltour, Kleine Runde, Küste und Gipfel, Wilde Weltreise, Tierpark-Safari, Schatzsuche, Gruselnacht, Tierfreunde, Verfolgungsjagd, Mitternachtsjagd, Kanaren-Rundfahrt, Tauchgang): eine Rallye quer über die Insel mit 12 Fahrern; an jedem
   Checkpoint scheiden die Letzten aus.
 - **Einzelrennen** und **Zeitfahren** (mit drei Turbo-Beeren, Bestzeiten werden gespeichert).
-- **Freie Fahrt**: die ganze Insel erkunden und 55 versteckte Sternmünzen finden (werden gespeichert).
+- **Freie Fahrt**: die ganze Insel erkunden und 56 versteckte Sternmünzen finden (werden gespeichert).
 
 - **Mehrere Handys** (bis zu 12 Fahrer, Rest Computer): ein Handy ist Gastgeber und rechnet das Rennen, jeder Gast
   fährt sein eigenes Kart direkt (keine Eingabeverzögerung) und sieht die anderen nach Schnappschüssen des Gastgebers.
@@ -96,6 +97,11 @@ Figuren, Karts, Bäumen und Bauten. Auf allen Strecken: rot-weiße **Pfeilschild
 **Tag und Nacht** (Einstellungen → Tageszeit): nachts haben alle Strecken einen Sternenhimmel mit Mond, entlang
 aller Straßen leuchten **Laternen** mit warmen Lichtkegeln, die Karts fahren mit **Scheinwerfern**, Fenster, Neon und
 Laternen strahlen. Zum Ausprobieren: `?night=1` an die Adresse hängen.
+
+**Wetter** (Einstellungen → Wetter: Sonne, Regen, Calima oder Zufall): bei **Regen** grauer Himmel, schräg fallende
+Tropfen, nasse Straßen mit Pfützen, Gischt hinter den Rädern, Scheinwerfer an und Regenrauschen; bei **Calima**
+(Saharastaub wie auf den Kanaren) ockerfarbener Dunst, blasse Sonne, kurze Sicht und treibende Staubkörner – auf
+Teneriffa kommt Calima bei „Zufall“ öfter vor. Zum Ausprobieren: `?weather=rain` oder `?weather=calima`.
 
 **Karte**: Die Nahkarte dreht mit (vorn ist oben), der Weg voraus ist gelb mit Pfeilen; Antippen/Klicken wechselt
 zur ganzen Insel. Kommt eine Kurve oder ist man abseits, zeigt ein gelber Pfeil „Hier entlang“.

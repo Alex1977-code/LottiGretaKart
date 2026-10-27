@@ -251,6 +251,22 @@ const CITY = {
   bridge: 0x8a8a96, bridgePillar: 0x7a7a86, bridgeTop: 0x6a6878, bridgeTop2: 0x646272,
 };
 
+// Teneriffa: kräftig blauer Kanaren-Himmel, warmes Licht, trockenes Grün, dunkler Vulkansand am Wegrand,
+// weiße Banden mit Kanaren-Blau und Gelb.
+const TENERIFE = {
+  ...GRASS,
+  label: 'Teneriffa',
+  sky: [[1, 0x1a6ae0], [0.45, 0x3a92f4], [0.15, 0x86c8fa], [0.03, 0xd2eefc], [0, 0xeaf8ff], [-0.1, 0xbfe2f2], [-1, 0x7ab8d8]],
+  background: 0xd4eefa,
+  fog: { color: 0xd8eef8, near: 120, far: 540 },
+  hemi: { sky: 0xd8eeff, ground: 0x9a7a52, intensity: 1.4 },
+  sun: { color: 0xfff2d8, intensity: 3.0, dir: [-0.3, 1, 0.45] },
+  hills: 0x8a8a52, hills2: 0x9a8a5a,
+  grass: 0x8eaa4c, grass2: 0x86a246, grassFar: 0x7e9842, offroad: 0x5e4e46, offroad2: 0x564640,   // Vulkansand
+  road: 0x8c8894, road2: 0x86828e, line: 0xf8f6f0, curbA: 0xe8392d, curbB: 0xf8f6f0,
+  wallA: 0xfaf6ee, wallB: 0x2a6ab8, wallTop: 0xf2c14e, wallH: 0.8,
+};
+
 // Mitternachts-Highway: Großstadt bei Nacht wie in Need for Speed – nasser, spiegelnder Asphalt, Neon in Pink und
 // Türkis, Natriumlicht im Tunnel, Lichtglocke der Stadt am Horizont. Immer Nacht.
 const NIGHTCITY = {
@@ -302,5 +318,5 @@ const JUNGLE = {
   bridge: 0x7a5a32, bridgePillar: 0x6a4a2a, bridgeTop: 0x9a7a4a, bridgeTop2: 0x8e6e42,
 };
 
-export const THEMES = { nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
+export const THEMES = { tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
 export const getTheme = (n) => THEMES[n] ?? GRASS;

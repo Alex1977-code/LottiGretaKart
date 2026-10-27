@@ -248,13 +248,13 @@ export class Decor {
   }
 
   /** Viele Objekte zufällig im Band dist0..dist1 neben der Strecke verstreuen. */
-  scatter(kind, n, { dist0 = 3, dist1 = 40, s0 = 0.8, s1 = 1.3, colors = [0xffffff], size = 2, sink = 0, u0 = 0, u1 = 1 } = {}) {
+  scatter(kind, n, { dist0 = 3, dist1 = 40, s0 = 0.8, s1 = 1.3, colors = [0xffffff], size = 2, sink = 0, u0 = 0, u1 = 1, side: fixedSide = 0 } = {}) {
     n = Math.round(n * this.density);
     let placed = 0, tries = 0;
     const tr = this.track;
     while (placed < n && tries < n * 12) {
       tries++;
-      const u = u0 + (u1 - u0) * this.r(), side = this.r() < 0.5 ? -1 : 1;
+      const u = u0 + (u1 - u0) * this.r(), side = fixedSide || (this.r() < 0.5 ? -1 : 1);
       const p = tr.pointAt(u, 0);
       const lat = side * (tr.wallAt(p.i) + dist0 + (dist1 - dist0) * this.r() ** 1.3);
       const q = tr.pointAt(u, lat);
@@ -347,7 +347,7 @@ export class Decor {
   }
 
   /** Einzelnes Modell aus der Welt; at = { u, side, dist (über die Bande hinaus) } oder { x, z }. */
-  model(name, at, { opts = {}, scale = 1, state = 'idle', yaw = null, y = 0, face = 'track', tick = null } = {}) {
+  model(name, at, { opts = {}, scale = 1, state = 'idle', yaw = null, y = 0, face = 'track', tick = null, always = false } = {}) {
     let x, z, base, yy;
     const tr = this.track;
     if (at.x !== undefined) { x = at.x; z = at.z; base = { yaw: 0 }; }
@@ -371,7 +371,7 @@ export class Decor {
     m.root.scale.setScalar(scale);
     m.root.traverse((o) => { if (o.isMesh && !o.userData.noShadow) { o.castShadow = true; o.receiveShadow = true; } });
     this.group.add(m.root);
-    const entry = { model: m, state, tick, base, t: this.r() * 10 };
+    const entry = { model: m, state, tick, base, t: this.r() * 10, always };
     this.models.push(entry);
     return entry;
   }
@@ -670,7 +670,7 @@ export class Decor {
     if (this.beams) this.beams.forEach((b, i) => { b.rotation.y = (i / this.beams.length) * Math.PI * 2 + Math.sin(t * 0.4 + i) * 0.5; });
     for (const e of this.models) {
       // ferne Modelle ausblenden und nicht animieren
-      if (cams) {
+      if (cams && !e.always) {
         const p = e.model.root.position;
         const vis = d2(p.x, p.z) < 230 * 230;
         if (e.model.root.visible !== vis) e.model.root.visible = vis;

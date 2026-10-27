@@ -58,6 +58,10 @@ export class Hazards {
           h.lat = h.lane = d.lane ?? 0;
           h.speed = d.speed ?? 14;
           h.radius = 1.15;
+          // Kollisionskreise entlang des Fahrzeugs (Auto 2, Bus mehrere)
+          const half = Math.max(1.25, (d.length ?? 4.4) / 2 - 1.1);
+          h.offs = [];
+          for (let o = -half; o <= half + 0.01; o += Math.min(2.5, half)) h.offs.push(o);
           h.down = 0;
           break;
         }
@@ -469,8 +473,8 @@ export class Hazards {
     for (const r of race.racers) {
       if (r.out || r.remote || r.puppet) continue;
       if (Math.abs(r.pos.y - p.y) > 2.2) continue;
-      for (const o of [-1.25, 1.25]) {
-        const cx = p.x + fx * o, cz = p.z + fz * o;
+      for (let oi = 0; oi < h.offs.length; oi++) {
+        const o = h.offs[oi], cx = p.x + fx * o, cz = p.z + fz * o;
         const dx = r.pos.x - cx, dz = r.pos.z - cz, rr = r.radius + h.radius;
         if (dx * dx + dz * dz > rr * rr) continue;
         if (r.invincible) { h.down = 3; race.effects.sparkle(h.holder.position, 0xffffff, 14, 3); if (r.isPlayer) race.audio.sfx('stomp'); }

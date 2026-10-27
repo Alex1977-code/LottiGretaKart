@@ -19,6 +19,7 @@ import katzeninsel from './katzeninsel.js';
 import hasenhuegel from './hasenhuegel.js';
 import palmencity from './palmencity.js';
 import mitternacht from './mitternacht.js';
+import teneriffa from './teneriffa.js';
 
-export const TRACKS = [kraxelwiese, herbstwald, laternengrotte, manege, autobahn, strand, gipfel, burg, wueste, vulkan, bonbon, loroparque, piratenbucht, dinodschungel, wrackriff, spukinsel, katzeninsel, hasenhuegel, palmencity, mitternacht];
+export const TRACKS = [kraxelwiese, herbstwald, laternengrotte, manege, autobahn, strand, gipfel, burg, wueste, vulkan, bonbon, loroparque, piratenbucht, dinodschungel, wrackriff, spukinsel, katzeninsel, hasenhuegel, palmencity, mitternacht, teneriffa];
 export const TRACK_BY_ID = Object.fromEntries(TRACKS.map((t) => [t.id, t]));
