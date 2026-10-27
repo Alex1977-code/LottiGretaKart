@@ -188,8 +188,14 @@ export class Sky {
     this.domeGroup.position.copy(camera.position);
     if (this.clouds) this.clouds.rotation.y += dt * 0.004;
     if (focus) {
-      this.sun.target.position.copy(focus);
-      this.sun.position.copy(focus).addScaledVector(this.sunDir, 70);
+      // Schattenbild in ganzen Texeln verschieben – sonst flimmern die Schattenkanten beim Fahren
+      const d = this.sunDir, ax = (this._sx ??= new THREE.Vector3()), ay = (this._sy ??= new THREE.Vector3());
+      ax.set(0, 1, 0).cross(d).normalize(); ay.copy(d).cross(ax).normalize();
+      const sc = this.sun.shadow.camera, texel = (sc.right - sc.left) / this.sun.shadow.mapSize.x;
+      const fx = focus.x * ax.x + focus.y * ax.y + focus.z * ax.z, fy = focus.x * ay.x + focus.y * ay.y + focus.z * ay.z;
+      const t = this.sun.target.position.copy(focus);
+      t.addScaledVector(ax, Math.round(fx / texel) * texel - fx).addScaledVector(ay, Math.round(fy / texel) * texel - fy);
+      this.sun.position.copy(t).addScaledVector(d, 70);
     }
   }
 

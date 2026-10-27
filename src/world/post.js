@@ -42,6 +42,8 @@ export class Post {
     this.composer.addPass(this.renderPass);
     // Bloom in halber Auflösung (spart Leistung, weicher)
     this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.3, 0.35, 1.7);
+    // weiche Schwelle: sonst springen Glanzpunkte an der Grenze von Bild zu Bild an und aus (Flackern)
+    this.bloom.highPassUniforms.smoothWidth.value = 0.8;
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
     this.grade = new ShaderPass(GradeShader);

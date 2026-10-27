@@ -8,6 +8,10 @@ import { canvasTexture } from '../lgw/course/models/lib/kit.js';
 /** Randlicht in alle Standard-/Lambert-Materialien einbauen (einmal beim Start, vor dem ersten Übersetzen). */
 export function installRimLight() {
   if (THREE.ShaderChunk.emissivemap_fragment.includes('lgkRim')) return;
+  // Glanzpunkte begrenzen (und ungültige Werte abfangen): einzelne überhelle Pixel würden im Leuchten (Bloom)
+  // als blinkende Flecken erscheinen
+  THREE.ShaderChunk.opaque_fragment = THREE.ShaderChunk.opaque_fragment.replace('#ifdef OPAQUE',
+    'outgoingLight = any(isnan(outgoingLight)) ? vec3(0.0) : min(outgoingLight, vec3(6.0));\n#ifdef OPAQUE');
   THREE.ShaderChunk.emissivemap_fragment += /* glsl */ `
   {
     // lgkRim: helle Kante an senkrechten Flächen (nicht am Boden und nicht an Dächern)
