@@ -116,7 +116,7 @@ Wer vorn liegt, bekommt eher Verteidigung, wer hinten liegt, eher starke Gegenst
 | Lenken | ← → / A D | linker Stick | Daumen links nach links/rechts ziehen |
 | Gas | ↑ / W | A oder RT | Knopf **GAS** halten (Automatik in den Einstellungen) |
 | Bremse / rückwärts | ↓ / S | B | Knopf **BREMSE/ZURÜCK** halten |
-| Hüpfer & Driften | Leertaste / Shift (geradeaus halten = Aufladesprung) | R | **GAS pumpen** (Gas – los – Gas) startet den Drift, dann Gas halten und lenken, loslassen = Mini-Turbo (Automatik-Gas: Knopf **DRIFT**). Richtung: Daumen beim Hüpfer ein Stück zur Seite (auch kurz nach der Landung); im Drift ist die Daumenstellung vom Driftbeginn der mittlere Bogen – weiter hinein = enger, zur Mitte = weiter, ganz dagegen = aufrichten und leicht gegenlenken |
+| Hüpfer & Driften | Leertaste / Shift (geradeaus halten = Aufladesprung) | R | **GAS pumpen** (Gas – los – Gas) startet den Drift, dann Gas halten und lenken, loslassen = Mini-Turbo; deutlich zur anderen Seite lenken beendet den Drift, neu pumpen = Drift in die neue Richtung (Automatik-Gas: Knopf **DRIFT**). Richtung: Daumen beim Hüpfer ein Stück zur Seite (auch kurz nach der Landung); im Drift ist die Daumenstellung vom Driftbeginn der mittlere Bogen – weiter hinein = enger, zur Mitte = weiter, ganz dagegen = aufrichten und leicht gegenlenken |
 | Gegenstand | X / E / Strg | L / LT | Knopf **★** |
 | Pause | Esc / P | Start | – (pausiert automatisch, wenn die App in den Hintergrund geht) |
 | Ton | M | | Knopf im Menü |

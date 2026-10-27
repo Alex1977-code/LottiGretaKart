@@ -132,7 +132,7 @@ export class TouchControls {
     const pumped = now - this.gasUp < PUMP_GAP;
     if (touch.driftUntil > now || pumped) {
       // schnell wieder gedrückt: Drift beginnt (Hüpfer) bzw. geht weiter
-      if (!(touch.driftUntil > now)) touch.driftTap = true;
+      touch.driftTap = true;   // jedes Pumpen kann einen Drift (neu) starten
       touch.driftUntil = now + PUMP_GAP;
       touch.driftHold = true;   // ab jetzt hält Gas-Halten den Drift
       this.watchDrift();

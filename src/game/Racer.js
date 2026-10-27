@@ -8,6 +8,7 @@ import { buildKart, SPARK_COLORS } from './kartModel.js';
 import { createDriver } from './drivers.js';
 import { physicsOf } from './racers.js';
 import { glowTexture } from '../lgw/course/models/lib/kit.js';
+import { endTouchDrift } from '../ui/input.js';
 
 const GRAVITY = 28;
 const TAU = Math.PI * 2;
@@ -134,7 +135,7 @@ export class Racer {
     return true;
   }
 
-  cancelDrift() { const d = this.drift; d.on = false; d.dir = 0; d.charge = 0; d.level = 0; d.hop = false; d.wait = 0; d.s = 0; d.ref = 0; }
+  cancelDrift() { const d = this.drift; d.on = false; d.dir = 0; d.charge = 0; d.level = 0; d.hop = false; d.wait = 0; d.s = 0; d.ref = 0; d.flip = 0; }
 
   /** Drift beginnen in Richtung dir; am Handy merkt sich der Drift die Daumenstellung (ref) als „mittleren Bogen“. */
   startDrift(dir, dirIn = 0, touchSteer = false) {
@@ -204,7 +205,9 @@ export class Racer {
       this.steer += Math.sign(dS) * Math.min(Math.abs(dS), rate * dt);
     }
     const d = this.drift;
-    const driftPressed = !!input.drift && !this.prevInput.drift;
+    // nach einem Drift, der durch Gegenlenken beendet wurde, startet erst ein neuer Druck (bzw. neues Pumpen) wieder
+    if (d.lock && (!input.drift || input.driftTap)) d.lock = false;
+    const driftPressed = (!!input.drift && !this.prevInput.drift) || (!!input.driftTap && !d.on);
     if (this.grind && driftPressed) {
       // von der Schiene abspringen (seitlich nach Lenkung)
       this.grind = null; this.air = true; this.vy = 6; this.vlat = -steerIn * 6;
@@ -222,9 +225,14 @@ export class Racer {
       else if (Math.abs(dirIn) > dirMin) this.startDrift(Math.sign(dirIn), dirIn, touchSteer);
     }
     if (d.on) {
-      if (!input.drift || this.speed < 5 || disabled) {
+      // Richtungswechsel: deutlich zur anderen Seite gelenkt → Drift endet (aufgeladener Mini-Turbo zählt),
+      // für einen Drift in die neue Richtung muss neu gehüpft werden
+      d.flip = dirIn * d.dir < -0.35 ? (d.flip ?? 0) + dt : 0;
+      const flipped = d.flip > 0.1;
+      if (!input.drift || this.speed < 5 || disabled || flipped) {
         if (d.level > 0 && !disabled) this.boost(DRIFT_BOOST[d.level], SPARK_COLORS[d.level], 1.12);
         this.cancelDrift();
+        if (flipped) { d.lock = true; if (this.isPlayer) endTouchDrift(); }
       } else {
         const into = Math.max(0, d.s ?? 0);
         d.charge += dt * (0.8 + 0.9 * into) * (offroad ? 0.4 : 1);
@@ -234,10 +242,10 @@ export class Racer {
       }
     }
     // Aufladesprung (wie in Mario Kart World): Drift-Taste geradeaus halten, loslassen = hoher Sprung
-    if (!this.air && !this.grind && !d.on && !disabled && input.drift && Math.abs(steerIn) < 0.3 && this.speed > 3) {
+    if (!this.air && !this.grind && !d.on && !d.lock && !disabled && input.drift && Math.abs(steerIn) < 0.3 && this.speed > 3) {
       this.charge = (this.charge ?? 0) + dt;
     } else if (this.charge > 0 && !this.air) {
-      if (input.drift && Math.abs(steerIn) >= 0.3 && this.speed > 6) {
+      if (input.drift && !d.lock && Math.abs(steerIn) >= 0.3 && this.speed > 6) {
         // doch gelenkt: in einen Drift übergehen
         this.startDrift(Math.sign(steerIn), dirIn, touchSteer);
         d.charge = Math.min(this.charge, DRIFT_LEVELS[0] * 0.8);

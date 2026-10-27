@@ -82,11 +82,15 @@ export function readDrive(src = 'auto') {
     if (touch.brake) inp.brake = 1;
     // Driften: DRIFT-Knopf (Automatik-Gas) oder Gas pumpen (Gas – los – Gas – los …)
     if (touch.drift || touch.driftTap || pumping) inp.drift = true;
+    if (touch.driftTap) inp.driftTap = true;   // neues Pumpen/Drücken: startet auch dann einen Hüpfer, wenn Drift noch „gehalten“ ist
     if (touch.item || touch.itemTap) inp.item = true;
   }
   inp.steer = Math.max(-1, Math.min(1, inp.steer));
   return inp;
 }
+
+/** Drift wurde vom Spiel beendet (Richtungswechsel): Gas-Halten hält ihn nicht mehr – neu pumpen startet den nächsten. */
+export function endTouchDrift() { touch.driftHold = false; touch.driftUntil = 0; }
 
 /** Am Ende jedes Bildes: kurze Tipper und Touch-Tipps sind verarbeitet. */
 export function endFrame() {
