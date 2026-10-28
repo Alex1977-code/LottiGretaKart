@@ -195,6 +195,8 @@ async function boot() {
     pmrem.dispose();
   }
   ctx.sky = new Sky(ctx.scene, getTheme('grass'), { quality, sunDisc: true, envLight: quality >= 2 });
+  // Fehlersuche: ?shadows=0 schaltet die Schatten ab
+  if (params.get('shadows') === '0') ctx.sky.sun.castShadow = false;
   // Licht an der Spielerin (Höhle, Zelt, Nacht) – immer in der Szene, Stärke setzt das Rennen
   ctx.playerLight = new THREE.PointLight(0xffd0a0, 0, 24, 1.5);
   ctx.scene.add(ctx.playerLight);
