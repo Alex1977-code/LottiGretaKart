@@ -339,7 +339,7 @@ export class Decor {
     const wm = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, emissive: 0xffffff, emissiveIntensity: 0.18 });
     wm.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance *= vColor.rgb;\n#include <emissivemap_fragment>'); };
     wm.customProgramCacheKey = () => 'lgkWindows';
-    nightGlow(wm, 0.15, 1.05);
+    nightGlow(wm, 0.15, 0.85);
     const wmesh = new THREE.Mesh(windowQuads(wins), wm);
     wmesh.receiveShadow = true;
     wmesh.name = 'stadtfenster';

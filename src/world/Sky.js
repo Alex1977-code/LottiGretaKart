@@ -200,7 +200,7 @@ export class Sky {
       const a = rnd.frac() * Math.PI * 2, h = 0.06 + Math.pow(rnd.frac(), 0.7) * 0.94;
       const r = Math.sqrt(1 - h * h) * SKY_R * 0.95;
       pos.set([Math.cos(a) * r, h * SKY_R * 0.95, Math.sin(a) * r], i * 3);
-      const b = 0.45 + rnd.frac() * 0.9, warm = rnd.frac();
+      const b = 0.35 + rnd.frac() * 0.5, warm = rnd.frac();   // nicht zu hell: sonst blinken Sterne im Leuchten
       col.set([b * (0.85 + 0.15 * warm), b * 0.92, b * (1.05 - 0.2 * warm)], i * 3);
     }
     const g = new THREE.BufferGeometry();

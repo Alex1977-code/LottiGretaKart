@@ -468,6 +468,7 @@ export class Hazards {
     h.holder.position.set(p.x, p.y, p.z);
     h.holder.rotation.set(0, p.yaw + (h.police ? Math.cos(h.t * 0.45 + h.u * 20) * 0.12 : 0), 0);
     h.model.update(dt, h.police ? { anim: 'walk' } : { anim: 'idle' });
+    if (race.groundLights && race.focusDist2(p.x, p.z) < 120 * 120) race.groundLights.add(p.x, p.y, p.z, p.yaw, 2.4, 13, 6.5, 0xe8eeff, 0.6);
     // Kollision: zwei Kreise (vorn, hinten) entlang des Autos
     const fx = Math.cos(p.yaw), fz = -Math.sin(p.yaw);
     for (const r of race.racers) {

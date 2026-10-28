@@ -40,7 +40,9 @@ app.prepend(canvas);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 
-const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.1, 1600);
+// Nahebene nicht zu dicht an der Kamera: sonst reicht die Tiefengenauigkeit auf Handy-Grafikchips in der Ferne nicht
+// (Fahrbahn, Gelände und Lichtkegel flackern gegeneinander)
+const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.35, 1300);
 
 const ctx = {
   renderer, camera, audio, quality,

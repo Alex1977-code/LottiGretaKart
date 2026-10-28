@@ -107,7 +107,7 @@ function buildLampSet(world, quality, want, name) {
       const lat = side * Math.max(0, W - 3.4);
       const px = tr.px[i] - tr.tz[i] * lat, pz = tr.pz[i] + tr.tx[i] * lat;
       const py = tr.hasLift || tr.hasDive ? tr.roadY(i, px, pz) : world.heightAt(px, pz);
-      pools.push([px, py + 0.06, pz]);
+      pools.push([px, pz, tr.hasLift || tr.hasDive ? (x2, z2) => tr.roadY(i, x2, z2) : null]);
       if (tr.theme?.wetRoad) {
         // Spiegelung der Lampe und (gegenüber) eines Neon-Schilds auf dem nassen Asphalt
         const hl = side * Math.max(0, W - 2.4);
@@ -135,11 +135,32 @@ function buildLampSet(world, quality, want, name) {
   const geo = mergeTwo(pole, arm);
   inst(geo, new THREE.MeshStandardMaterial({ color: 0x3a3f4c, roughness: 0.5, metalness: 0.5 }), lamps, setYaw, 'laternenmast');
   const head = new THREE.BoxGeometry(0.75, 0.16, 0.42).translate(2.4, 6.12, 0);
-  inst(head, new THREE.MeshStandardMaterial({ color: 0xfff0c8, emissive: 0xffd890, emissiveIntensity: 3.2 }), lamps, setYaw, 'laternenkopf');
-  const pool = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
-  const pmat = new THREE.MeshBasicMaterial({ map: lightPoolTexture(), color: 0xffb860, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
-  s.set(13, 1, 13);
-  inst(pool, pmat, pools, ([x, y, z]) => { m.compose(p.set(x, y, z), q.identity(), s); }, 'lichtkegel');
+  inst(head, new THREE.MeshStandardMaterial({ color: 0xfff0c8, emissive: 0xffd890, emissiveIntensity: 1.8 }), lamps, setYaw, 'laternenkopf');
+  // Lichtkegel als Gitter, das dem Boden folgt (flache Platten steckten an Steigungen im Asphalt und flackerten)
+  if (pools.length) {
+    const G = 5, R = 6.5, nv = G * G;
+    const pos = new Float32Array(pools.length * nv * 3), uv = new Float32Array(pools.length * nv * 2), idx = [];
+    pools.forEach(([cx, cz, roadY], k) => {
+      for (let a = 0; a < G; a++) for (let b = 0; b < G; b++) {
+        const v = k * nv + a * G + b, fx = a / (G - 1), fz = b / (G - 1);
+        const x2 = cx + (fx - 0.5) * 2 * R, z2 = cz + (fz - 0.5) * 2 * R;
+        pos[v * 3] = x2; pos[v * 3 + 1] = (roadY ? roadY(x2, z2) : world.heightAt(x2, z2)) + 0.12; pos[v * 3 + 2] = z2;
+        uv[v * 2] = fx; uv[v * 2 + 1] = fz;
+      }
+      for (let a = 0; a < G - 1; a++) for (let b = 0; b < G - 1; b++) {
+        const o = k * nv + a * G + b;
+        idx.push(o, o + 1, o + G, o + 1, o + G + 1, o + G);
+      }
+    });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    g.computeBoundingSphere();
+    const pm = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: lightPoolTexture(), color: 0xffb860, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, side: THREE.DoubleSide }));
+    pm.name = 'lichtkegel';
+    group.add(pm);
+  }
   if (streaks.length) group.add(wetStreaks(streaks));
   return group;
 }
@@ -205,7 +226,7 @@ function mergeTwo(a, b) {
   return g;
 }
 
-/** Scheinwerfer für ein Kart: zwei leuchtende Lampen vorn und ein Lichtkegel auf der Straße davor. */
+/** Scheinwerfer für ein Kart: zwei leuchtende Lampen vorn (der Lichtkegel auf der Straße kommt von GroundLights). */
 export function addHeadlights(kart) {
   const g = new THREE.Group();
   g.name = 'scheinwerfer';
@@ -216,17 +237,11 @@ export function addHeadlights(kart) {
     b.userData.noShadow = true;
     g.add(b);
   }
-  const cone = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({ map: lightPoolTexture(), color: 0xd8e4ff, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
-  cone.scale.set(9, 1, 4.6);
-  cone.position.set(5.6, 0.07, 0);
-  cone.userData.noShadow = true;
-  g.add(cone);
   kart.root.add(g);
   return g;
 }
 
-/** Licht für Autos im Stadtverkehr: Scheinwerfer, Rücklichter, Lichtkegel auf der Straße (Auto ≈ 4,4 m, vorn +X). */
+/** Licht für Autos im Stadtverkehr: Scheinwerfer und Rücklichter (Auto ≈ 4,4 m, vorn +X; Lichtkegel über GroundLights). */
 export function addCarLights(holder) {
   const g = new THREE.Group();
   g.name = 'autolichter';
@@ -237,13 +252,87 @@ export function addCarLights(holder) {
     const a = new THREE.Mesh(fb, front); a.position.set(2.21, 0.82, z); g.add(a);
     const b = new THREE.Mesh(fb, back); b.position.set(-2.21, 0.86, z); g.add(b);
   }
-  const cone = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
-    (CAR_CONE ??= new THREE.MeshBasicMaterial({ map: lightPoolTexture(), color: 0xe8eeff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 })));
-  cone.scale.set(12, 1, 6);
-  cone.position.set(8.5, 0.08, 0);
-  g.add(cone);
   g.traverse((o) => { o.userData.noShadow = true; o.castShadow = false; });
   holder.add(g);
   return g;
 }
-let CAR_FRONT = null, CAR_BACK = null, CAR_FB = null, CAR_CONE = null;
+let CAR_FRONT = null, CAR_BACK = null, CAR_FB = null;
+
+/**
+ * Lichtkegel der Scheinwerfer auf der Straße für alle Fahrzeuge in der Nähe: jedes Bild neu als kleines Gitter
+ * auf den Boden gelegt (folgt Steigungen und Kuppen, kippt nicht mit dem Kart beim Driften). Ein Zeichenaufruf.
+ */
+export class GroundLights {
+  constructor(scene, world, max = 40) {
+    this.world = world; this.max = max; this.n = 0;
+    const NA = 5, NB = 3, nv = NA * NB;
+    this.NA = NA; this.NB = NB; this.nv = nv;
+    this.pos = new Float32Array(max * nv * 3);
+    this.col = new Float32Array(max * nv * 3);
+    const uv = new Float32Array(max * nv * 2), idx = [];
+    for (let k = 0; k < max; k++) {
+      for (let a = 0; a < NA; a++) for (let b = 0; b < NB; b++) { const v = k * nv + a * NB + b; uv[v * 2] = a / (NA - 1); uv[v * 2 + 1] = b / (NB - 1); }
+      for (let a = 0; a < NA - 1; a++) for (let b = 0; b < NB - 1; b++) { const o = k * nv + a * NB + b; idx.push(o, o + NB, o + 1, o + 1, o + NB, o + NB + 1); }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute('color', new THREE.BufferAttribute(this.col, 3).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    g.setDrawRange(0, 0);
+    this.geo = g;
+    this.mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: coneTexture(), vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, side: THREE.DoubleSide }));
+    this.mesh.frustumCulled = false;
+    this.mesh.name = 'scheinwerfer-kegel';
+    scene.add(this.mesh);
+    this.c = new THREE.Color();
+  }
+
+  begin() { this.n = 0; }
+
+  /** Kegel vor dem Fahrzeug (x, y, z, Blickrichtung yaw), von near bis near+len Metern, Breite w, Farbe, Stärke k. */
+  add(x, y, z, yaw, near, len, w, color, k) {
+    if (this.n >= this.max) return;
+    const fx = Math.cos(yaw), fz = -Math.sin(yaw), sx = -fz, sz = fx;
+    const { NA, NB, nv, pos, col } = this, base = this.n * nv, world = this.world;
+    this.c.setHex(color).multiplyScalar(k);
+    for (let a = 0; a < NA; a++) {
+      const d = near + (a / (NA - 1)) * len, half = w * (0.35 + 0.65 * a / (NA - 1)) / 2;
+      for (let b = 0; b < NB; b++) {
+        const v = base + a * NB + b, l = (b / (NB - 1) - 0.5) * 2 * half;
+        const px = x + fx * d + sx * l, pz = z + fz * d + sz * l;
+        let h = world.floorAt(px, pz, y + 1.5);
+        if (Math.abs(h - y) > 2.5) h = y;   // über einer Kante: nicht ins Tal fallen
+        pos[v * 3] = px; pos[v * 3 + 1] = h + 0.12; pos[v * 3 + 2] = pz;
+        col[v * 3] = this.c.r; col[v * 3 + 1] = this.c.g; col[v * 3 + 2] = this.c.b;
+      }
+    }
+    this.n++;
+  }
+
+  end() {
+    this.geo.setDrawRange(0, this.n * (this.NA - 1) * (this.NB - 1) * 6);
+    if (this.n) { this.geo.attributes.position.needsUpdate = true; this.geo.attributes.color.needsUpdate = true; }
+  }
+
+  dispose() { this.mesh.removeFromParent(); this.geo.dispose(); this.mesh.material.dispose(); }
+}
+
+/** Weicher Scheinwerfer-Kegel: hell nahe am Fahrzeug, zur Seite und nach vorn ausblendend (u = vorn, v = quer). */
+let CONE = null;
+function coneTexture() {
+  if (CONE) return CONE;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const x = c.getContext('2d'), img = x.createImageData(64, 64);
+  for (let j = 0; j < 64; j++) for (let i = 0; i < 64; i++) {
+    const u = i / 63, v = j / 63, side = 1 - Math.abs(v * 2 - 1);
+    const a = Math.pow(side, 1.4) * Math.min(1, u * 5) * Math.pow(1 - u, 1.2);
+    const o = (j * 64 + i) * 4;
+    img.data[o] = img.data[o + 1] = img.data[o + 2] = 255; img.data[o + 3] = Math.round(a * 255);
+  }
+  x.putImageData(img, 0, 0);
+  CONE = new THREE.CanvasTexture(c);
+  CONE.colorSpace = THREE.SRGBColorSpace;
+  return CONE;
+}

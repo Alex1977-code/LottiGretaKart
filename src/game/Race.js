@@ -20,7 +20,7 @@ import { hostSnapshot, applyRemote, guestState, guestApply, guestPuppets } from 
 import { SPARK_COLORS } from './kartModel.js';
 import { getModel } from '../lgw/course/models/index.js';
 import { getTheme } from '../world/themes.js';
-import { isNight, nightTheme, applyNightGlow } from '../world/night.js';
+import { isNight, nightTheme, applyNightGlow, GroundLights } from '../world/night.js';
 import { resolveWeather, weatherTheme, WeatherFx, setRoadWetness } from '../world/weather.js';
 
 const SIDES = [-1, 1];
@@ -117,6 +117,9 @@ export class Race {
     app.scene.add(this.scene);
     this.effects = new Effects(this.scene);
     this.weatherFx = new WeatherFx(this.scene, this.weather, app.quality ?? 2);
+    // Scheinwerfer-Kegel auf der Straße (nachts und bei Regen), dem Boden angelegt
+    this.lightsOn = this.night || this.weather === 'rain';
+    this.groundLights = this.lightsOn ? new GroundLights(this.scene, this.world) : null;
     this.items = new Items(this);
     this.items.build(w, { boxes: !this.trial });
     this.hazards = new Hazards(this);
@@ -194,7 +197,7 @@ export class Race {
       const el = document.createElement('div');
       el.className = `hudview n${this.locals.length}`;
       this.splitRoot.appendChild(el);
-      const cam = new THREE.PerspectiveCamera(64, 1, 0.1, this.camera.far);
+      const cam = new THREE.PerspectiveCamera(64, 1, this.camera.near, this.camera.far);
       const cs = { pos: new THREE.Vector3(), look: new THREE.Vector3(), yaw: 0, fov: 64 };
       let hud = null;
       if (racer) { hud = new Hud(el, this.view.renderer); hud.setupMap(this); hud.show(true); hud.el.classList.add(`p${racer.pi + 1}`); }
@@ -473,10 +476,18 @@ export class Race {
       this.items.update(dt, t);
       if (this.free) this.updateFree(dt, t);
     } else this.items.update(0, t);
+    this.groundLights?.begin();
     this.hazards.update(running ? dt : 0, t);
     if (!this.netGuest) this.rank();   // Gast: Plätze kommen vom Gastgeber
     this.emit(dt, t);
     for (const r of this.racers) if (!r.out) r.syncVisual(dt, t);
+    if (this.groundLights) {
+      for (const r of this.racers) {
+        if (r.out || !r.headlights || !r.root.visible || this.focusDist2(r.pos.x, r.pos.z) > 90 * 90) continue;
+        this.groundLights.add(r.pos.x, r.pos.y, r.pos.z, r.root.rotation.y, 1.0, 10, 5, 0xd8e4ff, 0.55);
+      }
+      this.groundLights.end();
+    }
     this.trafficLight?.model.update(dt, this.trafficLight.state);
     this.effects.update(dt, this.app.viewH ?? 800);
 
@@ -896,6 +907,7 @@ export class Race {
     this.hazards.dispose();
     this.effects.dispose();
     this.weatherFx.dispose();
+    this.groundLights?.dispose();
     setRoadWetness('sun');
     this.audio?.setWeather?.(null);
     this.trafficLight?.model.dispose();
