@@ -10,6 +10,9 @@ import * as THREE from 'three';
 
 const STEP = 1;
 
+/** Auslauf hinter der Ziellinie (m): so weit fahren die Karts nach dem Zieleinlauf noch geordnet weiter. */
+const RUNOUT = 260;
+
 export class RacePath {
   constructor(world, points, meta = {}) {
     this.world = world;
@@ -156,8 +159,8 @@ export class RacePath {
       RacePath.coursePiece(pts, c, 0, N - 1);
       marks.push(RacePath.lengthOf(pts) + tr.ds);
     }
-    pts.push({ x: tr.px[0], z: tr.pz[0], hw: tr.hw[0] });
-    for (let k = 0; k < 4; k++) pts.push({ x: tr.px[k + 1], z: tr.pz[k + 1], hw: tr.hw[k + 1] }); // Auslauf
+    // Auslauf nach dem Ziel (≈ 260 m der Strecke): nach dem Zieleinlauf fährt die KI das Kart ruhig weiter
+    RacePath.coursePiece(pts, c, 0, Math.min(N - 1, Math.round(RUNOUT / tr.ds)));
     const L = RacePath.lengthOf(pts);
     const finishS = marks[marks.length - 1];
     return new RacePath(world, pts, { lapMarks: marks, startS, finishS: Math.min(finishS, L - 4), laps, courseId, label: c.def.name, runout: L - finishS });
@@ -185,7 +188,7 @@ export class RacePath {
       marks.push(RacePath.lengthOf(pts) + B.track.ds);
     }
     const tr = B.track;
-    for (let k = 0; k < 5; k++) pts.push({ x: tr.px[k], z: tr.pz[k], hw: tr.hw[k] });
+    RacePath.coursePiece(pts, B, 0, Math.min(tr.N - 1, Math.round(RUNOUT / tr.ds)));   // Auslauf
     const L = RacePath.lengthOf(pts);
     return new RacePath(world, pts, { lapMarks: marks, startS, finishS: Math.min(marks[marks.length - 1], L - 4), laps, courseId: toId, fromId, label: `${A.def.short ?? A.def.name} → ${B.def.name}` });
   }
@@ -211,7 +214,7 @@ export class RacePath {
     const last = world.courseById[stops[stops.length - 1]];
     RacePath.coursePiece(pts, last, entry, last.track.N - 1);
     const finishS = RacePath.lengthOf(pts) + last.track.ds;
-    for (let k = 0; k < 5; k++) pts.push({ x: last.track.px[k], z: last.track.pz[k], hw: last.track.hw[k] });
+    RacePath.coursePiece(pts, last, 0, Math.min(last.track.N - 1, Math.round(RUNOUT / last.track.ds)));   // Auslauf
     return new RacePath(world, pts, { checkpoints, startS, finishS, laps: 1, courseId: last.id, label: 'K.-o.-Tour' });
   }
 

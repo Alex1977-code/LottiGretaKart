@@ -105,6 +105,15 @@ export function aiInput(racer, race, dt) {
     inp.throttle = 0; inp.brake = 1; inp.steer = -Math.sign(diff); inp.drift = false;
   }
 
+  // nach dem Zieleinlauf: gemütlich ausrollen, am Ende des Auslaufs anhalten (nicht wild gegen die Bande)
+  if (racer.finished) {
+    const left = track.length - racer.progress;
+    inp.drift = false;
+    ai.stuck = 0; ai.reverse = 0;
+    if (left < 70) { inp.throttle = 0; inp.brake = speed < 1.5 ? 0 : left < 30 ? 1 : 0.4; }
+    else if (speed > racer.phys.top * 0.7) inp.throttle = 0.3;
+  }
+
   // Gegenstände
   if (racer.item && racer.roulette <= 0) {
     ai.itemWait -= dt;

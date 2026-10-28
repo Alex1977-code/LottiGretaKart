@@ -62,12 +62,19 @@ ctx.step = (n = 60, dt = 1 / 60, draw = true) => { for (let i = 0; i < n; i++) c
 
 // ------------------------------------------------------------------ Größe
 let pixelScale = 1;
+let lastW = 0, lastH = 0, lastRatio = 0, needResize = true;
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
-  lastW = w; lastH = h;
   const maxPx = quality >= 3 ? 3.6e6 : quality >= 2 ? 2.4e6 : 1.4e6;
   let ratio = Math.min(window.devicePixelRatio || 1, 2);
   ratio = Math.min(ratio, Math.sqrt(maxPx / (w * h))) * pixelScale;
+  // Hochformat am Handy: Hinweis zum Drehen und das Rennen pausieren (wie in der Lotti-&-Greta-Welt)
+  const portrait = (isTouch() || w < 700) && h > w * 1.05;
+  document.getElementById('rotate-hint').classList.toggle('visible', portrait);
+  if (portrait && ctx.race && !ctx.race.demo && !ctx.paused && ctx.menus) ctx.menus.pause();
+  // nur bei echter Größenänderung neu anlegen (Zeichenfläche und Zwischenbilder werden dabei geleert)
+  if (w === lastW && h === lastH && ratio === lastRatio) return;
+  lastW = w; lastH = h; lastRatio = ratio;
   renderer.setPixelRatio(ratio);
   renderer.setSize(w, h, false);
   ctx.post?.setSize(w, h, ratio);
@@ -75,19 +82,17 @@ function resize() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   ctx.viewH = h * ratio;
-  // Hochformat am Handy: Hinweis zum Drehen und das Rennen pausieren (wie in der Lotti-&-Greta-Welt)
-  const portrait = (isTouch() || w < 700) && h > w * 1.05;
-  document.getElementById('rotate-hint').classList.toggle('visible', portrait);
-  if (portrait && ctx.race && !ctx.race.demo && !ctx.paused && ctx.menus) ctx.menus.pause();
 }
-window.addEventListener('resize', resize);
+// Größenänderungen nicht sofort, sondern direkt vor dem nächsten Bild anwenden: das Anpassen leert die
+// Zeichenfläche – passiert das zwischen zwei Bildern (Safari-Leisten fahren ein und aus), blitzt ein leeres Bild auf
+const requestResize = () => { needResize = true; };
+window.addEventListener('resize', requestResize);
 // iPhone: nach dem Drehen stimmen die Maße oft erst etwas später – mehrmals nachmessen
-window.addEventListener('orientationchange', () => { for (const ms of [60, 200, 450, 900]) setTimeout(resize, ms); });
-window.visualViewport?.addEventListener('resize', resize);
-let lastW = 0, lastH = 0;
-/** Jedes Bild prüfen, ob sich die Fenstergröße geändert hat (falls ein Ereignis beim Drehen fehlt). */
+window.addEventListener('orientationchange', () => { for (const ms of [60, 200, 450, 900]) setTimeout(requestResize, ms); });
+window.visualViewport?.addEventListener('resize', requestResize);
+/** Vor jedem Bild: angefragte oder verpasste Größenänderung anwenden. */
 function checkSize() {
-  if (window.innerWidth !== lastW || window.innerHeight !== lastH) resize();
+  if (needResize || window.innerWidth !== lastW || window.innerHeight !== lastH) { needResize = false; resize(); }
 }
 // iPhone/iPad im Browser (nicht vom Home-Bildschirm): Tipp für Vollbild anzeigen
 if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone && !window.Capacitor?.isNativePlatform?.()) document.body.classList.add('ios-browser');
@@ -242,7 +247,7 @@ function frame(now) {
   else menus.render(renderer, dt);
   // Bildrate schwach? Auflösung stufenweise senken
   if (dt > 1 / 40) slow++; else slow = Math.max(0, slow - 1);
-  if (slow > 90 && pixelScale > 0.6) { pixelScale -= 0.15; slow = 0; resize(); }
+  if (slow > 90 && pixelScale > 0.6) { pixelScale -= 0.15; slow = 0; requestResize(); }
   // immer noch zu langsam: Schatten abschalten (einmalig)
   else if (slow > 150 && ctx.sky?.sun.castShadow) { ctx.sky.sun.castShadow = false; slow = 0; }
 }
