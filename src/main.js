@@ -121,7 +121,8 @@ ctx.startRace = (o) => {
   ctx.touch.show(touchOn);
   document.body.classList.toggle('touch-on', touchOn && !race.split);
   ctx.touch.onStartTap = () => race.startTap();
-  if (!demo) warmShaders(race);
+  warmShaders(race);
+  graceUntil = performance.now() + 6000;   // Anlaufzeit: Bildrate noch nicht bewerten
   return race;
 };
 
@@ -138,7 +139,7 @@ function warmShaders(race) {
   const rt = ctx.post?.composer.renderTarget1 ?? null;
   const prev = renderer.getRenderTarget();
   renderer.setRenderTarget(rt);   // gleiche Ausgabe wie beim Zeichnen (Zwischenbild der Nachbearbeitung)
-  try { renderer.compileAsync(scene, race.camera ?? camera).catch(() => {}); } catch (_) { /* egal */ }
+  try { ctx.warm = renderer.compileAsync(scene, race.camera ?? camera).catch(() => {}); } catch (_) { ctx.warm = null; }
   renderer.setRenderTarget(prev);
   for (const o of hidden) o.visible = false;
   for (const [l, v] of offLights) l.visible = v;
@@ -194,13 +195,14 @@ async function boot() {
     pmrem.dispose();
   }
   ctx.sky = new Sky(ctx.scene, getTheme('grass'), { quality, sunDisc: true, envLight: quality >= 2 });
+  // Licht an der Spielerin (Höhle, Zelt, Nacht) – immer in der Szene, Stärke setzt das Rennen
+  ctx.playerLight = new THREE.PointLight(0xffd0a0, 0, 24, 1.5);
+  ctx.scene.add(ctx.playerLight);
   ctx.worldView = new WorldView(ctx.world, ctx.scene, { quality });
   await ctx.worldView.build((k, text) => setProgress(0.2 + 0.75 * k, `${text} …`));
   // Shader vorab übersetzen (kein Ruckeln beim ersten Bild)
   renderer.compile(ctx.scene, camera);
-  setProgress(1, 'Los geht\'s!');
-  loading.classList.add('done');
-  setTimeout(() => loading.remove(), 600);
+  setProgress(0.97, 'Shader vorbereiten …');
 
   if (params.has('race') || params.get('mode') === 'free' || params.get('mode') === 'ko') {
     const mode = params.get('mode') ?? (params.get('demo') === '1' ? 'demo' : 'race');
@@ -226,12 +228,20 @@ async function boot() {
   } else {
     menus.showTitle();
   }
+  // Ladebild erst ausblenden, wenn Menü bzw. Rennen samt vorab übersetzten Shadern stehen (kein Flackern danach)
+  // auf das Übersetzen warten (höchstens 5 s)
+  if (ctx.warm) await Promise.race([ctx.warm, new Promise((r) => setTimeout(r, 5000))]);
+  await nextFrame();
+  setProgress(1, 'Los geht\'s!');
+  loading.classList.add('done');
+  setTimeout(() => loading.remove(), 600);
+  graceUntil = performance.now() + 6000;
   requestAnimationFrame(frame);
 }
 
 // ------------------------------------------------------------------ Hauptschleife
 let last = performance.now();
-let slow = 0;
+let slow = 0, graceUntil = 0;
 function frame(now) {
   requestAnimationFrame(frame);
   checkSize();
@@ -245,8 +255,10 @@ function frame(now) {
   endFrame();
   if (ctx.race) ctx.race.render(renderer);
   else menus.render(renderer, dt);
-  // Bildrate schwach? Auflösung stufenweise senken
-  if (dt > 1 / 40) slow++; else slow = Math.max(0, slow - 1);
+  // Bildrate schwach? Auflösung stufenweise senken – aber nicht in den ersten Sekunden (Shader werden übersetzt,
+  // Modelle hochgeladen) und nicht wegen einzelner langer Hänger; sonst springt die Auflösung gleich nach dem Start
+  if (now < graceUntil) slow = 0;
+  else if (dt > 1 / 40 && dt < 0.049) slow++; else slow = Math.max(0, slow - 1);
   if (slow > 90 && pixelScale > 0.6) { pixelScale -= 0.15; slow = 0; requestResize(); }
   // immer noch zu langsam: Schatten abschalten (einmalig)
   else if (slow > 150 && ctx.sky?.sun.castShadow) { ctx.sky.sun.castShadow = false; slow = 0; }

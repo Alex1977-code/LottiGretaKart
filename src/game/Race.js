@@ -125,8 +125,11 @@ export class Race {
     this.hazards = new Hazards(this);
     this.hazards.build(w);
     // Licht an der Spielerin (dunkel in Höhle und Zelt; Stärke folgt der Region, Anzahl Lichter bleibt gleich)
-    this.playerLight = new THREE.PointLight(0xffd0a0, 0, 24, 1.5);
-    this.scene.add(this.playerLight);
+    // (dauerhaft in der Szene, damit sich die Zahl der Lichter beim Rennstart nicht ändert – sonst müssten alle
+    // Shader neu übersetzt werden und die ersten Sekunden ruckeln und flackern)
+    this.playerLight = app.playerLight ?? new THREE.PointLight(0xffd0a0, 0, 24, 1.5);
+    if (!app.playerLight) this.scene.add(this.playerLight);
+    this.playerLight.intensity = 0;
 
     // Fahrer
     this.racers = [];
@@ -902,6 +905,7 @@ export class Race {
 
   dispose() {
     this.audio.stopMotor();
+    this.playerLight.intensity = 0;
     for (const r of this.racers) r.dispose();
     this.items.dispose();
     this.hazards.dispose();
