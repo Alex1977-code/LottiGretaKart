@@ -61,10 +61,13 @@ export class Menus {
   get modeSub() { return `${MODE_NAMES[this.mode] ?? ''}${this.multi ? ` · ${this.humanIds.length} Spieler` : ''} · ${CC[this.settings.cc].label}`; }
 
   // ------------------------------------------------------------------ Grundlagen
-  hideAll() { this.el.innerHTML = ''; this.el.className = 'menus'; this.screen = null; }
+  hideAll() { this.el.innerHTML = ''; this.el.className = 'menus'; this.screen = null; document.body.classList.remove('menu-open'); }
 
   show(name, html, cls = '') {
     this.screen = name;
+    // Touch-Steuerung liegt über den Menüs: solange ein Menü offen ist (Pause, Ergebnis …), ausblenden – sonst fangen
+    // die Lenk- und Gas-Flächen die Fingertipps auf „Weiter“ ab
+    document.body.classList.add('menu-open');
     this.el.className = `menus visible ${cls}`;
     this.el.innerHTML = html;
     this.focusFirst();

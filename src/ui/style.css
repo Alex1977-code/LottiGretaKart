@@ -28,6 +28,7 @@ html, body {
 #ui { position: absolute; inset: 0; pointer-events: none; }
 #touch { position: absolute; inset: 0; pointer-events: none; display: none; }
 #touch.visible { display: block; }
+body.menu-open #touch { display: none !important; }
 
 /* ---------------------------------------------------------------- HUD */
 .hud { position: absolute; inset: 0; display: none; pointer-events: none; color: #fff; text-shadow: 0 3px 0 rgba(42, 30, 62, 0.55); }

@@ -64,6 +64,7 @@ ctx.step = (n = 60, dt = 1 / 60, draw = true) => { for (let i = 0; i < n; i++) c
 let pixelScale = 1;
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
+  lastW = w; lastH = h;
   const maxPx = quality >= 3 ? 3.6e6 : quality >= 2 ? 2.4e6 : 1.4e6;
   let ratio = Math.min(window.devicePixelRatio || 1, 2);
   ratio = Math.min(ratio, Math.sqrt(maxPx / (w * h))) * pixelScale;
@@ -80,7 +81,14 @@ function resize() {
   if (portrait && ctx.race && !ctx.race.demo && !ctx.paused && ctx.menus) ctx.menus.pause();
 }
 window.addEventListener('resize', resize);
-window.addEventListener('orientationchange', () => setTimeout(resize, 120));
+// iPhone: nach dem Drehen stimmen die Maße oft erst etwas später – mehrmals nachmessen
+window.addEventListener('orientationchange', () => { for (const ms of [60, 200, 450, 900]) setTimeout(resize, ms); });
+window.visualViewport?.addEventListener('resize', resize);
+let lastW = 0, lastH = 0;
+/** Jedes Bild prüfen, ob sich die Fenstergröße geändert hat (falls ein Ereignis beim Drehen fehlt). */
+function checkSize() {
+  if (window.innerWidth !== lastW || window.innerHeight !== lastH) resize();
+}
 // iPhone/iPad im Browser (nicht vom Home-Bildschirm): Tipp für Vollbild anzeigen
 if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone && !window.Capacitor?.isNativePlatform?.()) document.body.classList.add('ios-browser');
 // Android: beim ersten Tippen Vollbild und Querformat anfordern (iOS kennt das nicht → zum Home-Bildschirm hinzufügen)
@@ -221,6 +229,7 @@ let last = performance.now();
 let slow = 0;
 function frame(now) {
   requestAnimationFrame(frame);
+  checkSize();
   if (ctx.freeze) return;   // Tests: Bildschleife anhalten (Screenshot des letzten Bilds)
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
