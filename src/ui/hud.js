@@ -343,7 +343,7 @@ export class Hud {
     if (race.free) for (const sc of race.starCoins) { if (sc.got || !near(sc.x, sc.z)) continue; c.fillStyle = '#8fe060'; c.beginPath(); c.arc(...P(sc.x, sc.z), 4, 0, Math.PI * 2); c.fill(); }
     // andere Fahrer
     for (const r of race.racers) {
-      if (r.out || r === me || !near(r.pos.x, r.pos.z)) continue;
+      if (r.out || r.parked || r === me || !near(r.pos.x, r.pos.z)) continue;
       const [x, y] = P(r.pos.x, r.pos.z);
       c.beginPath(); c.arc(x, y, 6, 0, Math.PI * 2); c.fillStyle = r.isPlayer ? '#ffd400' : 'rgba(20,16,40,0.85)'; c.fill();
       c.beginPath(); c.arc(x, y, 4.2, 0, Math.PI * 2); c.fillStyle = this.colors[r.id] ?? '#fff'; c.fill();

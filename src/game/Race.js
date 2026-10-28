@@ -461,7 +461,7 @@ export class Race {
     if (running) this.time += dt;
 
     for (const r of this.racers) {
-      if (r.out) continue;
+      if (r.out || r.parked) continue;
       if (r.remote) { if (running || this.state === 'countdown') applyRemote(this, r, dt); this.netTimers(r, dt); continue; }
       if (r.puppet) continue;
       let inp;
@@ -471,6 +471,12 @@ export class Race {
       if (r.finished && !r.isPlayer) inp.item = false;
       r.update(dt, inp);
       r.lastInp = inp;
+      // Computer-Fahrer am Ende der Auslaufzone: fährt mit Funkeln von der Strecke (blockiert niemanden)
+      if (r.finished && !r.isPlayer && !r.remote && r.path && r.progress > r.path.length - 30) {
+        this.effects.sparkle(r.pos, 0xfff2a0, 18, 3);
+        r.parked = true; r.speed = 0; r.root.visible = false;
+        r.pos.y = -500;   // aus dem Weg: keine Kisten, Münzen, Gefahren oder Treffer mehr
+      }
     }
     if (this.netGuest) guestPuppets(this, dt);
     if (running) {
@@ -483,7 +489,7 @@ export class Race {
     this.hazards.update(running ? dt : 0, t);
     if (!this.netGuest) this.rank();   // Gast: Plätze kommen vom Gastgeber
     this.emit(dt, t);
-    for (const r of this.racers) if (!r.out) r.syncVisual(dt, t);
+    for (const r of this.racers) if (!r.out && !r.parked) r.syncVisual(dt, t);
     if (this.groundLights) {
       for (const r of this.racers) {
         if (r.out || !r.headlights || !r.root.visible || this.focusDist2(r.pos.x, r.pos.z) > 90 * 90) continue;
@@ -662,6 +668,8 @@ export class Race {
       for (let b = a + 1; b < rs.length; b++) {
         const A = rs[a], B = rs[b];
         if (B.out) continue;
+        // wer schon im Ziel ist, rollt aus und stößt niemanden mehr an (kein Hindernis für die, die noch fahren)
+        if (A.finished || B.finished || A.parked || B.parked) continue;
         const dx = B.pos.x - A.pos.x, dz = B.pos.z - A.pos.z, dy = B.pos.y - A.pos.y;
         const rr = A.radius + B.radius;
         const d2 = dx * dx + dz * dz;
@@ -689,7 +697,7 @@ export class Race {
   emit(dt, t) {
     const fx = this.effects;
     for (const r of this.racers) {
-      if (r.out) continue;
+      if (r.out || r.parked) continue;
       const far = this.focusDist2(r.pos.x, r.pos.z) > 120 * 120;
       // Eintauchen und Auftauchen: Platsch an der Wasseroberfläche
       if (r.underwater !== r.wasUnder) {

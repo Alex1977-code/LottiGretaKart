@@ -18,7 +18,7 @@ const PROJ_MODEL = { panzer: ['panzer', {}, 1], goldpanzer: ['panzer', { gold: t
 /** Schnappschuss des ganzen Rennens (kompakt). */
 export function hostSnapshot(race) {
   const R = race.racers.map((r) => {
-    const flags = (r.air ? 1 : 0) | (r.finished ? 2 : 0) | (r.out ? 4 : 0) | (r.grind ? 8 : 0) | (r.trick?.done ? 16 : 0);
+    const flags = (r.air ? 1 : 0) | (r.finished ? 2 : 0) | (r.out ? 4 : 0) | (r.grind ? 8 : 0) | (r.trick?.done ? 16 : 0) | (r.parked ? 32 : 0);
     return [
       r2(r.pos.x), r2(r.pos.y), r2(r.pos.z), r2(r.yaw), r2(r.speed), r2(r.steer), r.drift.on ? r.drift.dir : 0, r.drift.level, flags,
       ...TIMERS.map((k) => r2(r[k] ?? 0)),
@@ -94,6 +94,8 @@ export function guestApply(race, snap) {
       if (fin && !r.finished && !(flags & 4)) { r.finishTimeHost = fin; race.finishRacer(r); }
     }
     if (flags & 4 && !r.out) race.eliminate(r);
+    // Computer-Fahrer hat die Auslaufzone verlassen
+    if (flags & 32 && !r.parked) { r.parked = true; r.root.visible = false; race.effects.sparkle(r.pos, 0xfff2a0, 18, 3); }
   });
   // Kisten und Bitcoins
   const B = new Set(snap.B), C = new Set(snap.C);
@@ -122,7 +124,7 @@ export function guestPuppets(race, dt) {
   const k = 1 - Math.exp(-14 * dt);
   for (const r of race.racers) {
     const tg = r.netTarget;
-    if (!r.puppet || !tg || r.out) continue;
+    if (!r.puppet || !tg || r.out || r.parked) continue;
     const age = Math.min(0.3, (now - tg.at) / 1000);
     const fx = Math.cos(tg.yaw), fz = -Math.sin(tg.yaw);
     const x = tg.x + fx * tg.speed * age, z = tg.z + fz * tg.speed * age;

@@ -68,6 +68,8 @@ export function aiInput(racer, race, dt) {
       laneF = best;
     }
   }
+  // nach dem Zieleinlauf auf der rechten Seite ausrollen – die Mitte bleibt frei für alle, die noch fahren
+  if (racer.finished) laneF = 0.72;
   const tp = track.pointAt(j / N, laneF * track.hw[j]);
   const want = Math.atan2(-(tp.z - racer.pos.z), tp.x - racer.pos.x);
   let diff = wrapA(want - racer.yaw);
@@ -105,13 +107,14 @@ export function aiInput(racer, race, dt) {
     inp.throttle = 0; inp.brake = 1; inp.steer = -Math.sign(diff); inp.drift = false;
   }
 
-  // nach dem Zieleinlauf: gemütlich ausrollen, am Ende des Auslaufs anhalten (nicht wild gegen die Bande)
+  // nach dem Zieleinlauf: gemütlich ausrollen (Spielerinnen halten am Ende des Auslaufs am Rand an, Computer-Fahrer
+  // verlassen dort die Strecke – siehe Race.update)
   if (racer.finished) {
     const left = track.length - racer.progress;
     inp.drift = false;
     ai.stuck = 0; ai.reverse = 0;
-    if (left < 70) { inp.throttle = 0; inp.brake = speed < 1.5 ? 0 : left < 30 ? 1 : 0.4; }
-    else if (speed > racer.phys.top * 0.7) inp.throttle = 0.3;
+    if (left < 70 && racer.isPlayer) { inp.throttle = 0; inp.brake = speed < 1.5 ? 0 : left < 30 ? 1 : 0.4; }
+    else if (speed > racer.phys.top * 0.55) inp.throttle = 0.2;
   }
 
   // Gegenstände
