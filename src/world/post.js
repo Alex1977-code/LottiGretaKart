@@ -10,6 +10,15 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 
+// Ungültige Werte (NaN/unendlich) über die Bits erkennen: isnan() streicht der Shader-Übersetzer auf dem iPhone
+// (Metal, „fast math“) einfach weg. Ein einziges solches Pixel würde vom Leuchten über den ganzen Bildschirm
+// verschmiert – das Bild blitzt schwarz auf.
+const SAFE = /* glsl */ `
+  vec4 lgkSafe(vec4 c, float hi) {
+    uvec4 e = floatBitsToUint(c) & 0x7f800000u;
+    return any(equal(e, uvec4(0x7f800000u))) ? vec4(0.0, 0.0, 0.0, 1.0) : clamp(c, 0.0, hi);
+  }`;
+
 const GradeShader = {
   uniforms: {
     tDiffuse: { value: null },
@@ -19,8 +28,9 @@ const GradeShader = {
   vertexShader: /* glsl */ `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse; uniform float sat, contrast, bright, vig, warm; uniform vec3 tint; varying vec2 vUv;
+    ${SAFE}
     void main() {
-      vec3 c = texture2D(tDiffuse, vUv).rgb * tint;
+      vec3 c = lgkSafe(texture2D(tDiffuse, vUv), 1.0).rgb * tint;
       float l = dot(c, vec3(0.299, 0.587, 0.114));
       c = mix(vec3(l), c, sat);
       c = (c - 0.5) * contrast + 0.5 + bright;
@@ -44,6 +54,13 @@ export class Post {
     this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.3, 0.35, 1.7);
     // weiche Schwelle: sonst springen Glanzpunkte an der Grenze von Bild zu Bild an und aus (Flackern)
     this.bloom.highPassUniforms.smoothWidth.value = 0.8;
+    // Eingang des Leuchtens säubern und begrenzen (siehe SAFE)
+    const hp = this.bloom.materialHighPassFilter;
+    hp.fragmentShader = hp.fragmentShader
+      .replace('void main() {', `${SAFE}\nvoid main() {`)
+      .replace('vec4 texel = texture2D( tDiffuse, vUv );', 'vec4 texel = lgkSafe( texture2D( tDiffuse, vUv ), 16.0 );');
+    if (!hp.fragmentShader.includes('lgkSafe( texture2D')) console.warn('Bloom-Schutz nicht eingebaut');
+    hp.needsUpdate = true;
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
     this.grade = new ShaderPass(GradeShader);

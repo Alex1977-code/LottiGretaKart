@@ -11,7 +11,8 @@ export function installRimLight() {
   // Glanzpunkte begrenzen (und ungültige Werte abfangen): einzelne überhelle Pixel würden im Leuchten (Bloom)
   // als blinkende Flecken erscheinen
   THREE.ShaderChunk.opaque_fragment = THREE.ShaderChunk.opaque_fragment.replace('#ifdef OPAQUE',
-    'outgoingLight = any(isnan(outgoingLight)) ? vec3(0.0) : min(outgoingLight, vec3(6.0));\n#ifdef OPAQUE');
+    // (Erkennung über die Bits: isnan() entfällt auf dem iPhone durch die Optimierung des Shader-Übersetzers)
+    'outgoingLight = any(equal(floatBitsToUint(outgoingLight) & 0x7f800000u, uvec3(0x7f800000u))) ? vec3(0.0) : clamp(outgoingLight, 0.0, 6.0);\n#ifdef OPAQUE');
   THREE.ShaderChunk.emissivemap_fragment += /* glsl */ `
   {
     // lgkRim: helle Kante an senkrechten Flächen (nicht am Boden und nicht an Dächern)

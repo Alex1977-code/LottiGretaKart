@@ -202,9 +202,11 @@ function wetStreaks(list) {
     fragmentShader: /* glsl */ `
       varying vec2 vUv; varying vec4 vCol; varying float vFade;
       void main() {
-        float a = pow(1.0 - vUv.y, 1.6) * pow(1.0 - abs(vUv.x * 2.0 - 1.0), 1.8);
+        // begrenzen: mit Kantenglättung liegt vUv am Rand knapp außerhalb 0 … 1 – pow() einer negativen Zahl ist ungültig
+        vec2 uv = clamp(vUv, 0.0, 1.0);
+        float a = pow(max(1.0 - uv.y, 0.0), 1.6) * pow(max(1.0 - abs(uv.x * 2.0 - 1.0), 0.0), 1.8);
         // leicht zerrissen wie auf echtem nassem Asphalt
-        a *= 0.75 + 0.25 * sin(vUv.y * 38.0 + vUv.x * 7.0);
+        a *= 0.75 + 0.25 * sin(uv.y * 38.0 + uv.x * 7.0);
         gl_FragColor = vec4(vCol.rgb * a * vCol.a * 1.25 * vFade, 1.0);
       }`,
   });

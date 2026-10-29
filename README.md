@@ -92,7 +92,9 @@ Klassen: Gemütlich (50 ccm), Flott (100 ccm), Rasant (150 ccm).
 **Grafik wie Mario Kart 8** (ab Grafikstufe „Hoch“): weiches Leuchten (Bloom) für helle und leuchtende Dinge,
 kräftige Farben und Kontraste, warme Lichter und kühle Schatten, Vignette, Kantenglättung; helles **Randlicht** an
 Figuren, Karts, Bäumen und Bauten. Auf allen Strecken: rot-weiße **Pfeilschilder** außen an engen Kurven,
-**Reifenspuren** auf der Ideallinie, bunte **Wimpelketten** über den Geraden.
+**Reifenspuren** auf der Ideallinie, bunte **Wimpelketten** über den Geraden. Ungültige Pixelwerte (NaN/unendlich)
+werden vor dem Leuchten herausgefiltert (über die Bits, da `isnan()` auf dem iPhone wegoptimiert wird) – sonst würde
+ein einzelnes Pixel über den ganzen Bildschirm verschmiert und das Bild blitzte schwarz auf.
 
 **Tag und Nacht** (Einstellungen → Tageszeit): nachts haben alle Strecken einen Sternenhimmel mit Mond, entlang
 aller Straßen leuchten **Laternen** mit warmen Lichtkegeln, die Karts fahren mit **Scheinwerfern**, Fenster, Neon und
