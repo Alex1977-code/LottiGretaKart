@@ -23,7 +23,7 @@ if (!base) {
 const only = process.argv[2];
 // Fälle: Runden auf jeder Strecke, Grand Prix mit Anfahrt (inkl. Seeüberquerung), K.-o.-Tour
 const CASES = [
-  ...['kraxelwiese', 'herbstwald', 'laternengrotte', 'manege', 'autobahn', 'strand', 'gipfel', 'burg', 'wueste', 'vulkan', 'bonbon', 'loroparque', 'piratenbucht', 'dinodschungel', 'wrackriff', 'spukinsel', 'katzeninsel', 'hasenhuegel', 'palmencity', 'mitternacht', 'teneriffa'].map((t) => ({ id: t, q: `race=${t}&laps=1&racer=greta`, rows: 12 })),
+  ...['kraxelwiese', 'herbstwald', 'laternengrotte', 'manege', 'autobahn', 'strand', 'gipfel', 'burg', 'wueste', 'vulkan', 'bonbon', 'loroparque', 'piratenbucht', 'dinodschungel', 'wrackriff', 'spukinsel', 'katzeninsel', 'hasenhuegel', 'palmencity', 'mitternacht', 'teneriffa', 'hafenstadt', 'arena', 'schlossring', 'schlucht'].map((t) => ({ id: t, q: `race=${t}&laps=1&racer=greta`, rows: 12 })),
   { id: 'gp-wiese-wald', q: 'mode=gp&from=kraxelwiese&race=herbstwald&laps=1&racer=lotti', rows: 12 },
   { id: 'gp-zirkus-wiese', q: 'mode=gp&from=manege&race=kraxelwiese&laps=1&racer=pflaume', rows: 12 },
   { id: 'gp-wiese-strand', q: 'mode=gp&from=kraxelwiese&race=strand&laps=1&racer=kobold', rows: 12 },
@@ -57,6 +57,10 @@ const CASES = [
   { id: 'gp-wueste-nacht', q: 'mode=gp&from=wueste&race=mitternacht&laps=1&racer=lotti', rows: 12 },
   { id: 'gp-nacht-city', q: 'mode=gp&from=mitternacht&race=palmencity&laps=1&racer=greta', rows: 12 },
   { id: 'ko-mitternacht', q: 'mode=ko&tour=mitternacht&racer=lotti', rows: 12, ko: true },
+  { id: 'gp-hafen-arena', q: 'mode=gp&from=hafenstadt&race=arena&laps=1&racer=lotti', rows: 12 },
+  { id: 'gp-arena-schloss', q: 'mode=gp&from=arena&race=schlossring&laps=1&racer=greta', rows: 12 },
+  { id: 'gp-burg-schlucht', q: 'mode=gp&from=burg&race=schlucht&laps=1&racer=lotti', rows: 12 },
+  { id: 'ko-gleitflug', q: 'mode=ko&tour=gleitflug&racer=greta', rows: 12, ko: true },
   { id: 'nacht-kraxelwiese', q: 'race=kraxelwiese&laps=1&racer=greta&night=1', rows: 12 },
   { id: 'gp-zoo-teneriffa', q: 'mode=gp&from=loroparque&race=teneriffa&laps=1&racer=lotti', rows: 12 },
   { id: 'gp-teneriffa-city', q: 'mode=gp&from=teneriffa&race=palmencity&laps=1&racer=greta', rows: 12 },

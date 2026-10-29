@@ -20,6 +20,10 @@ import hasenhuegel from './hasenhuegel.js';
 import palmencity from './palmencity.js';
 import mitternacht from './mitternacht.js';
 import teneriffa from './teneriffa.js';
+import hafenstadt from './hafenstadt.js';
+import arena from './arena.js';
+import schlossring from './schlossring.js';
+import schlucht from './schlucht.js';
 
-export const TRACKS = [kraxelwiese, herbstwald, laternengrotte, manege, autobahn, strand, gipfel, burg, wueste, vulkan, bonbon, loroparque, piratenbucht, dinodschungel, wrackriff, spukinsel, katzeninsel, hasenhuegel, palmencity, mitternacht, teneriffa];
+export const TRACKS = [kraxelwiese, herbstwald, laternengrotte, manege, autobahn, strand, gipfel, burg, wueste, vulkan, bonbon, loroparque, piratenbucht, dinodschungel, wrackriff, spukinsel, katzeninsel, hasenhuegel, palmencity, mitternacht, teneriffa, hafenstadt, arena, schlossring, schlucht];
 export const TRACK_BY_ID = Object.fromEntries(TRACKS.map((t) => [t.id, t]));

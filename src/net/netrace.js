@@ -18,7 +18,7 @@ const PROJ_MODEL = { panzer: ['panzer', {}, 1], goldpanzer: ['panzer', { gold: t
 /** Schnappschuss des ganzen Rennens (kompakt). */
 export function hostSnapshot(race) {
   const R = race.racers.map((r) => {
-    const flags = (r.air ? 1 : 0) | (r.finished ? 2 : 0) | (r.out ? 4 : 0) | (r.grind ? 8 : 0) | (r.trick?.done ? 16 : 0) | (r.parked ? 32 : 0);
+    const flags = (r.air ? 1 : 0) | (r.finished ? 2 : 0) | (r.out ? 4 : 0) | (r.grind ? 8 : 0) | (r.trick?.done ? 16 : 0) | (r.parked ? 32 : 0) | (r.glide ? 64 : 0);
     return [
       r2(r.pos.x), r2(r.pos.y), r2(r.pos.z), r2(r.yaw), r2(r.speed), r2(r.steer), r.drift.on ? r.drift.dir : 0, r.drift.level, flags,
       ...TIMERS.map((k) => r2(r[k] ?? 0)),
@@ -81,6 +81,7 @@ export function guestApply(race, snap) {
       r.steer = steer; r.drift.on = dDir !== 0; r.drift.dir = dDir; r.drift.level = dLv;
       r.air = !!(flags & 1); r.vy = vy; r.grind = flags & 8 ? r.grind ?? {} : null;
       r.trick.done = !!(flags & 16);
+      if (!!(flags & 64) !== !!r.glide) { r.glide = !!(flags & 64); r.setGlider?.(r.glide); }
       TIMERS.forEach((key, i) => { r[key] = tim[i]; });
       r.coins = coins; r.lap = lap; r.progress = progress;
       r.item = itemIdx >= 0 ? { id: ITEM_IDS[itemIdx], charges } : null; r.roulette = roul ? 1 : 0;

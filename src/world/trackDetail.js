@@ -53,7 +53,7 @@ export function buildTrackDetails(group, world, quality = 2) {
   const flagCols = [0xe8392d, 0xffc21a, 0x3b7cf0, 0x4fb833, 0xff6aa8, 0xffffff].map((c) => new THREE.Color(c));
   for (const c of world.courses) {
     const tr = c.track, N = tr.N;
-    const lifted = (i) => (tr.hasLift && Math.abs(tr.lift[i]) > 0.3) || (tr.hasDive && tr.lift[i] < -0.3);
+    const lifted = (i) => (tr.hasLift && Math.abs(tr.lift[i]) > 0.3) || (tr.hasDive && tr.lift[i] < -0.3) || !!tr.flight?.[i];   // (auch keine Schilder über Flugstrecken)
     // ---- Pfeilschilder außen an engen Kurven
     let lastSign = -1e9;
     for (let i = 0; i < N; i += 3) {

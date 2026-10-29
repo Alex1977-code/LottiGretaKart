@@ -267,6 +267,52 @@ const TENERIFE = {
   wallA: 0xfaf6ee, wallB: 0x2a6ab8, wallTop: 0xf2c14e, wallH: 0.8,
 };
 
+// Hafenstadt (nach dem Vorbild von Toad-Hafen): helle Mittelmeerstadt am Meer, grüne Hänge, Pflaster in warmem Grau.
+const HARBOR = {
+  ...GRASS,
+  label: 'Hafenstadt',
+  sky: [[1, 0x1a72e8], [0.45, 0x3a9af6], [0.15, 0x8ccffb], [0.03, 0xd4f0fd], [0, 0xecf9ff], [-0.1, 0xc2e4f4], [-1, 0x7cbad8]],
+  background: 0xd6effb,
+  fog: { color: 0xd8eff9, near: 120, far: 520 },
+  hemi: { sky: 0xd8eeff, ground: 0x8a8a6a, intensity: 1.4 },
+  sun: { color: 0xfff2d8, intensity: 3.0, dir: [-0.35, 1, 0.5] },
+  grass: 0x7cc84a, grass2: 0x72bc44, grassFar: 0x6aae40, offroad: 0xb8a88e, offroad2: 0xae9e84,   // Pflaster und Sand
+  road: 0x9a92a0, road2: 0x948c9a, line: 0xf8f6f0, curbA: 0x2a6ab8, curbB: 0xf8f6f0,
+  wallA: 0xfaf6ee, wallB: 0x2a6ab8, wallTop: 0xf2c14e, wallH: 0.8,
+};
+
+// Buckelpisten-Arena (nach dem Vorbild der Excitebike-Arena): Stadion mit Lehmpiste, grünem Innenfeld und
+// Reifenstapeln als Banden.
+const ARENA = {
+  ...GRASS,
+  label: 'Arena',
+  fog: { color: 0xdcecf6, near: 120, far: 520 },
+  grass: 0x6cc84a, grass2: 0x62bc44, grassFar: 0x5aae3e, offroad: 0xa8784a, offroad2: 0x9c6e42,
+  road: 0xb88250, road2: 0xae7a4a, line: 0xfaf6ee, curbA: 0xe8392d, curbB: 0xfaf6ee,
+  wallA: 0x2a2a30, wallB: 0xffc21a, wallTop: 0x2a2a30, wallH: 0.9,
+};
+
+// Schlossring (nach dem Vorbild von Royal Raceway): sattgrüne Hügel, Schloss auf dem Berg, See im Tal.
+const ROYAL = {
+  ...GRASS,
+  label: 'Schlossring',
+  grass: 0x6ad848, grass2: 0x5ecc40, grassFar: 0x58c03c,
+  road: 0x8e8aa4, road2: 0x88849e, curbA: 0xe8392d, curbB: 0xfaf6ee,
+  wallA: 0xfaf6ee, wallB: 0xff6aa8, wallTop: 0xffc21a, wallH: 0.8,
+};
+
+// Wasserfall-Schlucht (nach dem Vorbild von Shy Guy Falls): rote Felswände, grüne Ränder, Fluss in der Schlucht.
+const CANYON = {
+  ...GRASS,
+  label: 'Schlucht',
+  sky: [[1, 0x2a86e8], [0.45, 0x52aaf6], [0.15, 0x9ad6fb], [0.03, 0xd8f0fc], [0, 0xf2f8ff], [-0.1, 0xc8dcea], [-1, 0x8aaac4]],
+  hemi: { sky: 0xd4ecff, ground: 0x9a5a3a, intensity: 1.4 },
+  grass: 0x6ab84a, grass2: 0x62ac44, grassFar: 0xb07050, offroad: 0xc0784e, offroad2: 0xb46e46,   // roter Fels
+  road: 0x9c8a84, road2: 0x94827e, curbA: 0xffc21a, curbB: 0x5a3a2a,
+  wallA: 0x8a5a32, wallB: 0x6a4224, wallTop: 0xffc21a, wallH: 0.9,
+  rock: 0xc06a44,   // Felswände und Plateau
+};
+
 // Mitternachts-Highway: Großstadt bei Nacht wie in Need for Speed – nasser, spiegelnder Asphalt, Neon in Pink und
 // Türkis, Natriumlicht im Tunnel, Lichtglocke der Stadt am Horizont. Immer Nacht.
 const NIGHTCITY = {
@@ -318,5 +364,5 @@ const JUNGLE = {
   bridge: 0x7a5a32, bridgePillar: 0x6a4a2a, bridgeTop: 0x9a7a4a, bridgeTop2: 0x8e6e42,
 };
 
-export const THEMES = { tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
+export const THEMES = { canyon: CANYON, royal: ROYAL, arena: ARENA, harbor: HARBOR, tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
 export const getTheme = (n) => THEMES[n] ?? GRASS;

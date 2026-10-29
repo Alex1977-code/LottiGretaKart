@@ -105,16 +105,18 @@ export class World {
     for (const { tr, pad, conn } of roads) {
       const N = tr.N, raw = new Float32Array(N), prof = new Float32Array(N);
       for (let i = 0; i < N; i++) raw[i] = this.baseHeight(tr.px[i], tr.pz[i]);
-      const win = 28;
+      // festes Höhenprofil der Strecke (heights) nur leicht glätten, sonst das Gelände entlang der Straße mitteln
+      const src = tr.elev ?? raw, win = tr.elev ? 1 : 28;
       for (let i = 0; i < N; i++) {
         let sum = 0, n = 0;
-        for (let k = -win; k <= win; k++) { const j = tr.wrap(i + k); sum += raw[j]; n++; }
+        for (let k = -win; k <= win; k++) { const j = tr.wrap(i + k); sum += src[j]; n++; }
         prof[i] = sum / n;
       }
       tr.water = new Uint8Array(N);
       for (let i = 0; i < N; i++) {
         // Verbindungsstraßen über den See: dort bleibt Wasser (man fährt auf dem See)
         if (conn && raw[i] < 0.4) { tr.water[i] = 1; continue; }
+        if (tr.flight?.[i]) { tr.water[i] = 1; continue; }   // Flugstrecke: keine Straße, Gelände bleibt
         prof[i] = Math.max(prof[i], 0.8);
         // abtauchende Strecke (Unterwasser-Abschnitt): Profil um |lift| tiefer, Gelände wird dorthin gelegt
         if (tr.hasDive && tr.lift[i] < 0) prof[i] += tr.lift[i];
@@ -124,7 +126,8 @@ export class World {
         if (tr.water[i]) continue;
         // unter Brücken bleibt das Gelände, wie es ist (Wasser, die andere Straße)
         if (tr.hasLift && tr.lift[i] > 0.5) continue;
-        const inner = tr.hw[i] + pad, R = inner + 14;
+        // Damm bzw. Einschnitt: je größer der Höhenunterschied zum Gelände, desto breiter die Böschung
+        const inner = tr.hw[i] + pad, R = inner + 14 + (tr.elev ? Math.min(46, Math.abs(prof[i] - raw[i]) * 1.3) : 0);
         const cx = (tr.px[i] - b.minX) / CELL, cz = (tr.pz[i] - b.minZ) / CELL, rr = Math.ceil(R / CELL);
         for (let jz = Math.max(0, Math.floor(cz - rr)); jz <= Math.min(nz - 1, Math.ceil(cz + rr)); jz++) {
           for (let jx = Math.max(0, Math.floor(cx - rr)); jx <= Math.min(nx - 1, Math.ceil(cx + rr)); jx++) {

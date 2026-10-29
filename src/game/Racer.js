@@ -12,6 +12,7 @@ import { glowTexture } from '../lgw/course/models/lib/kit.js';
 import { endTouchDrift } from '../ui/input.js';
 
 const GRAVITY = 28;
+const GLIDER_COLORS = [0xff5fa2, 0x3b7cf0, 0xffc21a, 0x4fb833, 0xe8392d, 0xb47fe6];
 const TAU = Math.PI * 2;
 const wrapA = (a) => { a %= TAU; if (a > Math.PI) a -= TAU; else if (a < -Math.PI) a += TAU; return a; };
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -88,7 +89,8 @@ export class Racer {
     // y: Höhe des Platzes (auf Brücken das Deck) – sonst Boden in der bisherigen Höhe
     this.pos.set(x, y !== undefined ? y : this.groundAt(x, z), z);
     this.yaw = yaw;
-    this.speed = 0; this.vlat = 0; this.vy = 0; this.air = false;
+    this.speed = 0; this.vlat = 0; this.vy = 0; this.air = false; this.crest = false;
+    if (this.glide) { this.glide = false; this.setGlider(false); }
     this.lastI = -1;
     if (this.path) { this.path.locate(x, z, hintI, this.loc); this.lastI = this.loc.i; }
     this.syncVisual(0, 0);
@@ -284,7 +286,8 @@ export class Racer {
       yawRate = d.dir * P.turn * (sv >= 0 ? 0.46 + 0.74 * sv : 0.46 + 0.6 * sv) * clamp(Math.abs(this.speed) / 10, 0.5, 1);
     }
     else yawRate = this.steer * P.turn * sf * Math.sign(this.speed || 1);
-    if (this.air && !d.hop) yawRate *= 0.35;
+    // in der Luft kaum lenkbar – außer beim Gleiten und bei kleinen Kuppensprüngen (der Drift läuft weiter)
+    if (this.air && !d.hop) yawRate *= this.glide ? 0.75 : this.crest ? 0.85 : 0.35;
     if (this.giantT > 0) yawRate *= 0.9;
     this.yaw = wrapA(this.yaw + yawRate * dt);
 
@@ -327,14 +330,19 @@ export class Racer {
     if (this.grind) {
       this.updateGrind(dt);
     } else if (this.air) {
-      this.vy -= GRAVITY * (d.hop ? 1.15 : 1) * (this.underwater ? 0.5 : 1) * dt;
+      // Gleiter (nach großen Schanzen): sinkt langsam, Tempo bleibt
+      const gl = this.glide && this.vy < 0 ? 0.25 : 1;
+      if (this.glide) { this.vy = Math.max(this.vy, -6.5); this.speed = Math.max(this.speed, this.phys.top * 0.95); }
+      this.vy -= GRAVITY * gl * (d.hop ? 1.15 : 1) * (this.underwater ? 0.5 : 1) * dt;
       this.pos.y += this.vy * dt;
       if (this.vy < 3 && this.tryRail()) { /* auf eine Schiene gesprungen */ }
       if (this.trick.ready && driftPressed && !this.trick.done) { this.trick.done = true; this.trick.t = 0; if (this.isPlayer) this.race.audio.sfx('backflip'); }
       if (!this.grind && this.pos.y <= ground) {
         this.pos.y = ground;
         const hard = this.vy < -7;
-        this.vy = 0; this.air = false;
+        if (this.crest) this.crestCool = 0.35;
+        this.vy = 0; this.air = false; this.crest = false;
+        if (this.glide) { this.glide = false; this.setGlider(false); }
         if (d.hop) {
           d.hop = false;
           if (input.drift && d.dir === 0 && Math.abs(dirIn) > dirMin) d.dir = Math.sign(dirIn);
@@ -349,6 +357,21 @@ export class Racer {
       }
     } else {
       this.pos.y = ground;
+      // Kuppe: ist die Fahrbahn stärker gewölbt, als die Schwerkraft das Kart bei diesem Tempo herumbiegen kann
+      // (Krümmung · v² > g), hebt es ab – wie in Mario Kart 8 über Hügel und Buckel
+      // (kurz nach einer Landung nicht gleich wieder: sonst flattert das Kart über Knicke im Gelände)
+      if (this.crestCool > 0) this.crestCool -= dt;
+      else if (this.speed > 12 && !this.underwater) {
+        const v = this.speed, D = 2.4;
+        const a = this.groundAt(this.pos.x - fx * D, this.pos.z - fz * D), c = this.groundAt(this.pos.x + fx * D, this.pos.z + fz * D);
+        const kappa = (c - 2 * ground + a) / (D * D);
+        // (nur echte Fahrbahn-Steigungen: steiler als ~45 % ist eine Böschung neben der Straße, kein Hügel)
+        if (-kappa > 0.03 && -kappa * v * v > GRAVITY * 1.2 && Math.abs(ground - a) < D * 0.45 && Math.abs(c - ground) < D * 0.45) {
+          const vy = ((c - a) / (2 * D)) * v;
+          this.air = true; this.crest = true; this.vy = vy;
+          if (vy > 3) { this.trick.ready = true; this.trick.done = false; }
+        }
+      }
     }
     if (this.trick.done) this.trick.t += dt;
 
@@ -417,11 +440,41 @@ export class Racer {
     this.vlat = 0;
   }
 
-  /** Sprungschanze / Trampolin: in die Luft, Trick per Drift-Taste in der Luft. */
-  launch(vy = 9) {
+  /** Gleiter auf- bzw. zuklappen (bunter Drachen über dem Kart). */
+  setGlider(on) {
+    if (on && !this.gliderObj) {
+      const g = new THREE.Group();
+      g.name = 'gleiter';
+      const cloth = new THREE.MeshStandardMaterial({ color: GLIDER_COLORS[this.slot % GLIDER_COLORS.length], roughness: 0.6, side: THREE.DoubleSide });
+      // Segel wie ein Drachen: Dreiecksflügel, Nase hoch (von hinten gut zu sehen)
+      const shape = new THREE.Shape();
+      shape.moveTo(1.1, 0); shape.quadraticCurveTo(0.2, 1.9, -0.9, 1.8); shape.lineTo(-0.5, 0); shape.lineTo(-0.9, -1.8); shape.quadraticCurveTo(0.2, -1.9, 1.1, 0);
+      const wing = new THREE.Mesh(new THREE.ShapeGeometry(shape, 8), cloth);
+      wing.rotation.set(-Math.PI / 2, 0, 0, 'ZYX');
+      const tilt = new THREE.Group();
+      tilt.rotation.z = 0.35;
+      tilt.position.y = 2.0;
+      tilt.add(wing);
+      g.add(tilt);
+      const rod = new THREE.MeshStandardMaterial({ color: 0x2a1e3e, roughness: 0.5 });
+      for (const zz of [-0.5, 0.5]) {
+        const r = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.1, 5), rod);
+        r.position.set(-0.1, 1.35, zz * 0.5); r.rotation.x = zz * 0.4;
+        g.add(r);
+      }
+      g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      this.kart.root.add(g);
+      this.gliderObj = g;
+    }
+    if (this.gliderObj) this.gliderObj.visible = on;
+  }
+
+  /** Sprungschanze / Trampolin: in die Luft, Trick per Drift-Taste in der Luft. Mit glide: Gleiter öffnet sich. */
+  launch(vy = 9, glide = false) {
     if (this.air && this.vy > 2) return;
     this.cancelDrift();
-    this.air = true; this.vy = vy;
+    this.air = true; this.vy = vy; this.crest = false;
+    if (glide) { this.glide = true; this.setGlider(true); }
     this.trick.ready = true; this.trick.done = false;
     if (this.isPlayer) this.race.audio.sfx('bounce');
   }

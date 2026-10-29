@@ -95,7 +95,7 @@ function buildLampSet(world, quality, want, name) {
     let side = 1;
     for (let i = 0; i < N; i += di) {
       side = -side;
-      if ((tr.hasLift && Math.abs(tr.lift[i]) > 0.3) || (tr.hasDive && tr.lift[i] < -0.3)) continue;
+      if ((tr.hasLift && Math.abs(tr.lift[i]) > 0.3) || (tr.hasDive && tr.lift[i] < -0.3) || tr.flight?.[i]) continue;
       if (nearOver(tr, i / N, 0.02) || tr.inGap?.(side, i)) continue;
       const W = (tr.wallAt?.(i) ?? tr.hw[i] + 1) + 0.8;
       const x = tr.px[i] - tr.tz[i] * side * W, z = tr.pz[i] + tr.tx[i] * side * W;

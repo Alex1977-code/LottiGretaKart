@@ -139,6 +139,18 @@ export class Items {
         this.scene.add(g);
         this.ramps.push({ g, x: p.x, z: p.z, yaw: p.yaw, w, len: 2.6 });
       }
+      // Gleiter-Schanzen (blau, wie die Gleiter-Rampen in Mario Kart 8): weiter Flug mit dem Gleiter
+      for (const g0 of def.glides ?? []) {
+        // [u, Seite, Breite] oder { c: Kontrollpunkt-Stelle, lat, w }
+        const [u, lat = 0, w = 10] = Array.isArray(g0) ? g0 : [tr.uCtrl(g0.c), g0.lat, g0.w];
+        const hw = tr.hw[tr.wrap(Math.round(u * tr.N))];
+        const p = tr.pointAt(u, lat * hw);
+        const g = rampModel(w, this.race.theme, true);
+        g.position.set(p.x, p.y + 0.05, p.z);
+        g.rotation.y = p.yaw;
+        this.scene.add(g);
+        this.ramps.push({ g, x: p.x, z: p.z, yaw: p.yaw, w, len: 4.2, glide: true });
+      }
     }
     // Kisten als eine Instanz-Wolke (ein Zeichenaufruf für alle)
     if (boxPos.length) {
@@ -454,8 +466,10 @@ export class Items {
       }
       for (let pi = 0; pi < this.ramps.length; pi++) {
         const p = this.ramps[pi];
-        if (Math.abs(r.pos.x - p.x) > 6 || Math.abs(r.pos.z - p.z) > 6) continue;
-        if (inRect(r.pos.x, r.pos.z, p.x, p.z, p.yaw, p.len / 2, p.w / 2) && r.speed > 5) r.launch(8.5 + Math.min(3, r.speed * 0.08));
+        if (Math.abs(r.pos.x - p.x) > 8 || Math.abs(r.pos.z - p.z) > 8) continue;
+        if (inRect(r.pos.x, r.pos.z, p.x, p.z, p.yaw, p.len / 2, p.w / 2) && r.speed > 5) {
+          if (p.glide) r.launch(11, true); else r.launch(8.5 + Math.min(3, r.speed * 0.08));
+        }
       }
     }
     for (let pi = 0; pi < this.pads.length; pi++) this.pads[pi].model.update(dt, 'idle');
@@ -619,19 +633,19 @@ function inRect(x, z, cx, cz, yaw, hx, hz) {
 }
 
 /** Sprungschanze: Keil mit Pfeilstreifen (Spielzeug-Look). */
-function rampModel(w, theme) {
+function rampModel(w, theme, glide = false) {
   const g = new THREE.Group();
-  const len = 2.6, h = 0.55;
+  const len = glide ? 4.2 : 2.6, h = glide ? 1.1 : 0.55;
   const shape = new THREE.Shape();
   shape.moveTo(-len / 2, 0); shape.lineTo(len / 2, h); shape.lineTo(len / 2, 0); shape.closePath();
   const geo = new THREE.ExtrudeGeometry(shape, { depth: w, bevelEnabled: false });
   geo.translate(0, 0, -w / 2);
-  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xffc21a, roughness: 0.45 }));
+  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: glide ? 0x2a8cff : 0xffc21a, roughness: 0.45, emissive: glide ? 0x0a3a8a : 0x000000, emissiveIntensity: 0.5 }));
   m.castShadow = true; m.receiveShadow = true;
   g.add(m);
   // Streifen
   for (let k = -2; k <= 2; k++) {
-    const s = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.03, 0.25), new THREE.MeshStandardMaterial({ color: 0xe8392d, roughness: 0.5 }));
+    const s = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.03, 0.25), new THREE.MeshStandardMaterial({ color: glide ? 0xffffff : 0xe8392d, roughness: 0.5 }));
     s.position.set(0.1, h * 0.6 + 0.02, k * (w / 5));
     s.rotation.z = Math.atan2(h, len);
     g.add(s);

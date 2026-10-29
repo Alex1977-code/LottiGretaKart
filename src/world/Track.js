@@ -20,6 +20,8 @@ export class Track {
   /**
    * @param {object} def    Streckendefinition (ctrl = [[x, z, halbe Breite?, Brückenhöhe?], …]) – mit Brückenhöhe
    *                         (m über dem Gelände) führt die Strecke über eine Brücke, z. B. über sich selbst (Acht).
+   *                         heights = [Höhe je Kontrollpunkt, …] (m über dem Meer): festes Höhenprofil der Fahrbahn,
+   *                         das Gelände wird daran angeglichen (Dämme, Einschnitte) statt umgekehrt.
    * @param {object} theme  Farben
    * @param {object} opts   { ox, oz (Verschiebung in die Welt), closed (Rundkurs, Standard true),
    *                          heightFn (x, z) → Höhe (Welt-Gelände statt eigener Hügel) }
@@ -66,12 +68,40 @@ export class Track {
       this.tx[i] = t.x / l; this.tz[i] = t.z / l;
       // Breite: zwischen den Kontrollpunkten weich übergeblendet
       const ct = curve.getUtoTmapping(u) * (this.closed ? nC : nC - 1);
+      (this.ctrlT ??= new Float32Array(N))[i] = ct;
       const i0 = Math.min(nC - 1, Math.floor(ct)) % nC, i1 = this.closed ? (i0 + 1) % nC : Math.min(nC - 1, i0 + 1), f = ct - Math.floor(ct);
       const w0 = def.ctrl[i0][2] ?? this.hwDefault, w1 = def.ctrl[i1][2] ?? this.hwDefault;
       const sf = f * f * (3 - 2 * f);
       this.hw[i] = w0 + (w1 - w0) * sf;
       const l0 = def.ctrl[i0][3] ?? 0, l1 = def.ctrl[i1][3] ?? 0;
       this.lift[i] = l0 + (l1 - l0) * sf;
+      // festes Höhenprofil (wie in Mario Kart 8: Anstiege, Kuppen, Gefälle): Catmull-Rom durch die Höhen der
+      // Kontrollpunkte – stetige Steigung, keine Plateaus an den Punkten
+      if (def.heights) {
+        const H = def.heights, at = (j) => H[this.closed ? ((j % nC) + nC) % nC : Math.max(0, Math.min(nC - 1, j))];
+        const p0 = at(i0 - 1), p1 = at(i0), p2 = at(i0 + 1), p3 = at(i0 + 2);
+        (this.elev ??= new Float32Array(N))[i] = 0.5 * (2 * p1 + (p2 - p0) * f + (2 * p0 - 5 * p1 + 4 * p2 - p3) * f * f + (3 * p1 - p0 - 3 * p2 + p3) * f * f * f);
+      }
+    }
+    // Buckelpiste: [von Kontrollpunkt, bis Kontrollpunkt, Höhe, Wellenlänge] – Wellen auf dem Höhenprofil (wie die
+    // Hügel einer Motocross-Bahn)
+    if (this.elev) {
+      const at = (c) => { let i = 0; while (i < N - 1 && this.ctrlT[i] < c) i++; return i; };
+      // (ganze Zahl von Buckeln je Abschnitt: jeder beginnt und endet flach)
+      for (const [c0, c1, A, lam = 14] of def.bumps ?? []) {
+        const i0 = at(c0), n = ((at(c1) - i0) % N + N) % N, m = Math.max(1, Math.round((n * this.ds) / lam));
+        for (let k = 0; k < n; k++) this.elev[(i0 + k) % N] += A * (0.5 - 0.5 * Math.cos((2 * Math.PI * m * k) / n));
+      }
+    }
+    // Flugstrecken: [von Kontrollpunkt, bis Kontrollpunkt] – hier gibt es keine Fahrbahn und keine Banden (man
+    // gleitet nach einer Gleiter-Schanze darüber, z. B. über einen See oder ein Tal); das Gelände bleibt unberührt
+    if (def.flights) {
+      this.flight = new Uint8Array(N);
+      for (const [c0, c1] of def.flights) {
+        let a = -1, b = -1;
+        for (let i = 0; i < N; i++) if (this.ctrlT[i] >= c0 && this.ctrlT[i] <= c1) { this.flight[i] = 1; if (a < 0) a = i; b = i; }
+        if (a >= 0) for (const side of [-1, 1]) this.gaps.push({ side, s: ((a + b) / 2) * this.ds, half: ((b - a) / 2) * this.ds + 1 });
+      }
     }
     this.hasLift = this.lift.some((v) => v > 0.05);
     // negatives lift: die Straße taucht ab (unter den Meeresspiegel) – das Gelände wird bis dorthin abgesenkt
@@ -83,6 +113,9 @@ export class Track {
       this.curv[i] = ang / (8 * this.ds); // rad/m, + = Rechtskurve
     }
   }
+
+  /** Rundenanteil u an Kontrollpunkt-Stelle c (z. B. 11.25 = ein Viertel zwischen Punkt 11 und 12). */
+  uCtrl(c) { let i = 0; while (i < this.N - 1 && this.ctrlT[i] < c) i++; return i / this.N; }
 
   wrap(i) { const N = this.N; if (!this.closed) return i < 0 ? 0 : i >= N ? N - 1 : i; return ((i % N) + N) % N; }
 
@@ -319,11 +352,12 @@ export class Track {
       return m;
     };
     const hw = (i) => this.hw[i];
+    const F = this.flight, sk = F ? (i) => F[i] || F[(i + 1) % this.N] : null;   // Flugstrecken auslassen
     // Fahrbahn (leichte Querbänder für das Tempogefühl)
-    add(this.ribbon((i) => -hw(i), (i) => hw(i), () => 0.06, (i) => (Math.floor(i / 6) % 2 ? cR : cR2)), 'fahrbahn');
+    add(this.ribbon((i) => -hw(i), (i) => hw(i), () => 0.06, (i) => (Math.floor(i / 6) % 2 ? cR : cR2), 1, sk), 'fahrbahn');
     // Curbs: rot-weiß, außen abgeschrägt
-    add(this.ribbon((i) => -hw(i) - 1.0, (i) => -hw(i), (i, s) => (s ? 0.1 : 0.04), (i) => (Math.floor(i / 2) % 2 ? cA : cB)), 'curb-l');
-    add(this.ribbon((i) => hw(i), (i) => hw(i) + 1.0, (i, s) => (s ? 0.04 : 0.1), (i) => (Math.floor(i / 2) % 2 ? cA : cB)), 'curb-r');
+    add(this.ribbon((i) => -hw(i) - 1.0, (i) => -hw(i), (i, s) => (s ? 0.1 : 0.04), (i) => (Math.floor(i / 2) % 2 ? cA : cB), 1, sk), 'curb-l');
+    add(this.ribbon((i) => hw(i), (i) => hw(i) + 1.0, (i, s) => (s ? 0.04 : 0.1), (i) => (Math.floor(i / 2) % 2 ? cA : cB), 1, sk), 'curb-r');
     // Markierungen
     const lanes = this.def.lanes ?? 1;
     if (lanes > 1) {
@@ -334,8 +368,8 @@ export class Track {
       const cY = lin(th.lineYellow ?? th.line);
       add(this.ribbon((i) => -hw(i) + 0.35, (i) => -hw(i) + 0.6, () => 0.075, () => cY), 'rand-l');
       add(this.ribbon((i) => hw(i) - 0.6, (i) => hw(i) - 0.35, () => 0.075, () => cY), 'rand-r');
-    } else {
-      add(this.ribbon(() => -0.15, () => 0.15, () => 0.075, (i) => (Math.floor(i / 3) % 2 ? null : cL)), 'mittelstreifen');
+    } else if (!this.def.noLine) {   // (Lehmpiste: ohne Mittelstreifen)
+      add(this.ribbon(() => -0.15, () => 0.15, () => 0.075, (i) => (Math.floor(i / 3) % 2 ? null : cL), 1, sk), 'mittelstreifen');
     }
   }
 

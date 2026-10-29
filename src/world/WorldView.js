@@ -56,7 +56,7 @@ export class WorldView {
     const sand = col(0xe8d39a), sandWet = col(0xc9b27a), rock = col(0x9a92a0), rockDark = col(0x7a7284), snow = col(0xf4f2f8);
     const ash = col(0x3a3034), lavaRim = col(0xc8401a);
     const mat = addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }), { grain: 0.16, key: 'terrain', patches: true });
-    const tmp = [0, 0, 0], acc = [0, 0, 0];
+    const tmp = [0, 0, 0], acc = [0, 0, 0], rk = [0, 0, 0];
     for (let tz = 0; tz < hf.nz - 1; tz += TILE) {
       for (let tx = 0; tx < hf.nx - 1; tx += TILE) {
         const nx = Math.min(TILE, hf.nx - 1 - tx), nz = Math.min(TILE, hf.nz - 1 - tz);
@@ -72,7 +72,7 @@ export class WorldView {
             const x = hf.x0 + gx * C, z = hf.z0 + gz * C, y = hf.h[gi] - 0.04;
             pos[k * 3] = x; pos[k * 3 + 1] = y; pos[k * 3 + 2] = z;
             // Region überblenden
-            acc[0] = acc[1] = acc[2] = 0;
+            acc[0] = acc[1] = acc[2] = 0; rk[0] = rk[1] = rk[2] = 0;
             let sum = 0;
             const stripe = (Math.floor((x + z) / 14) + Math.floor((x - z) / 14)) % 2 === 0;
             const roadW = hf.rw[gi];
@@ -84,13 +84,16 @@ export class WorldView {
               const g = col(stripe ? r.th.grass : r.th.grass2), o = col(Math.floor((x * 0.7 + z) / 5) % 2 ? r.th.offroad : r.th.offroad2);
               const ow = Math.min(1, roadW * 1.4);
               for (let q = 0; q < 3; q++) acc[q] += (g[q] + (o[q] - g[q]) * ow) * wgt;
+              // Felsfarbe der Region (z. B. roter Fels in der Schlucht), sonst Grau
+              const rc = r.th.rock !== undefined ? col(r.th.rock) : rock;
+              for (let q = 0; q < 3; q++) rk[q] += rc[q] * wgt;
               sum += wgt;
             }
             for (let q = 0; q < 3; q++) tmp[q] = acc[q] / (sum || 1);
             // Höhe: Strand, Unterwasser, Fels, Gipfel
             const hh = hf.h[gi];
             if (hh < 1.4 && roadW < 0.5) { const f = smooth(1.4, 0.4, hh); for (let q = 0; q < 3; q++) tmp[q] += ((hh < 0 ? sandWet[q] : sand[q]) - tmp[q]) * f; }
-            if (hh > 16) { const f = smooth(16, 32, hh); for (let q = 0; q < 3; q++) tmp[q] += ((hh > 34 ? rockDark[q] : rock[q]) - tmp[q]) * f; }
+            if (hh > 16) { const f = smooth(16, 32, hh); for (let q = 0; q < 3; q++) tmp[q] += ((hh > 34 ? rockDark[q] : rk[q] / (sum || 1)) - tmp[q]) * f; }
             const volc = regions.reduce((a, r) => (r.theme === 'volcano' ? Math.max(a, 1 - smooth(r.r, r.r + 260, Math.hypot(x - r.x, z - r.z))) : a), 0);
             if (hh > 40) { const f = smooth(40, 48, hh) * (1 - volc); for (let q = 0; q < 3; q++) tmp[q] += (snow[q] - tmp[q]) * f; }
             if (volc > 0 && hh > 20) { const f = smooth(20, 45, hh) * volc; for (let q = 0; q < 3; q++) tmp[q] += ((hh > 52 ? lavaRim[q] : ash[q]) - tmp[q]) * f; }

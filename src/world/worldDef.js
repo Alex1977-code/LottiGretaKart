@@ -30,12 +30,16 @@ import hasenhuegel from '../tracks/hasenhuegel.js';
 import palmencity from '../tracks/palmencity.js';
 import mitternacht from '../tracks/mitternacht.js';
 import teneriffa from '../tracks/teneriffa.js';
+import hafenstadt from '../tracks/hafenstadt.js';
+import arena from '../tracks/arena.js';
+import schlossring from '../tracks/schlossring.js';
+import schlucht from '../tracks/schlucht.js';
 
 export const WORLD = {
   name: 'Grüne Blockinsel',
   // Insel als Ellipse mit welliger Küste
   island: { cx: 70, cz: -10, rx: 1100, rz: 800 },
-  bounds: { minX: -1300, maxX: 1740, minZ: -1090, maxZ: 1130 },
+  bounds: { minX: -1300, maxX: 1740, minZ: -1300, maxZ: 1300 },
   // Nachbarinseln vor der Küste (über Straßen auf dem Wasser erreichbar)
   islets: [
     { name: 'Spukinsel', x: -900, z: -730, rx: 200, rz: 165 },
@@ -43,6 +47,10 @@ export const WORLD = {
     { name: 'Palmen-City', x: 1470, z: 300, rx: 235, rz: 195 },
     { name: 'Neon-Insel', x: 1300, z: -430, rx: 240, rz: 190 },
     { name: 'Teneriffa', x: 1180, z: 820, rx: 300, rz: 250 },
+    { name: 'Hafenstadt', x: -480, z: 1035, rx: 265, rz: 150 },
+    { name: 'Arena', x: 60, z: 1015, rx: 215, rz: 130 },
+    { name: 'Schlossberg', x: 560, z: 1040, rx: 270, rz: 170 },
+    { name: 'Schluchtinsel', x: -490, z: -1090, rx: 270, rz: 160 },
   ],
   courses: [
     { def: kraxelwiese, ox: -20, oz: -60 },
@@ -66,6 +74,10 @@ export const WORLD = {
     { def: palmencity, ox: 1470, oz: 300 },
     { def: mitternacht, ox: 1300, oz: -430 },
     { def: teneriffa, ox: 1180, oz: 820 },
+    { def: hafenstadt, ox: -480, oz: 1060 },
+    { def: arena, ox: 70, oz: 1050 },
+    { def: schlossring, ox: 560, oz: 1060 },
+    { def: schlucht, ox: -480, oz: -1090 },
   ],
   connectors: [
     { id: 'wiese-wald', a: ['kraxelwiese', 0.075, -1], b: ['herbstwald', 0.045, 1], via: [[40, -140], [10, -190]], hw: 6.5, items: [0.5], coins: [[0.3, 0.4]] },
@@ -104,6 +116,14 @@ export const WORLD = {
     { id: 'zoo-teneriffa', a: ['loroparque', 0.35, -1], b: ['teneriffa', 0.75, 1], via: [[960, 640]], hw: 7, items: [0.3, 0.7], coins: [[0.45, 0.55]] },
     { id: 'teneriffa-city', a: ['teneriffa', 0.63, 1], b: ['palmencity', 0.19, 1], via: [[1330, 560]], hw: 7, items: [0.5], coins: [[0.4, 0.5]] },
     { id: 'piraten-strand', a: ['piratenbucht', 0.29, 1], b: ['strand', 0.78, -1], via: [[-60, 560]], hw: 6.5, items: [0.45], coins: [[0.55, 0.65]] },
+    // Inseln der Strecken nach dem Vorbild von Mario Kart 8 Deluxe (über das Meer)
+    { id: 'piraten-hafen', a: ['piratenbucht', 0.235, 1], b: ['hafenstadt', 0.55, 1], via: [[-260, 760], [-380, 880]], hw: 7, items: [0.3, 0.7], coins: [[0.45, 0.55]] },
+    { id: 'hafen-arena', a: ['hafenstadt', 0.377, 1], b: ['arena', 0.923, 1], via: [[-210, 1052]], hw: 7, items: [0.5] },
+    { id: 'arena-schloss', a: ['arena', 0.217, 1], b: ['schlossring', 0.958, 1], via: [[280, 1085]], hw: 7, items: [0.5] },
+    { id: 'strand-arena', a: ['strand', 0.683, -1], b: ['arena', 0.717, 1], via: [[95, 740]], hw: 7, items: [0.35, 0.7], coins: [[0.5, 0.6]] },
+    { id: 'schloss-teneriffa', a: ['schlossring', 0.426, 1], b: ['teneriffa', 0.868, 1], via: [[880, 960]], hw: 7, items: [0.5], coins: [[0.4, 0.5]] },
+    { id: 'burg-schlucht', a: ['burg', 0.79, -1], b: ['schlucht', 0.144, 1], via: [[-380, -760]], hw: 7, items: [0.35, 0.7], coins: [[0.5, 0.6]] },
+    { id: 'schlucht-spuk', a: ['schlucht', 0.944, 1], b: ['spukinsel', 0.566, -1], via: [[-800, -930]], hw: 7, items: [0.5] },
   ],
   lakes: [
     { x: -40, z: 205, r: 95, depth: 4 },
@@ -112,6 +132,9 @@ export const WORLD = {
     { x: 200, z: 728, r: 140, depth: 6 },    // Bucht südlich vom Funkelstrand (offen zum Meer)
     { x: 380, z: 700, r: 110, depth: 6 },
     { x: -212, z: 590, r: 22, depth: 3 },    // Piratenlagune (Schiff)
+    { x: 498, z: 985, r: 34, depth: 3 },     // See unter dem Gleitflug am Schlossring
+    { x: -500, z: -1110, r: 22, depth: 2.5 }, // Becken unter dem Wasserfall
+    { x: -600, z: -1112, r: 18, depth: 2 },   // Becken unter dem zweiten Wasserfall
   ],
   flats: [
     { x: 0, z: 0, r: 175, h: 3 },            // Kraxelwiese-Stadion
@@ -140,6 +163,11 @@ export const WORLD = {
     { x: 1161, z: 932, r: 55, h: 3.8 },      // Teneriffa: Hotel Bahía Príncipe San Felipe (Auffahrt vorn, Pool hinten)
     { x: 1265, z: 950, r: 55, h: 3.5 },      // Teneriffa: Loro Parque neben dem Hotel
     { x: 1244, z: 1035, r: 28, h: 2.2 },     // Teneriffa: Lago Martiánez
+    { x: 55, z: 1015, r: 150, h: 3 },        // Buckelpisten-Arena (Stadionboden)
+    { x: 670, z: 975, r: 70, h: 27 },        // Schlossring: Schlossberg
+    { x: -420, z: -1180, r: 75, h: 32 },     // Wasserfall-Schlucht: Hochplateau (Ost)
+    { x: -560, z: -1168, r: 55, h: 32 },     // Hochplateau (West, Gleiter-Kante)
+    { x: -500, z: -1010, r: 95, h: 3 },      // Schluchtgrund am Fluss
   ],
   hills: [
     [180, -120, 70, 14], [-200, -200, 80, 18], [330, -540, 80, 22], [-460, -580, 70, 30], [-650, -300, 120, 45],
@@ -149,6 +177,7 @@ export const WORLD = {
     [-880, 330, 70, 62], [-560, 560, 60, 30],   // Vulkankegel und Aschehügel
     [1080, 220, 80, 28], [1000, -260, 70, 26],  // Tafelland der Wüste
     [1220, 760, 115, 42],                       // Teide auf Teneriffa
+    [-480, 990, 130, 19],                       // Stadthügel der Hafenstadt
   ],
   // Höhle im Berg und Zirkuszelt als Bauwerke über den Strecken (Eingänge entstehen an den Verbindungsstraßen)
   structures: [
@@ -177,6 +206,10 @@ export const WORLD = {
     { theme: 'city', x: 1470, z: 300, r: 230, fade: 90 },
     { theme: 'nightcity', x: 1300, z: -430, r: 230, fade: 90 },
     { theme: 'tenerife', x: 1180, z: 820, r: 290, fade: 90 },
+    { theme: 'harbor', x: -480, z: 1040, r: 270, fade: 90 },
+    { theme: 'arena', x: 60, z: 1015, r: 200, fade: 60 },
+    { theme: 'royal', x: 560, z: 1040, r: 260, fade: 80 },
+    { theme: 'canyon', x: -490, z: -1090, r: 260, fade: 80 },
   ],
   // Grind-Schienen: über den See (Abkürzung) und neben der Waldstraße
   rails: [
@@ -198,6 +231,7 @@ export const WORLD = {
     [300, -470], [600, -620],
     [-60, -980], [156, -880],
     [-900, -745], [-1040, 650], [-860, 40], [1530, 300], [1330, -470], [1100, 900],
+    [-450, 1010], [60, 1005], [640, 975], [-430, -1185],
   ],
 };
 
@@ -218,6 +252,8 @@ export const WORLD_CUPS = [
   { id: 'neon', name: 'Neon-Cup', tracks: ['strand', 'autobahn', 'wueste', 'palmencity'] },
   { id: 'nacht', name: 'Mitternachts-Cup', tracks: ['autobahn', 'wueste', 'mitternacht', 'palmencity'] },
   { id: 'kanaren', name: 'Kanaren-Cup', tracks: ['strand', 'loroparque', 'teneriffa', 'palmencity'] },
+  // Strecken nach dem Vorbild von Mario Kart 8 Deluxe: Höhenprofile, Kuppensprünge, Gleitflüge
+  { id: 'gleiter', name: 'Gleiter-Cup', tracks: ['schlucht', 'hafenstadt', 'arena', 'schlossring'] },
 ];
 
 /** K.-o.-Tour: Rallye quer über die Insel; an jedem Checkpoint scheiden die Letzten aus. */
@@ -276,6 +312,11 @@ export const KO_TOURS = [
   {
     id: 'kanaren', name: 'Kanaren-Rundfahrt',
     stops: ['strand', 'loroparque', 'teneriffa', 'palmencity'],
+    survivors: [8, 4],
+  },
+  {
+    id: 'gleitflug', name: 'Gleitflug-Tour',
+    stops: ['strand', 'arena', 'schlossring', 'teneriffa'],
     survivors: [8, 4],
   },
   {
