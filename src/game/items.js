@@ -93,12 +93,9 @@ export class Items {
   }
 
   // ------------------------------------------------------------------ Aufbau
-  /** Alle Kisten, Bitcoins, Turbo-Felder und Schanzen der Welt (Strecken und Verbindungsstraßen). */
+  /** Alle Kisten, Bitcoins, Turbo-Felder und Schanzen der Strecke. */
   build(world, { boxes = true } = {}) {
-    const roads = [
-      ...world.courses.map((c) => ({ tr: c.track, def: c.def })),
-      ...world.connectors.map((c) => ({ tr: c.track, def: c.def })),
-    ];
+    const roads = world.courses.map((c) => ({ tr: c.track, def: c.def }));
     const boxPos = [], coinList = [];
     for (const { tr, def } of roads) {
       // Kisten-Reihen

@@ -1,9 +1,11 @@
-// Draufsicht der Insel-Welt als Bild (tests/out/world.ppm → per PIL in PNG): Gelände, Wasser, Straßen, Banden,
-// Bau-Ringe, Tore. Aufruf: node tools/draw-world.mjs
+// Draufsicht einer Strecken-Welt als Bild (tests/out/world-<strecke>.ppm → per PIL in PNG): Gelände, Wasser,
+// Straße, Banden, Schienen. Aufruf: node tools/draw-world.mjs <strecke>
 import { World } from '../src/world/World.js';
+import { courseWorldDef } from '../src/world/worldDef.js';
 import { writeFileSync, mkdirSync } from 'node:fs';
 const t0 = Date.now();
-const w = new World();
+const id = process.argv[2] ?? 'kraxelwiese';
+const w = new World(courseWorldDef(id));
 console.log('Welt gebaut in', Date.now() - t0, 'ms; Höhenfeld', w.hf.nx, 'x', w.hf.nz, '; Banden-Segmente', w.segs.length);
 const b = w.def.bounds, S = 0.6; // Pixel je Meter
 const W = Math.round((b.maxX - b.minX) * S), H = Math.round((b.maxZ - b.minZ) * S);
@@ -29,11 +31,6 @@ for (const tr of w.roads) for (let i = 0; i < tr.N; i++) {
 }
 for (const [x1, z1, x2, z2] of w.segs) for (let k = 0; k <= 4; k++) dot(x1 + (x2 - x1) * k / 4, z1 + (z2 - z1) * k / 4, [220, 30, 30], 0);
 for (const c of w.courses) dot(c.track.px[0], c.track.pz[0], [0, 0, 0], 3);
-for (const c of w.connectors) { dot(...c.a.center, [255, 255, 0], 3); dot(...c.b.center, [255, 255, 0], 3); }
-for (const st of w.def.structures) for (const d of st.doors) dot(d.x, d.z, [255, 0, 255], 4);
-for (const [x, z] of w.def.starCoins) dot(x, z, [255, 200, 0], 2);
 for (const r of w.def.rails) for (let k = 1; k < r.pts.length; k++) { const [a, c] = [r.pts[k - 1], r.pts[k]]; for (let q = 0; q <= 40; q++) dot(a[0] + (c[0] - a[0]) * q / 40, a[1] + (c[1] - a[1]) * q / 40, [255, 255, 255], 0); }
 mkdirSync('tests/out', { recursive: true });
-writeFileSync('tests/out/world.ppm', Buffer.concat([Buffer.from(`P6 ${W} ${H} 255\n`), Buffer.from(img)]));
-// Längen der Verbindungen
-for (const c of w.connectors) console.log(c.id.padEnd(14), Math.round(c.track.length), 'm', c.track.water.reduce((a, v) => a + v, 0), 'm Wasser');
+writeFileSync(`tests/out/world-${id}.ppm`, Buffer.concat([Buffer.from(`P6 ${W} ${H} 255\n`), Buffer.from(img)]));

@@ -20,7 +20,7 @@ import { World } from './world/World.js';
 import { WorldView } from './world/WorldView.js';
 import { Sky } from './world/Sky.js';
 import { getTheme } from './world/themes.js';
-import { KO_TOURS } from './world/worldDef.js';
+import { courseWorldDef } from './world/worldDef.js';
 import { logoHTML } from './ui/logo.js';
 import { setNight } from './world/night.js';
 import { setWeatherSetting } from './world/weather.js';
@@ -172,19 +172,50 @@ document.addEventListener('visibilitychange', () => {
 
 const ENV_INTENSITY = 0.42;
 
-// ------------------------------------------------------------------ Welt bauen (einmal), dann Menü oder Direktstart
+// ------------------------------------------------------------------ Grundszene, dann Menü oder Direktstart
 const loading = document.createElement('div');
 loading.id = 'loading';
 loading.innerHTML = `${logoHTML()}
-  <div class="bar"><i></i></div><p>Die Insel wird gebaut …</p>`;
+  <div class="bar"><i></i></div><p>Los geht's …</p>`;
 document.body.appendChild(loading);
 const setProgress = (k, text) => { loading.querySelector('i').style.width = `${Math.round(k * 100)}%`; loading.querySelector('p').textContent = text; };
 const nextFrame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
 
+/**
+ * Strecke laden (wie in Mario Kart 8 Deluxe hat jede Strecke ihre eigene Welt): die bisherige Welt abbauen, die
+ * neue samt Kulisse bauen. Ist die Strecke schon geladen, passiert nichts. Währenddessen das Ladebild.
+ */
+let pending = null;
+ctx.courseId = null;
+ctx.loadCourse = (id) => {
+  if (ctx.courseId === id && ctx.world) return Promise.resolve();
+  if (pending?.id === id) return pending.p;
+  const p = (async () => {
+    if (pending) await pending.p.catch(() => {});
+    if (ctx.courseId === id) return;
+    const def = courseWorldDef(id);
+    loading.classList.remove('done');
+    setProgress(0.03, `${def.name} wird geladen …`);
+    await nextFrame();
+    ctx.endRace();
+    ctx.worldView?.dispose();
+    ctx.world = null; ctx.worldView = null; ctx.courseId = null;
+    ctx.world = new World(def);
+    ctx.worldView = new WorldView(ctx.world, ctx.scene, { quality });
+    await ctx.worldView.build((k, text) => setProgress(0.1 + 0.85 * k, `${def.name}: ${text} …`));
+    ctx.courseId = id;
+    setProgress(1, `${def.name}`);
+    await nextFrame();
+    loading.classList.add('done');
+  })();
+  pending = { id, p };
+  p.finally(() => { if (pending?.p === p) pending = null; });
+  return p;
+};
+
 async function boot() {
-  setProgress(0.05, 'Gelände und Straßen …');
+  setProgress(0.05, 'Grafik vorbereiten …');
   await nextFrame();
-  ctx.world = new World();
   ctx.scene = new THREE.Scene();
   // Umgebungslicht (Studio-Reflexionen): Figuren und Karts glänzen wie Spielzeug-Plastik, Chrom spiegelt
   if (quality >= 2) {
@@ -200,13 +231,8 @@ async function boot() {
   // Licht an der Spielerin (Höhle, Zelt, Nacht) – immer in der Szene, Stärke setzt das Rennen
   ctx.playerLight = new THREE.PointLight(0xffd0a0, 0, 24, 1.5);
   ctx.scene.add(ctx.playerLight);
-  ctx.worldView = new WorldView(ctx.world, ctx.scene, { quality });
-  await ctx.worldView.build((k, text) => setProgress(0.2 + 0.75 * k, `${text} …`));
-  // Shader vorab übersetzen (kein Ruckeln beim ersten Bild)
-  renderer.compile(ctx.scene, camera);
-  setProgress(0.97, 'Shader vorbereiten …');
 
-  if (params.has('race') || params.get('mode') === 'free' || params.get('mode') === 'ko') {
+  if (params.has('race')) {
     const mode = params.get('mode') ?? (params.get('demo') === '1' ? 'demo' : 'race');
     const trackDef = TRACK_BY_ID[params.get('race')] ?? Object.values(TRACK_BY_ID)[0];
     const playerId = params.get('racer') ?? 'lotti';
@@ -216,19 +242,20 @@ async function boot() {
     const humanIds = players ? players.map((p) => p.id) : [playerId];
     const roster = mode === 'trial' ? [RACER_BY_ID[playerId]] : [...RACERS].slice(0, n).sort((a, b) => (humanIds.includes(a.id) ? 1 : 0) - (humanIds.includes(b.id) ? 1 : 0));
     for (const id of humanIds) if (!roster.some((r) => r.id === id) && mode !== 'demo') roster.push(RACER_BY_ID[id]);
-    const tour = KO_TOURS.find((t) => t.id === params.get('tour')) ?? KO_TOURS[0];
+    await ctx.loadCourse(trackDef.id);
     ctx.startRace({
-      mode, courseId: trackDef.id, fromId: params.get('from'), tour, roster, playerId, players, cc: Number(params.get('cc') ?? 100), laps: Number(params.get('laps') ?? 3),
+      mode, courseId: trackDef.id, roster, playerId, players, cc: Number(params.get('cc') ?? 100), laps: Number(params.get('laps') ?? 3),
       seed: 7, assist: params.get('assist') === '1',
-      onDone: (res) => menus.showResults(res, { trackDef, single: mode !== 'ko', ko: mode === 'ko', title: mode === 'ko' ? tour.name : '' }),
+      onDone: (res) => menus.showResults(res, { trackDef, single: true }),
       onEvent: (e, v, r) => menus.onRaceEvent(e, v, r),
     });
     menus.hideAll();
   } else if (params.has('join')) {
-    menus.ensureDemo();
     menus.showNetJoin((params.get('join') ?? '').slice(0, 4).toUpperCase());
+    await menus.ensureDemo();
   } else {
     menus.showTitle();
+    await menus.demoReady;
   }
   // Ladebild erst ausblenden, wenn Menü bzw. Rennen samt vorab übersetzten Shadern stehen (kein Flackern danach)
   // auf das Übersetzen warten (höchstens 5 s)
@@ -236,7 +263,6 @@ async function boot() {
   await nextFrame();
   setProgress(1, 'Los geht\'s!');
   loading.classList.add('done');
-  setTimeout(() => loading.remove(), 600);
   graceUntil = performance.now() + 6000;
   requestAnimationFrame(frame);
 }

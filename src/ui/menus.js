@@ -3,7 +3,7 @@
 
 import { RACERS, RACER_BY_ID } from '../game/racers.js';
 import { TRACKS, TRACK_BY_ID } from '../tracks/index.js';
-import { WORLD_CUPS as CUPS, KO_TOURS, WORLD } from '../world/worldDef.js';
+import { WORLD_CUPS as CUPS } from '../world/worldDef.js';
 import { CC } from '../game/Race.js';
 import { Ceremony } from '../game/Ceremony.js';
 import { Track } from '../world/Track.js';
@@ -17,16 +17,14 @@ import { nearbyAvailable } from '../net/nearby.js';
 import { qrSVG, scanQR } from '../net/qr.js';
 import { fmtTime } from './hud.js';
 import { touch, isTouch, readJoin, deviceLabel, rumble } from './input.js';
-const WORLD_STARS = WORLD.starCoins.length;
 
 const POINTS = [15, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
 const STAT_NAMES = { speed: 'Tempo', accel: 'Beschleunigung', weight: 'Gewicht', handling: 'Lenkung', offroad: 'Gelände' };
 const PCOL = ['#e60012', '#1e6cff', '#22b03c', '#ffb800'];
-const MODE_NAMES = { gp: 'Grand Prix', ko: 'K.-o.-Tour', single: 'Einzelrennen', free: 'Freie Fahrt', trial: 'Zeitfahren' };
+const MODE_NAMES = { gp: 'Grand Prix', single: 'Einzelrennen', trial: 'Zeitfahren' };
 const SAVE_KEY = 'lgkart.settings.v1';
 const BEST_KEY = 'lgkart.best.v1';
 const CUP_KEY = 'lgkart.cups.v1';
-const STAR_KEY = 'lgkart.starcoins.v1';
 const PUBLIC_URL = 'https://alex1977-code.github.io/LottiGretaKart/';   // Beitritts-Link (auch aus der App heraus)
 
 function load(key, def) { try { return { ...def, ...JSON.parse(localStorage.getItem(key) ?? '{}') }; } catch (_) { return { ...def }; } }
@@ -51,7 +49,6 @@ export class Menus {
     this.gp = null;
     this.screen = null;
     this.trackThumbs = {};
-    try { ctx.collected = new Set(JSON.parse(localStorage.getItem(STAR_KEY) ?? '[]')); } catch (_) { ctx.collected = new Set(); }
     document.body.classList.toggle('touch-ui', isTouch());
   }
 
@@ -106,14 +103,22 @@ export class Menus {
     if (meta.back) this.el.querySelector('[data-back]')?.click();
   }
 
-  /** Hintergrund-Demo (Computer-Rennen), solange ein Menü offen ist. */
+  /**
+   * Hintergrund-Demo (Computer-Rennen), solange ein Menü offen ist – auf der zuletzt geladenen Strecke (beim
+   * Spielstart eine zufällige). Liefert ein Versprechen, das erfüllt ist, sobald die Demo fährt.
+   */
   ensureDemo() {
     const r = this.ctx.race;
-    if (r && r.demo) return;
+    if (r && r.demo) return Promise.resolve();
     if (r) this.ctx.endRace();
-    const trackDef = TRACKS[Math.floor(Math.random() * TRACKS.length)];
-    this.ctx.startRace({ mode: 'demo', courseId: trackDef.id, roster: [...RACERS].sort(() => Math.random() - 0.5), cc: 100, laps: 40, seed: Math.floor(Math.random() * 1e6) });
-    this.ctx.audio.play('course_map');
+    const id = this.ctx.courseId ?? TRACKS[Math.floor(Math.random() * TRACKS.length)].id;
+    const token = (this.demoToken = (this.demoToken ?? 0) + 1);
+    this.demoReady = this.ctx.loadCourse(id).then(() => {
+      if (token !== this.demoToken || this.ctx.race) return;   // inzwischen ein Rennen gestartet
+      this.ctx.startRace({ mode: 'demo', courseId: id, roster: [...RACERS].sort(() => Math.random() - 0.5), cc: 100, laps: 40, seed: Math.floor(Math.random() * 1e6) });
+      this.ctx.audio.play('course_map');
+    });
+    return this.demoReady;
   }
 
   render(renderer) {
@@ -131,10 +136,8 @@ export class Menus {
         <div class="mside">
           ${logoHTML('h1')}
           <nav class="mlist">
-            ${item('gp', '🏆', '#ffb800', 'Grand Prix', `${CUPS.length} Cups · von Strecke zu Strecke`, true)}
-            ${item('ko', '💥', '#e60012', 'K.-o.-Tour', 'Rallye über die Insel – die Letzten fliegen raus')}
+            ${item('gp', '🏆', '#ffb800', 'Grand Prix', `${CUPS.length} Cups · je vier Strecken`, true)}
             ${item('single', '🏁', '#1e6cff', 'Einzelrennen', `${TRACKS.length} Strecken zur Wahl`)}
-            ${item('free', '🗺️', '#22b03c', 'Freie Fahrt', 'Insel erkunden, Sternmünzen sammeln')}
             ${item('trial', '⏱️', '#9b4dff', 'Zeitfahren', 'Allein gegen die Uhr')}
             ${item('multi', '👥', '#ff5ab4', 'Mehrspieler', '2–4 Spieler · ein Bildschirm · auch offline')}
           </nav>
@@ -185,11 +188,11 @@ export class Menus {
           </div>
           <h3>Gegenstände aus den Funkel-Kisten</h3>
           <p class="items-help">Turbo-Beere · Panzer · Goldpanzer (sucht sich ein Ziel) · Krabbelkäfer (hinten ablegen) · Kickbombe · Funkenblüte (3 Funkenbälle) · Funkelstern (unverwundbar) · Riesentrank · Zauberkugel (trifft die Spitze)</p>
-          <p class="items-help">Bitcoins machen dein Kart schneller (bis zu 10). Turbo-Pfeile und Schanzen nutzen – in der Luft Drift drücken für einen Trick-Turbo! Über den See fährst du einfach auf dem Wasser.</p>
+          <p class="items-help">Bitcoins machen dein Kart schneller (bis zu 10). Turbo-Pfeile und Schanzen nutzen – in der Luft Drift drücken für einen Trick-Turbo! Blaue Schanzen öffnen den Gleiter: im Gleitflug lenken.</p>
           <h3>Mehrere Handys</h3>
           <p class="items-help"><b>Über das Internet</b> (beliebig weit weg): einer wählt „Spiel erstellen“ und nennt den Raumcode, die anderen „Beitreten“ und tippen ihn ein. <b>Ohne Internet</b>: in der iPhone-App findet man Spiele „in der Nähe“ direkt (Bluetooth/WLAN, auch im Flugmodus). Im Browser: alle im selben WLAN – Gastgeber zeigt einen QR-Code, Gast scannt ihn und zeigt seinen Antwort-Code zurück (das iPhone kann im Flugmodus keinen Hotspot öffnen).</p>
-          <h3>Die Insel</h3>
-          <p class="items-help"><b>Grand Prix</b>: ab dem zweiten Rennen fährst du über die Landstraße zur nächsten Strecke. <b>K.-o.-Tour</b>: quer über die Insel, an jedem Checkpoint scheiden die Letzten aus. <b>Freie Fahrt</b>: erkunde alles und finde die ${WORLD_STARS} Sternmünzen.</p>
+          <h3>Grand Prix</h3>
+          <p class="items-help">Ein Cup hat vier Strecken, für jeden Platz gibt es Punkte. Wer am Ende die meisten hat, gewinnt den Pokal.</p>
           <div class="row"><button data-back data-focus>Zurück</button></div>
         </div></div>
       </div>${this.hints()}`, 'full');
@@ -290,11 +293,17 @@ export class Menus {
     return this.party && this.party.length > 1 ? this.party.map((p) => ({ id: p.racer, src: p.src })) : undefined;
   }
 
-  /** Rennen starten; beim Gastgeber mehrerer Handys bekommen die Gäste die Startdaten. */
-  launch(o) {
+  /**
+   * Rennen starten: erst die Strecke laden (eigene Welt wie in Mario Kart 8 Deluxe), dann los; beim Gastgeber
+   * mehrerer Handys bekommen die Gäste die Startdaten.
+   */
+  async launch(o) {
     const net = this.netHost;
+    this.demoToken = (this.demoToken ?? 0) + 1;   // keine Demo mehr starten
+    this.hideAll();
+    await this.ctx.loadCourse(o.courseId);
     const race = this.ctx.startRace(net ? { ...o, net } : o);
-    if (net) net.startRace(race, { mode: o.mode, courseId: o.courseId, fromId: o.fromId ?? null, laps: o.laps, tourId: o.tour?.id ?? null, roster: o.roster.map((r) => r.id), cc: o.cc, title: o.tour?.name ?? '' });
+    if (net) net.startRace(race, { mode: o.mode, courseId: o.courseId, laps: o.laps, roster: o.roster.map((r) => r.id), cc: o.cc });
     return race;
   }
 
@@ -546,14 +555,15 @@ export class Menus {
   }
 
   /** Gast: Rennen nach den Startdaten des Gastgebers aufbauen. */
-  startGuestRace(o) {
+  async startGuestRace(o) {
     const n = this.net;
+    this.demoToken = (this.demoToken ?? 0) + 1;
     this.hideAll();
-    const tour = o.tourId ? KO_TOURS.find((t) => t.id === o.tourId) : null;
+    await this.ctx.loadCourse(o.courseId);
     const race = this.ctx.startRace({
-      mode: o.mode, courseId: o.courseId, fromId: o.fromId, laps: o.laps, tour, roster: o.roster.map((id) => RACER_BY_ID[id]),
+      mode: o.mode, courseId: o.courseId, laps: o.laps, roster: o.roster.map((id) => RACER_BY_ID[id]),
       playerId: n.myRacer, players: [{ id: n.myRacer, src: 'auto' }], cc: o.cc, assist: this.settings.assist, net: n,
-      onDone: (res) => this.showResults(res, { trackDef: TRACK_BY_ID[o.courseId], title: o.title || (o.mode === 'free' ? 'Freie Fahrt' : ''), netGuest: true }),
+      onDone: (res) => this.showResults(res, { trackDef: TRACK_BY_ID[o.courseId], netGuest: true }),
     });
     n.race = race;
   }
@@ -637,8 +647,6 @@ export class Menus {
         <div class="mbody"><div class="grid cups">
           ${card('gp', '🏆', 'Grand Prix', 'Cup mit 4 Rennen und Punkten')}
           ${card('single', '🏁', 'Rennen', 'eine Strecke frei wählen')}
-          ${card('ko', '💥', 'K.-o.-Tour', 'Rallye – die Letzten fliegen raus')}
-          ${card('free', '🗺️', 'Freie Fahrt', 'gemeinsam die Insel erkunden')}
         </div>
         <div class="row"><button data-back>Zurück</button></div></div>
       </div>${this.hints()}`, 'full');
@@ -680,48 +688,7 @@ export class Menus {
 
   afterRacer() {
     if (this.mode === 'gp') this.showCups();
-    else if (this.mode === 'ko') this.showTours();
-    else if (this.mode === 'free') this.startFree();
     else this.showTracks();
-  }
-
-  showTours() {
-    const cards = KO_TOURS.map((t) => `<button class="card cup" data-tour="${t.id}">
-        <div class="trophy won">💥</div><span>${t.name}</span>
-        <small>${t.stops.map((id) => TRACK_BY_ID[id].short ?? TRACK_BY_ID[id].name).join(' → ')}</small>
-        <small>12 Fahrer · ${t.survivors.length} Checkpoints</small>
-      </button>`).join('');
-    this.show('tours', `
-      <div class="mscreen">
-        ${this.head('Tour wählen', this.modeSub)}
-        <div class="mbody"><div class="grid cups">${cards}</div>
-        <div class="row"><button data-back>Zurück</button></div></div>
-      </div>${this.hints()}`, 'full');
-    this.on('[data-tour]', (b) => this.startKO(KO_TOURS.find((t) => t.id === b.dataset.tour)));
-    this.on('[data-back]', () => (this.multi ? this.showMpModes() : this.showRacers()));
-  }
-
-  startKO(tour) {
-    const s = this.settings;
-    this.lastKO = tour;
-    this.hideAll();
-    this.launch({
-      mode: 'ko', tour, courseId: tour.stops[tour.stops.length - 1], roster: this.roster(s.racer, null, 12), playerId: this.leadId, players: this.partyPlayers(), cc: s.cc, assist: s.assist,
-      onDone: (res) => this.showResults(res, { title: tour.name, ko: true }),
-      onEvent: (e, v, r) => this.onRaceEvent(e, v, r),
-    });
-    this.ctx.hud.message(tour.name, 2.6, 'intro');
-  }
-
-  startFree() {
-    const s = this.settings;
-    this.hideAll();
-    const ids = this.humanIds;
-    const others = RACERS.filter((r) => !ids.includes(r.id)).sort(() => Math.random() - 0.5).slice(0, 8 - ids.length);
-    this.launch({
-      mode: 'free', roster: [...ids.map((id) => RACER_BY_ID[id]), ...others], playerId: this.leadId, players: this.partyPlayers(), cc: s.cc, assist: false,
-      onEvent: (e, v, r) => this.onRaceEvent(e, v, r),
-    });
   }
 
   // ------------------------------------------------------------------ Cups und Strecken
@@ -804,7 +771,6 @@ export class Menus {
     const s = this.settings;
     const trial = this.mode === 'trial';
     const roster = trial ? [RACER_BY_ID[s.racer]] : this.roster(s.racer);
-    this.hideAll();
     this.launch({
       mode: trial ? 'trial' : 'race', courseId: trackDef.id, roster, playerId: this.leadId, players: trial ? undefined : this.partyPlayers(), cc: s.cc, laps: s.laps, assist: s.assist,
       onDone: (res) => this.showResults(res, { trackDef, single: true }),
@@ -821,42 +787,29 @@ export class Menus {
   nextGP() {
     const g = this.gp, s = this.settings;
     const trackDef = TRACK_BY_ID[g.cup.tracks[g.index]];
-    this.hideAll();
-    const from = g.index > 0 ? g.cup.tracks[g.index - 1] : null;
-    const race = this.launch({
-      mode: 'gp', courseId: trackDef.id, fromId: from, roster: this.roster(s.racer, g.order), playerId: this.leadId, players: this.partyPlayers(), cc: s.cc,
-      laps: from ? Math.max(1, s.laps - 1) : s.laps, assist: s.assist,
+    return this.launch({
+      mode: 'gp', courseId: trackDef.id, roster: this.roster(s.racer, g.order), playerId: this.leadId, players: this.partyPlayers(), cc: s.cc,
+      laps: s.laps, assist: s.assist,
       onDone: (res) => this.showResults(res, { trackDef, gp: true }),
       onEvent: (e, v, r) => this.onRaceEvent(e, v, r),
-    });
-    this.ctx.hud.message(`${g.cup.name} · Rennen ${g.index + 1}/${g.cup.tracks.length}${from ? ' · mit Anfahrt' : ''}`, 2.6, 'intro');
-    return race;
+    }).then((race) => { this.ctx.hud.message(`${g.cup.name} · Rennen ${g.index + 1}/${g.cup.tracks.length}`, 2.6, 'intro'); return race; });
   }
 
-  onRaceEvent(e, v, r = null) {
-    if (e === 'starcoin') {
-      this.ctx.collected.add(v);
-      try { localStorage.setItem(STAR_KEY, JSON.stringify([...this.ctx.collected])); } catch (_) { /* egal */ }
-      return;
-    }
-    if (this.ctx.race?.split) {
-      if (e === 'out') this.ctx.race.hudOf(r)?.message(`Ausgeschieden – Platz ${v}`, 4);
-      return;   // Zieleinlauf zeigt das Rennen selbst in der jeweiligen Bildhälfte
-    }
-    if (e === 'out') { this.ctx.hud.message(`Ausgeschieden – Platz ${v}`, 4); return; }
+  onRaceEvent(e, v) {
+    if (this.ctx.race?.split) return;   // Zieleinlauf zeigt das Rennen selbst in der jeweiligen Bildhälfte
     if (e === 'finish') {
       const msg = v === 1 ? 'Super – 1. Platz!' : v <= 3 ? `Toll – ${v}. Platz!` : `${v}. Platz`;
       this.ctx.hud.message(msg, 4, v <= 3 ? 'good' : '');
     }
   }
 
-  showResults(res, { trackDef = null, gp = false, single = false, ko = false, title = '', netGuest = false }) {
+  showResults(res, { trackDef = null, gp = false, single = false, title = '', netGuest = false }) {
     if (netGuest) { this.showGuestResults(res, title || trackDef?.name || 'Ergebnis'); return; }
     const r = this.ctx.renderer;
     const me = res.find((x) => x.isPlayer);
     // Bestzeit
     let record = false;
-    if (me && me.place && trackDef && !me.out && !this.multi) {
+    if (me && me.place && trackDef && !this.multi) {
       const b = this.best[trackDef.id];
       if (!b || me.time < b.time) { this.best[trackDef.id] = { time: me.time, racer: me.id }; save(BEST_KEY, this.best); record = true; }
     }
@@ -867,7 +820,7 @@ export class Menus {
       res.forEach((x, i) => { this.gp.points[x.id] += POINTS[i] ?? 0; });
       rows = res.map((x, i) => `<tr class="${x.isPlayer ? 'me' : ''}"><td class="pl">${i + 1}.</td><td><img src="${racerIcon(r, RACER_BY_ID[x.id])}" alt="" /></td><td>${x.name}${tag(x)}</td><td>${fmtTime(x.time)}</td><td class="pts">+${POINTS[i] ?? 0}</td><td class="tot">${this.gp.points[x.id]}</td></tr>`).join('');
     } else {
-      rows = res.map((x, i) => `<tr class="${x.isPlayer ? 'me' : ''}"><td class="pl">${i + 1}.</td><td><img src="${racerIcon(r, RACER_BY_ID[x.id])}" alt="" /></td><td>${x.name}${tag(x)}</td><td>${x.out ? 'ausgeschieden' : fmtTime(x.time)}</td><td>${!ko && isFinite(x.best) ? `Runde ${fmtTime(x.best)}` : ''}</td></tr>`).join('');
+      rows = res.map((x, i) => `<tr class="${x.isPlayer ? 'me' : ''}"><td class="pl">${i + 1}.</td><td><img src="${racerIcon(r, RACER_BY_ID[x.id])}" alt="" /></td><td>${x.name}${tag(x)}</td><td>${fmtTime(x.time)}</td><td>${isFinite(x.best) ? `Runde ${fmtTime(x.best)}` : ''}</td></tr>`).join('');
     }
     const last = gp && this.gp.index >= this.gp.cup.tracks.length - 1;
     this.show('results', `
@@ -877,7 +830,7 @@ export class Menus {
           ${record && me ? `<p class="record">Neue Bestzeit: ${fmtTime(me.time)}!</p>` : ''}
           <table>${rows}</table>
           <div class="row">
-            ${gp ? `<button class="go" data-next data-focus>${last ? 'Gesamtwertung' : 'Nächstes Rennen'}</button>` : `<button class="go" data-again data-focus>Nochmal</button><button data-other>${ko ? 'Andere Tour' : 'Andere Strecke'}</button>`}
+            ${gp ? `<button class="go" data-next data-focus>${last ? 'Gesamtwertung' : 'Nächstes Rennen'}</button>` : `<button class="go" data-again data-focus>Nochmal</button><button data-other>Andere Strecke</button>`}
             <button data-menu>Menü</button>
           </div>
         </div></div>
@@ -891,15 +844,15 @@ export class Menus {
       this.gp.index++;
       this.nextGP();
     });
-    this.on('[data-again]', () => (ko ? this.startKO(this.lastKO) : this.startSingle(trackDef)));
-    this.on('[data-other]', () => { this.ctx.endRace(); this.ensureDemo(); if (ko) this.showTours(); else this.showTracks(); });
+    this.on('[data-again]', () => this.startSingle(trackDef));
+    this.on('[data-other]', () => { this.ctx.endRace(); this.ensureDemo(); this.showTracks(); });
     this.on('[data-menu]', () => { this.gp = null; this.ctx.endRace(); if (this.netHost) { this.net.toMenu(); this.ensureDemo(); this.renderNetHost(); } else this.showTitle(); });
   }
 
   /** Gast: Ergebnisse vom Gastgeber; das nächste Rennen startet der Gastgeber. */
   showGuestResults(res, title) {
     const r = this.ctx.renderer;
-    const rows = res.map((x, i) => `<tr class="${x.isPlayer ? 'me' : ''}"><td class="pl">${i + 1}.</td><td><img src="${racerIcon(r, RACER_BY_ID[x.id])}" alt="" /></td><td>${x.name}</td><td>${x.out ? 'ausgeschieden' : fmtTime(x.time)}</td></tr>`).join('');
+    const rows = res.map((x, i) => `<tr class="${x.isPlayer ? 'me' : ''}"><td class="pl">${i + 1}.</td><td><img src="${racerIcon(r, RACER_BY_ID[x.id])}" alt="" /></td><td>${x.name}</td><td>${fmtTime(x.time)}</td></tr>`).join('');
     this.show('results', `
       <div class="mscreen">
         ${this.head(title, 'Mehrspieler')}
@@ -955,8 +908,6 @@ export class Menus {
     this.on('[data-mute]', (b) => { const m = this.toggleMute(); b.textContent = m ? '🔇 Ton aus' : '🔊 Ton an'; });
     this.on('[data-restart]', () => {
       if (this.gp) { this.nextGP(); return; }
-      if (race.ko) { this.startKO(this.lastKO); return; }
-      if (race.free) { this.startFree(); return; }
       this.startSingle(race.def);
     });
     this.on('[data-quit]', () => { this.gp = null; this.ctx.endRace(); if (this.net) { if (this.net.isHost) { this.net.toMenu(); this.ensureDemo(); this.renderNetHost(); } else { this.leaveNet(); this.ensureDemo(); this.showMultiChoice(); } } else this.showTitle(); });

@@ -218,7 +218,8 @@ export class Decor {
     this.race = race;
     this.world = world;           // Insel-Welt: freie Plätze und Hindernisse kommen von dort
     this.quality = quality;
-    this.density = quality >= 3 ? 1.5 : quality >= 2 ? 1 : 0.55;   // sparsam: weniger Kulisse, ultra: mehr
+    // (nur eine Strecke geladen wie in Mario Kart 8 Deluxe: Platz für dichte Kulisse) sparsam weniger, ultra mehr
+    this.density = quality >= 3 ? 2.2 : quality >= 2 ? 1.6 : 0.7;
     this.track = track;
     this.theme = theme;
     this.group = new THREE.Group();

@@ -11,6 +11,7 @@ import { addGroundDetail, makeWaterMaterial, SHADER_TIME } from './shaders.js';
 import { IslandLife } from './life.js';
 import { buildTrackDetails } from './trackDetail.js';
 import { buildNightLamps } from './night.js';
+import { buildBackdrop } from './backdrop.js';
 
 const TILE = 60; // Kachelgröße in Höhenfeld-Zellen (3 m → 180 m)
 
@@ -29,6 +30,7 @@ export class WorldView {
   async build(progress = () => {}) {
     const steps = [
       ['Gelände', () => this.buildTerrain()],
+      ['Fernsicht', () => { if (this.world.def.center) { const bd = buildBackdrop(this.group, this.scene, this.world, this.world.courses[0].theme, this.quality); this.decors.push(bd.decor); } }],
       ['Wasser', () => this.buildWater()],
       ['Lava', () => this.buildLava()],
       ['Strecken', () => this.buildRoads()],
@@ -177,36 +179,6 @@ export class WorldView {
       tr.buildBridge((x, z, t) => w.roadBelow(x, z, t));
       tr.buildStartLine();
       this.group.add(tr.group);
-    }
-    const cLine = lin(0xf8f6f0);
-    for (const c of w.connectors) {
-      const tr = c.track, th = tr.theme;
-      const cR = lin(0x9a96a8), cR2 = lin(0x948fa3);
-      const mat = addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), { grain: 0.1, scale: 1.8, key: 'conn', rain: 1 });
-      const skip = (i) => tr.water[i] || tr.water[Math.min(tr.N - 1, i + 1)];
-      const hw = (i) => tr.hw[i];
-      const parts = [
-        tr.ribbon((i) => -hw(i), (i) => hw(i), () => 0.05, (i) => (Math.floor(i / 6) % 2 ? cR : cR2), 1, skip),
-        tr.ribbon((i) => -hw(i) + 0.3, (i) => -hw(i) + 0.55, () => 0.07, () => cLine, 1, skip),
-        tr.ribbon((i) => hw(i) - 0.55, (i) => hw(i) - 0.3, () => 0.07, () => cLine, 1, skip),
-        tr.ribbon(() => -0.12, () => 0.12, () => 0.07, (i) => (Math.floor(i / 4) % 2 ? null : cLine), 1, skip),
-      ];
-      for (const g of parts) {
-        const m = new THREE.Mesh(g, mat);
-        m.receiveShadow = true;
-        m.name = `strasse:${c.id}`;
-        this.group.add(m);
-      }
-      // Bojen-Reihe über den See (zeigt den Wasserweg)
-      const buoys = [];
-      for (let i = 0; i < tr.N; i += 9) if (tr.water[i]) for (const s of [-1, 1]) buoys.push([tr.px[i] - tr.tz[i] * s * (tr.hw[i] + 1.5), tr.pz[i] + tr.tx[i] * s * (tr.hw[i] + 1.5), s]);
-      if (buoys.length) {
-        const g = new THREE.SphereGeometry(0.55, 12, 8);
-        const im = new THREE.InstancedMesh(g, new THREE.MeshStandardMaterial({ roughness: 0.4 }), buoys.length);
-        buoys.forEach(([x, z, s], k) => { im.setMatrixAt(k, new THREE.Matrix4().makeTranslation(x, 0.2, z)); im.setColorAt(k, new THREE.Color(s > 0 ? 0xe8392d : 0xfff8ee)); });
-        im.castShadow = true;
-        this.group.add(im);
-      }
     }
     // Grind-Schienen
     this.buildRails();
@@ -372,14 +344,15 @@ export class WorldView {
     }
   }
 
-  /** Wälder, Büsche, Blumen und Felsen über die ganze Insel – Baumart nach Region. */
+  /** Wälder, Büsche, Blumen und Felsen im ganzen Ausschnitt der Strecke – Baumart nach Region, Dichte je Fläche. */
   buildForests() {
     const w = this.world, b = w.def.bounds;
+    const ha = ((b.maxX - b.minX) * (b.maxZ - b.minZ)) / 10000;   // Fläche in Hektar
     const d = new Decor(this.scene, w.courses[0].track, getTheme('grass'), 99, this.quality, w);
     d.noShadow = true; // Wälder werfen keine Schatten (Leistung); Bäume an den Strecken schon
     d.tile = 160;
     const rnd = new Rnd(1234);
-    const n = Math.round(this.quality >= 3 ? 1700 : this.quality >= 2 ? 1150 : 550);
+    const n = Math.round(ha * (this.quality >= 3 ? 22 : this.quality >= 2 ? 15 : 6));
     const green = [0x5cbf3a, 0x4fae34, 0x6fd04a, 0x3f9a2a], autumn = [0xe8702a, 0xf0a020, 0xd84a2a, 0xffc040, 0x9cc83a];
     for (let k = 0, tries = 0; k < n && tries < n * 8; tries++) {
       const x = b.minX + rnd.frac() * (b.maxX - b.minX), z = b.minZ + rnd.frac() * (b.maxZ - b.minZ);
@@ -418,7 +391,8 @@ export class WorldView {
       k++;
     }
     // Blumenwiesen (ohne Hindernis)
-    for (let k = 0, tries = 0; k < (this.quality >= 2 ? 1500 : 350) && tries < 18000; tries++) {
+    const nF = Math.round(ha * (this.quality >= 3 ? 60 : this.quality >= 2 ? 40 : 10));
+    for (let k = 0, tries = 0; k < nF && tries < nF * 12; tries++) {
       const x = b.minX + rnd.frac() * (b.maxX - b.minX), z = b.minZ + rnd.frac() * (b.maxZ - b.minZ);
       const h = w.heightAt(x, z);
       if (h < 1.5 || h > 18 || !w.isFree(x, z, 1)) continue;
@@ -451,7 +425,6 @@ export class WorldView {
       k++;
     }
     this.buildReeds(d, rnd);
-    this.buildFences(d);
     d.build();
     this.decors.push(d);
   }
@@ -481,29 +454,6 @@ export class WorldView {
     }
   }
 
-  /** Holzzäune abschnittsweise entlang der Landstraßen (nicht an Toren, nicht über Wasser). */
-  buildFences(d) {
-    if (this.quality < 1) return;
-    const w = this.world;
-    for (const c of w.connectors) {
-      const tr = c.track, step = 3;
-      for (const side of [-1, 1]) {
-        let prev = null;
-        for (let i = 28; i < tr.N - 28; i += step) {
-          const on = Math.floor((i + (side > 0 ? 40 : 0)) / 70) % 3 !== 2;   // Lücken zwischen den Abschnitten
-          const lat = side * (tr.hw[i] + 3.4);
-          const x = tr.px[i] - tr.tz[i] * lat, z = tr.pz[i] + tr.tx[i] * lat;
-          const h = w.heightAt(x, z);
-          const ok = on && !tr.water[i] && h > 0.7 && w.isFree(x, z, 0.3) && !w.def.structures.some((st) => Math.abs(Math.hypot(x - st.x, z - st.z) - st.r) < 14);
-          if (!ok) { prev = null; continue; }
-          d.add('fencePost', x, h, z, 1, 0x9a6a3a, 0);
-          if (prev) d.add('fenceRail', prev.x, (prev.h + h) / 2, prev.z, 1, 0xb07a44, Math.atan2(-(z - prev.z), x - prev.x));
-          prev = { x, z, h };
-        }
-      }
-    }
-  }
-
   update(dt, t, cam) {
     for (const d of this.decors) d.update(dt, t, cam);
     this.structureDecor?.update(dt, t, cam);
@@ -511,6 +461,24 @@ export class WorldView {
     SHADER_TIME.value = t;
     this.life?.update(dt, t, Array.isArray(cam) ? cam[0] : cam);
     this.updateLava(t);
+  }
+
+  /** Alles wieder abbauen (beim Wechsel auf eine andere Strecke): Szene leeren, Grafikspeicher freigeben. */
+  dispose() {
+    for (const d of this.decors) d.dispose();
+    this.structureDecor?.dispose();
+    for (const c of this.world.courses) c.track.group.removeFromParent();
+    const geos = new Set(), mats = new Set();
+    const collect = (root) => root.traverse((o) => {
+      if (o.geometry) geos.add(o.geometry);
+      for (const m of [].concat(o.material ?? [])) mats.add(m);
+    });
+    collect(this.group);
+    for (const c of this.world.courses) collect(c.track.group);
+    // (gemeinsam genutzte Geometrien/Materialien werden beim nächsten Zeichnen einfach neu hochgeladen)
+    for (const g of geos) g.dispose();
+    for (const m of mats) m.dispose();
+    this.group.removeFromParent();
   }
 }
 

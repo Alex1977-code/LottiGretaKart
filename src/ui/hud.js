@@ -107,7 +107,6 @@ export class Hud {
       const [fx, fy] = this.mt.map(...pointXZ(tr, tr.finishS));
       c.fillStyle = '#2a2834'; c.fillRect(fx - 4, fy - 4, 8, 8);
       c.fillStyle = '#fff'; c.fillRect(fx - 4, fy - 4, 4, 4); c.fillRect(fx, fy, 4, 4);
-      for (const cp of tr.checkpoints) { const [x, y] = this.mt.map(...pointXZ(tr, cp.s)); c.fillStyle = '#e8392d'; c.beginPath(); c.arc(x, y, 4, 0, Math.PI * 2); c.fill(); }
     }
     this.mapBg = off;
     this.race = race;
@@ -167,24 +166,13 @@ export class Hud {
   update(dt, race, p = race.player) {
     if (!p) return;
     this.me = p;
-    // Runde / Anfahrt / Checkpoint / Sternmünzen
-    let lapHtml;
-    if (race.free) {
-      const got = race.starCoins.filter((c) => c.got).length;
-      lapHtml = `<small>STERNE</small> <b>${got}</b><i>/${race.starCoins.length}</i>`;
-    } else if (race.ko) {
-      const tr = race.track, n = tr.checkpoints.length;
-      lapHtml = `<small>CHECKPOINT</small> <b>${Math.min(n, p.cp ?? 0)}</b><i>/${n}</i><span class="sub">noch ${race.active().length} im Rennen</span>`;
-    } else {
-      const route = race.track.lapMarks.length && p.progress < race.track.lapMarks[0] && race.track.label.includes('→');
-      lapHtml = `<small>RUNDE</small> <b>${Math.max(1, Math.min(race.laps, p.lap))}</b><i>/${race.laps}</i>${route ? '<span class="sub">Anfahrt</span>' : ''}`;
-    }
+    // Runde
+    const lapHtml = `<small>RUNDE</small> <b>${Math.max(1, Math.min(race.laps, p.lap))}</b><i>/${race.laps}</i>`;
     if (lapHtml !== this.lapHtml) { this.lapHtml = lapHtml; this.q('.hud-lap').innerHTML = lapHtml; }
     this.timeEl.textContent = fmtTime(p.finished ? p.finishTime : race.time);
     this.coinsEl.textContent = p.coins;
     this.coinsEl.parentElement.classList.toggle('full', p.coins >= 10);
     const pl = p.place;
-    this.placeEl.style.visibility = race.free ? 'hidden' : 'visible';
     this.placeEl.innerHTML = `<b>${pl}</b><small>.</small>`;
     this.placeEl.style.color = PLACE_COLORS[pl - 1] ?? '#fff';
     // Gegenstand / Glücksrad
@@ -253,12 +241,6 @@ export class Hud {
       const [x, y] = this.mt.map(pr.pos.x, pr.pos.z);
       c.fillStyle = pr.kind === 'zauberkugel' ? '#3ae0d0' : pr.kind === 'kaefer' ? '#e8392d' : '#fff';
       c.beginPath(); c.arc(x, y, 3, 0, Math.PI * 2); c.fill();
-    }
-    // Sternmünzen (Freie Fahrt)
-    if (race.free) for (const sc of race.starCoins) {
-      if (sc.got) continue;
-      const [x, y] = this.mt.map(sc.x, sc.z);
-      c.fillStyle = '#8fe060'; c.beginPath(); c.arc(x, y, 2.5, 0, Math.PI * 2); c.fill();
     }
     // Fahrer (eigener zuletzt und am größten, andere Menschen mittel)
     const me = this.me ?? race.player;
@@ -334,13 +316,10 @@ export class Hud {
         c.beginPath(); c.moveTo(6, 0); c.lineTo(-4, -5); c.lineTo(-2, 0); c.lineTo(-4, 5); c.closePath(); c.fill();
         c.restore();
       }
-      // Ziel und Checkpoints
+      // Ziel
       const mark = (S, col) => { const q = tr.pointAtS(S, 0); if (!near(q.x, q.z)) return; const [x, y] = P(q.x, q.z); c.fillStyle = '#fff'; c.fillRect(x - 6, y - 6, 12, 12); c.fillStyle = col; c.fillRect(x - 6, y - 6, 6, 6); c.fillRect(x, y, 6, 6); };
       mark(tr.finishS, '#222');
-      for (const cp of tr.checkpoints ?? []) mark(cp.s, '#e8392d');
     }
-    // Sternmünzen (Freie Fahrt)
-    if (race.free) for (const sc of race.starCoins) { if (sc.got || !near(sc.x, sc.z)) continue; c.fillStyle = '#8fe060'; c.beginPath(); c.arc(...P(sc.x, sc.z), 4, 0, Math.PI * 2); c.fill(); }
     // andere Fahrer
     for (const r of race.racers) {
       if (r.out || r.parked || r === me || !near(r.pos.x, r.pos.z)) continue;

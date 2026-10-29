@@ -1,11 +1,10 @@
-// Die Insel-Welt (Logik): Strecken an ihren Weltplätzen, Verbindungsstraßen, Höhenfeld (3-m-Raster, Straßen
-// eingeebnet, See und Küste), Oberflächen (Straße / Gelände / Wasser / offenes Meer), Kollisionen (Banden mit
-// Toren, Höhlenberg- und Zeltwand mit Eingängen, Häuser, Bäume) und die Stimmung je Region.
-// Die Darstellung baut WorldView.js; hier entsteht nichts Sichtbares.
+// Die Welt einer Strecke (Logik): die Strecke an ihrem Platz im Inselplan, Höhenfeld des Ausschnitts (3-m-Raster,
+// Straße eingeebnet, See und Küste), Oberflächen (Straße / Gelände / Wasser / offenes Meer), Kollisionen (Banden,
+// Höhlenberg- und Zeltwand, Häuser, Bäume) und die Stimmung je Region. Wie in Mario Kart 8 Deluxe hat jede Strecke
+// ihre eigene Welt (courseWorldDef); die Darstellung baut WorldView.js, hier entsteht nichts Sichtbares.
 
 import { Track } from './Track.js';
 import { getTheme } from './themes.js';
-import { WORLD } from './worldDef.js';
 
 /** Schlüssel einer Rasterzelle als kleine Ganzzahl (keine Zeichenkette – erzeugt keinen Speichermüll). */
 const ck = (a, b) => (a + 2048) * 4096 + (b + 2048);
@@ -16,11 +15,11 @@ const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const smooth = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
 export class World {
-  constructor(def = WORLD) {
+  constructor(def) {
     this.def = def;
     this.base = (x, z) => this.baseHeight(x, z);
     this.heightAt = this.heightAt.bind(this);
-    // 1. Strecken und Verbindungsstraßen abtasten (noch auf dem Grundgelände)
+    // 1. Strecken abtasten (noch auf dem Grundgelände)
     this.courses = def.courses.map((c) => {
       const theme = getTheme(c.def.theme);
       const track = new Track(c.def, theme, { ox: c.ox, oz: c.oz, heightFn: this.base });
@@ -29,7 +28,6 @@ export class World {
     this.courseById = Object.fromEntries(this.courses.map((c) => [c.id, c]));
     // Lava-Seen der Strecken (Strecken-Koordinaten → Welt)
     this.lava = this.courses.flatMap((c) => (c.def.lava ?? []).map(([x, z, r]) => ({ x: x + c.ox, z: z + c.oz, r })));
-    this.connectors = def.connectors.map((c) => this.makeConnector(c));
     // Banden-Lücken der Strecken selbst (z. B. Hotel-Auffahrt): { at: [x, z] (Strecken-Koordinaten), side, half }
     for (const c of this.courses) for (const g of c.def.wallGaps ?? []) {
       const tr = c.track, X = c.ox + g.at[0], Z = c.oz + g.at[1];
@@ -40,7 +38,6 @@ export class World {
     // 2. Höhenfeld mit eingeebneten Straßen
     this.buildHeightfield();
     for (const c of this.courses) c.track.heightFn = this.heightAt;
-    for (const c of this.connectors) c.track.heightFn = this.heightAt;
     for (const c of this.courses) for (let i = 0; i < c.track.N; i++) c.track.py[i] = c.track.roadY(i, c.track.px[i], c.track.pz[i]);
     this.liftTracks = this.courses.map((c) => c.track).filter((t) => t.hasLift);
     // 3. Suchtabellen: Straßen-Abtastpunkte und Kollisionen
@@ -101,8 +98,8 @@ export class World {
     const dk = new Float32Array(nx * nz).fill(1e9);   // Abstand zum Abtastpunkt, der die Zelle prägt
     for (let iz = 0; iz < nz; iz++) for (let ix = 0; ix < nx; ix++) h[iz * nx + ix] = this.baseHeight(b.minX + ix * CELL, b.minZ + iz * CELL);
     // Straßen: Höhenverlauf entlang der Straße glätten, dann das Gelände ringsum angleichen
-    const roads = [...this.courses.map((c) => ({ tr: c.track, pad: c.track.margin + 2 })), ...this.connectors.map((c) => ({ tr: c.track, pad: 7, conn: c }))];
-    for (const { tr, pad, conn } of roads) {
+    for (const c of this.courses) {
+      const tr = c.track, pad = tr.margin + 2;
       const N = tr.N, raw = new Float32Array(N), prof = new Float32Array(N);
       for (let i = 0; i < N; i++) raw[i] = this.baseHeight(tr.px[i], tr.pz[i]);
       // festes Höhenprofil der Strecke (heights) nur leicht glätten, sonst das Gelände entlang der Straße mitteln
@@ -114,8 +111,6 @@ export class World {
       }
       tr.water = new Uint8Array(N);
       for (let i = 0; i < N; i++) {
-        // Verbindungsstraßen über den See: dort bleibt Wasser (man fährt auf dem See)
-        if (conn && raw[i] < 0.4) { tr.water[i] = 1; continue; }
         if (tr.flight?.[i]) { tr.water[i] = 1; continue; }   // Flugstrecke: keine Straße, Gelände bleibt
         prof[i] = Math.max(prof[i], 0.8);
         // abtauchende Strecke (Unterwasser-Abschnitt): Profil um |lift| tiefer, Gelände wird dorthin gelegt
@@ -194,40 +189,9 @@ export class World {
     return d !== null && d > h ? d : h;
   }
 
-  // ------------------------------------------------------------------ Verbindungsstraßen
-  makeConnector(c) {
-    const A = this.courseById[c.a[0]], B = this.courseById[c.b[0]];
-    const gate = (course, u, side) => {
-      const tr = course.track, p = tr.pointAt(u, 0);
-      const rx = -p.tz, rz = p.tx;
-      const out = tr.wallAt(p.i) + 10;
-      return { course, u, side, i: p.i, s: p.i * tr.ds, center: [p.x, p.z], outer: [p.x + rx * side * out, p.z + rz * side * out], mid: [p.x + rx * side * (tr.hw[p.i] + 3), p.z + rz * side * (tr.hw[p.i] + 3)] };
-    };
-    const ga = gate(A, c.a[1], c.a[2]), gb = gate(B, c.b[1], c.b[2]);
-    const hw = c.hw ?? 6.5;
-    const ctrl = [[...ga.center, hw], [...ga.mid, hw], [...ga.outer, hw], ...c.via.map(([x, z]) => [x, z, hw]), [...gb.outer, hw], [...gb.mid, hw], [...gb.center, hw]];
-    const theme = getTheme('grass');
-    // zu einer Nachtstrecke: dunkler, nasser Asphalt und Laternen immer an
-    const night = !!(A.def.night || B.def.night);
-    const look = night ? { ...theme, road: 0x3a3946, road2: 0x363542, wetRoad: true } : { ...theme, road: 0x9a96a8, road2: 0x948fa3 };
-    const track = new Track({ id: c.id, ctrl, hw, margin: 3, night }, look, { closed: false, heightFn: this.base });
-    // Banden-Lücken an beiden Toren
-    for (const g of [ga, gb]) g.course.track.gaps.push({ side: g.side, s: g.s, half: hw + 5 });
-    return { id: c.id, def: c, a: ga, b: gb, hw, track };
-  }
-
-  /** Verbindungsstraße zwischen zwei Strecken (in beliebiger Richtung) oder null. */
-  connectorBetween(a, b) {
-    for (const c of this.connectors) {
-      if (c.a.course.id === a && c.b.course.id === b) return { conn: c, reverse: false };
-      if (c.a.course.id === b && c.b.course.id === a) return { conn: c, reverse: true };
-    }
-    return null;
-  }
-
   // ------------------------------------------------------------------ Straßen-Suchtabelle und Oberflächen
   buildRoadIndex() {
-    this.roads = [...this.courses.map((c) => c.track), ...this.connectors.map((c) => c.track)];
+    this.roads = this.courses.map((c) => c.track);
     const map = new Map();
     this.roads.forEach((tr, ri) => {
       for (let i = 0; i < tr.N; i++) {
@@ -353,31 +317,14 @@ export class World {
         }
       }
     }
-    // Höhlenberg und Zeltwand: Ring mit Eingängen dort, wo Verbindungsstraßen hindurchführen
+    // Höhlenberg und Zeltwand: geschlossener Ring (die Strecke liegt ganz darin)
     for (const st of this.def.structures) {
-      st.doors = this.doorsOf(st);
       const n = 96;
       for (let k = 0; k < n; k++) {
         const a0 = (k / n) * Math.PI * 2, a1 = ((k + 1) / n) * Math.PI * 2;
-        if (st.doors.some((d) => angDist(a0, d.a) < d.half || angDist(a1, d.a) < d.half)) continue;
         this.addSeg(st.x + Math.cos(a0) * st.r, st.z + Math.sin(a0) * st.r, st.x + Math.cos(a1) * st.r, st.z + Math.sin(a1) * st.r);
       }
     }
-  }
-
-  /** Eingänge eines Rundbaus: Winkel, an denen eine Verbindungsstraße den Ring kreuzt. */
-  doorsOf(st) {
-    const doors = [];
-    for (const c of this.connectors) {
-      const tr = c.track;
-      for (let i = 1; i < tr.N; i++) {
-        const d0 = Math.hypot(tr.px[i - 1] - st.x, tr.pz[i - 1] - st.z), d1 = Math.hypot(tr.px[i] - st.x, tr.pz[i] - st.z);
-        if ((d0 - st.r) * (d1 - st.r) <= 0) {
-          doors.push({ a: Math.atan2(tr.pz[i] - st.z, tr.px[i] - st.x), half: (c.hw + 3.5) / st.r, x: tr.px[i], z: tr.pz[i], conn: c.id });
-        }
-      }
-    }
-    return doors;
   }
 
   /**
@@ -433,9 +380,4 @@ export class World {
     }
     return this.def.regions.map((r, k) => ({ theme: r.theme, w: ws[k] / (sum || 1) }));
   }
-}
-
-function angDist(a, b) {
-  let d = Math.abs(a - b) % (Math.PI * 2);
-  return d > Math.PI ? Math.PI * 2 - d : d;
 }

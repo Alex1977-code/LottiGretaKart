@@ -1,10 +1,9 @@
-// Die Grüne Blockinsel als zusammenhängende Welt (wie Mario Kart World): einundzwanzig Rennstrecken als Regionen, verbunden
-// durch Landstraßen, ein See (darauf fährt man über das Wasser), Berge, Küste. Koordinaten in Metern, x = Osten,
-// z = Süden, Meeresspiegel y = 0.
+// Inselplan: alle Strecken an festen Plätzen in einer gemeinsamen Landschaft (Grüne Blockinsel und Nachbarinseln).
+// Gefahren wird wie in Mario Kart 8 Deluxe immer nur auf einer Strecke: courseWorldDef schneidet aus dem Plan die
+// Welt einer Strecke aus (Gelände ringsum, Seen, Berge, Höhle/Zelt, Schienen) – ohne die anderen Strecken.
+// Koordinaten in Metern, x = Osten, z = Süden, Meeresspiegel y = 0.
 //
-// courses     Strecke (Definition aus src/tracks) + Verschiebung in die Welt.
-// connectors  Verbindungsstraße zwischen zwei Strecken: an jeder Strecke ein Tor (u = Rundenanteil, side = Seite
-//             relativ zur Fahrtrichtung, +1 rechts / −1 links), dazwischen Wegpunkte. Befahrbar in beide Richtungen.
+// courses     Strecke (Definition aus src/tracks) + Verschiebung in die Landschaft.
 // regions     Stimmung (Himmel, Licht, Bodenfarben) mit Mittelpunkt und Radius – wird beim Fahren übergeblendet.
 // flats       ebene Flächen (Stadion, Zelt, Höhle, Stadt), damit Bauten und Strecken nicht auf Hügeln stehen.
 // rails       Grind-Schienen (Polylinie, Höhe über Boden bzw. über dem Wasser).
@@ -78,52 +77,6 @@ export const WORLD = {
     { def: arena, ox: 70, oz: 1050 },
     { def: schlossring, ox: 560, oz: 1060 },
     { def: schlucht, ox: -480, oz: -1090 },
-  ],
-  connectors: [
-    { id: 'wiese-wald', a: ['kraxelwiese', 0.075, -1], b: ['herbstwald', 0.045, 1], via: [[40, -140], [10, -190]], hw: 6.5, items: [0.5], coins: [[0.3, 0.4]] },
-    { id: 'wiese-stadt', a: ['kraxelwiese', 0.24, -1], b: ['autobahn', 0.86, -1], via: [[175, 30], [180, 110]], hw: 6.5, items: [0.5], coins: [[0.6, 0.7]] },
-    { id: 'wiese-grotte', a: ['kraxelwiese', 0.78, -1], b: ['laternengrotte', 0.2, 1], via: [[-190, -40], [-240, -10]], hw: 6.5, items: [0.45] },
-    { id: 'wiese-zirkus', a: ['kraxelwiese', 0.585, -1], b: ['manege', 0.2, -1], via: [[-60, 140], [-110, 230], [-150, 300]], hw: 7, items: [0.55], coins: [[0.25, 0.4]] },
-    { id: 'wald-grotte', a: ['herbstwald', 0.66, 1], b: ['laternengrotte', 0.69, 1], via: [[-260, -300], [-360, -220], [-470, -160]], hw: 6.5, items: [0.35, 0.7], coins: [[0.5, 0.6]] },
-    { id: 'grotte-zirkus', a: ['laternengrotte', 0.04, 1], b: ['manege', 0.05, -1], via: [[-360, 110], [-330, 190]], hw: 6.5, items: [0.5] },
-    { id: 'wald-stadt', a: ['herbstwald', 0.2, 1], b: ['autobahn', 0.05, -1], via: [[260, -300], [380, -180], [470, -40]], hw: 7, items: [0.3, 0.7], coins: [[0.45, 0.55]] },
-    { id: 'wiese-strand', a: ['kraxelwiese', 0.4, -1], b: ['strand', 0.9, -1], via: [[110, 120], [165, 200], [162, 300], [120, 380]], hw: 6.5, items: [0.5], coins: [[0.3, 0.4]] },
-    { id: 'strand-stadt', a: ['strand', 0.2, -1], b: ['autobahn', 0.66, -1], via: [[330, 370]], hw: 6.5, items: [0.5] },
-    { id: 'stadt-gipfel', a: ['autobahn', 0.15, -1], b: ['gipfel', 0.9, 1], via: [[600, 40], [575, -60]], hw: 6.5, items: [0.5], coins: [[0.6, 0.7]] },
-    { id: 'wald-gipfel', a: ['herbstwald', 0.3, 1], b: ['gipfel', 0.68, 1], via: [[230, -440], [340, -420], [430, -320]], hw: 6.5, items: [0.35, 0.7], coins: [[0.5, 0.6]] },
-    { id: 'wald-burg', a: ['herbstwald', 0.6, 1], b: ['burg', 0.28, -1], via: [], hw: 6.5 },
-    { id: 'stadt-wueste', a: ['autobahn', 0.25, -1], b: ['wueste', 0.8, 1], via: [[732, 90]], hw: 7, items: [0.5] },
-    { id: 'gipfel-wueste', a: ['gipfel', 0.2, 1], b: ['wueste', 0.7, 1], via: [[790, -170]], hw: 6.5, items: [0.5], coins: [[0.4, 0.5]] },
-    { id: 'zirkus-vulkan', a: ['manege', 0.8, -1], b: ['vulkan', 0.2, -1], via: [[-505, 375]], hw: 6.5, items: [0.5] },
-    { id: 'grotte-vulkan', a: ['laternengrotte', 0.85, 1], b: ['vulkan', 0.9, -1], via: [[-600, 120], [-700, 260]], hw: 6.5, items: [0.35, 0.7], coins: [[0.5, 0.6]] },
-    { id: 'burg-bonbon', a: ['burg', 0.7, -1], b: ['bonbon', 0.2, 1], via: [[-430, -440]], hw: 6.5, items: [0.5], coins: [[0.4, 0.5]] },
-    { id: 'grotte-bonbon', a: ['laternengrotte', 0.75, 1], b: ['bonbon', 0.9, 1], via: [[-650, -110], [-730, -240]], hw: 6.5, items: [0.4, 0.75] },
-    { id: 'strand-zoo', a: ['strand', 0.3, -1], b: ['loroparque', 0.82, -1], via: [[400, 500]], hw: 6.5, items: [0.5], coins: [[0.3, 0.4]] },
-    { id: 'stadt-zoo', a: ['autobahn', 0.33, -1], b: ['loroparque', 0.15, -1], via: [[740, 330]], hw: 6.5, items: [0.5], coins: [[0.6, 0.7]] },
-    { id: 'zirkus-piraten', a: ['manege', 0.66, -1], b: ['piratenbucht', 0.95, -1], via: [[-390, 470]], hw: 6.5, items: [0.5] },
-    { id: 'piraten-vulkan', a: ['piratenbucht', 0.84, -1], b: ['vulkan', 0.27, -1], via: [[-540, 540]], hw: 6.5, items: [0.5], coins: [[0.4, 0.5]] },
-    { id: 'wald-dino', a: ['herbstwald', 0.375, 1], b: ['dinodschungel', 0.38, -1], via: [[200, -500]], hw: 6.5, items: [0.5], coins: [[0.35, 0.45]] },
-    { id: 'dino-gipfel', a: ['dinodschungel', 0.2, -1], b: ['gipfel', 0.5, 1], via: [[480, -470]], hw: 6.5, items: [0.5] },
-    { id: 'riff-dino', a: ['wrackriff', 0.14, 1], b: ['dinodschungel', 0.45, -1], via: [[200, -690], [270, -610]], hw: 6.5, items: [0.5], coins: [[0.35, 0.45]] },
-    { id: 'burg-riff', a: ['burg', 0.85, -1], b: ['wrackriff', 0.95, 1], via: [[-170, -660]], hw: 6.5, items: [0.5], coins: [[0.55, 0.65]] },
-    { id: 'spuk-bonbon', a: ['spukinsel', 0.15, 1], b: ['bonbon', 0.67, 1], via: [], hw: 6.5, items: [0.5], coins: [[0.35, 0.45]] },
-    { id: 'katzen-vulkan', a: ['katzeninsel', 0.93, -1], b: ['vulkan', 0.69, -1], via: [], hw: 6.5, items: [0.5], coins: [[0.55, 0.65]] },
-    { id: 'hasen-vulkan', a: ['hasenhuegel', 0.91, -1], b: ['vulkan', 0.81, -1], via: [[-835, 335]], hw: 6.5, items: [0.5] },
-    { id: 'hasen-grotte', a: ['hasenhuegel', 0.61, -1], b: ['laternengrotte', 0.8, 1], via: [[-700, -45]], hw: 6.5, items: [0.5], coins: [[0.35, 0.45]] },
-    { id: 'city-wueste', a: ['palmencity', 0.91, -1], b: ['wueste', 0.25, 1], via: [[1200, 130]], hw: 7, items: [0.35, 0.7], coins: [[0.45, 0.55]] },
-    { id: 'nacht-city', a: ['mitternacht', 0.21, 1], b: ['palmencity', 0.97, -1], via: [[1365, -60]], hw: 7, items: [0.3, 0.7], coins: [[0.45, 0.55]] },
-    { id: 'nacht-wueste', a: ['mitternacht', 0.97, 1], b: ['wueste', 0.37, 1], via: [[1095, -205]], hw: 7, items: [0.5], coins: [[0.35, 0.45]] },
-    { id: 'zoo-teneriffa', a: ['loroparque', 0.35, -1], b: ['teneriffa', 0.75, 1], via: [[960, 640]], hw: 7, items: [0.3, 0.7], coins: [[0.45, 0.55]] },
-    { id: 'teneriffa-city', a: ['teneriffa', 0.63, 1], b: ['palmencity', 0.19, 1], via: [[1330, 560]], hw: 7, items: [0.5], coins: [[0.4, 0.5]] },
-    { id: 'piraten-strand', a: ['piratenbucht', 0.29, 1], b: ['strand', 0.78, -1], via: [[-60, 560]], hw: 6.5, items: [0.45], coins: [[0.55, 0.65]] },
-    // Inseln der Strecken nach dem Vorbild von Mario Kart 8 Deluxe (über das Meer)
-    { id: 'piraten-hafen', a: ['piratenbucht', 0.235, 1], b: ['hafenstadt', 0.55, 1], via: [[-260, 760], [-380, 880]], hw: 7, items: [0.3, 0.7], coins: [[0.45, 0.55]] },
-    { id: 'hafen-arena', a: ['hafenstadt', 0.377, 1], b: ['arena', 0.923, 1], via: [[-210, 1052]], hw: 7, items: [0.5] },
-    { id: 'arena-schloss', a: ['arena', 0.217, 1], b: ['schlossring', 0.958, 1], via: [[280, 1085]], hw: 7, items: [0.5] },
-    { id: 'strand-arena', a: ['strand', 0.683, -1], b: ['arena', 0.717, 1], via: [[95, 740]], hw: 7, items: [0.35, 0.7], coins: [[0.5, 0.6]] },
-    { id: 'schloss-teneriffa', a: ['schlossring', 0.426, 1], b: ['teneriffa', 0.868, 1], via: [[880, 960]], hw: 7, items: [0.5], coins: [[0.4, 0.5]] },
-    { id: 'burg-schlucht', a: ['burg', 0.79, -1], b: ['schlucht', 0.144, 1], via: [[-380, -760]], hw: 7, items: [0.35, 0.7], coins: [[0.5, 0.6]] },
-    { id: 'schlucht-spuk', a: ['schlucht', 0.944, 1], b: ['spukinsel', 0.566, -1], via: [[-800, -930]], hw: 7, items: [0.5] },
   ],
   lakes: [
     { x: -40, z: 205, r: 95, depth: 4 },
@@ -218,24 +171,9 @@ export const WORLD = {
     { pts: [[300, -270], [380, -190], [440, -110]], h: 0.9 },
     { pts: [[180, 190], [178, 250], [174, 300]], h: 0.9 },
   ],
-  // Sternmünzen für die Freie Fahrt (versteckt über die Insel)
-  starCoins: [
-    [60, 120], [-150, 40], [230, -60], [-60, -180], [120, -250], [-250, -330], [300, -320], [-520, -40], [-420, 60],
-    [-300, 230], [-430, 400], [-200, 420], [-40, 290], [80, 300], [250, 120], [380, 40], [560, 120], [650, 260],
-    [420, 300], [520, -120], [-600, 220], [-100, -380], [0, -440], [170, -400], [700, -50], [-700, -150],
-    [200, 330], [-560, -220], [330, -430], [-260, 120],
-    [100, 497], [420, 470], [610, -225], [450, -440], [-330, -430], [0, -500],
-    [1000, -130], [700, 40], [-700, 432], [-560, 300], [-690, -400], [-840, -250],
-    [880, 440], [520, 600],
-    [-250, 470], [-440, 690],
-    [300, -470], [600, -620],
-    [-60, -980], [156, -880],
-    [-900, -745], [-1040, 650], [-860, 40], [1530, 300], [1330, -470], [1100, 900],
-    [-450, 1010], [60, 1005], [640, 975], [-430, -1185],
-  ],
 };
 
-/** Cups im Grand Prix: von Strecke zu Strecke (ab dem zweiten Rennen mit Anfahrt über die Verbindungsstraße). */
+/** Cups im Grand Prix: je vier Strecken nacheinander, Punkte nach Platz. */
 export const WORLD_CUPS = [
   { id: 'beeren', name: 'Beeren-Cup', tracks: ['kraxelwiese', 'herbstwald', 'laternengrotte', 'manege'] },
   { id: 'brummbaer', name: 'Brummbär-Cup', tracks: ['manege', 'kraxelwiese', 'autobahn', 'herbstwald'] },
@@ -256,72 +194,28 @@ export const WORLD_CUPS = [
   { id: 'gleiter', name: 'Gleiter-Cup', tracks: ['schlucht', 'hafenstadt', 'arena', 'schlossring'] },
 ];
 
-/** K.-o.-Tour: Rallye quer über die Insel; an jedem Checkpoint scheiden die Letzten aus. */
-export const KO_TOURS = [
-  {
-    id: 'insel', name: 'Große Inseltour',
-    // Folge von Strecken; zwischen zwei Strecken wird die Verbindungsstraße gefahren
-    stops: ['kraxelwiese', 'autobahn', 'herbstwald', 'laternengrotte', 'manege', 'kraxelwiese'],
-    survivors: [10, 8, 6, 4],
-  },
-  {
-    id: 'kurz', name: 'Kleine Runde',
-    stops: ['manege', 'laternengrotte', 'herbstwald', 'kraxelwiese'],
-    survivors: [8, 4],
-  },
-  {
-    id: 'kueste', name: 'Küste und Gipfel',
-    stops: ['strand', 'autobahn', 'gipfel', 'herbstwald', 'burg'],
-    survivors: [9, 6, 4],
-  },
-  {
-    id: 'wild', name: 'Wilde Weltreise',
-    stops: ['wueste', 'gipfel', 'herbstwald', 'burg', 'bonbon', 'laternengrotte', 'vulkan'],
-    survivors: [10, 8, 6, 5, 4],
-  },
-  {
-    id: 'safari', name: 'Tierpark-Safari',
-    stops: ['kraxelwiese', 'strand', 'loroparque', 'autobahn', 'herbstwald'],
-    survivors: [9, 6, 4],
-  },
-  {
-    id: 'schatz', name: 'Schatzsuche',
-    stops: ['strand', 'piratenbucht', 'manege', 'kraxelwiese'],
-    survivors: [8, 4],
-  },
-  {
-    id: 'grusel', name: 'Gruselnacht',
-    stops: ['herbstwald', 'burg', 'bonbon', 'spukinsel'],
-    survivors: [8, 4],
-  },
-  {
-    id: 'tierfreunde', name: 'Tierfreunde',
-    stops: ['katzeninsel', 'vulkan', 'hasenhuegel', 'laternengrotte', 'kraxelwiese'],
-    survivors: [9, 6, 4],
-  },
-  {
-    id: 'verfolgung', name: 'Verfolgungsjagd',
-    stops: ['kraxelwiese', 'autobahn', 'wueste', 'palmencity'],
-    survivors: [8, 4],
-  },
-  {
-    id: 'mitternacht', name: 'Mitternachtsjagd',
-    stops: ['autobahn', 'wueste', 'mitternacht', 'palmencity'],
-    survivors: [8, 4],
-  },
-  {
-    id: 'kanaren', name: 'Kanaren-Rundfahrt',
-    stops: ['strand', 'loroparque', 'teneriffa', 'palmencity'],
-    survivors: [8, 4],
-  },
-  {
-    id: 'gleitflug', name: 'Gleitflug-Tour',
-    stops: ['strand', 'arena', 'schlossring', 'teneriffa'],
-    survivors: [8, 4],
-  },
-  {
-    id: 'tauchgang', name: 'Tauchgang',
-    stops: ['herbstwald', 'burg', 'wrackriff', 'dinodschungel', 'gipfel'],
-    survivors: [9, 6, 4],
-  },
-];
+/** Rand rund um eine Strecke, der zur Strecken-Welt gehört (Gelände, Kulisse); dahinter beginnt die Fernsicht. */
+const PAD = 190;
+
+/**
+ * Welt einer einzelnen Strecke: derselbe Landschaftsplan (Küsten, Hügel, Seen bleiben, wie sie sind), aber nur
+ * diese Strecke, ihr Ausschnitt und die Bauten darin.
+ */
+export function courseWorldDef(id) {
+  const c = WORLD.courses.find((k) => k.def.id === id) ?? WORLD.courses[0];
+  const xs = c.def.ctrl.map((p) => p[0] + c.ox), zs = c.def.ctrl.map((p) => p[1] + c.oz);
+  const bounds = { minX: Math.min(...xs) - PAD, maxX: Math.max(...xs) + PAD, minZ: Math.min(...zs) - PAD, maxZ: Math.max(...zs) + PAD };
+  const inside = (x, z, r = 0) => x + r > bounds.minX && x - r < bounds.maxX && z + r > bounds.minZ && z - r < bounds.maxZ;
+  const cx = (bounds.minX + bounds.maxX) / 2, cz = (bounds.minZ + bounds.maxZ) / 2;
+  return {
+    ...WORLD,
+    name: c.def.name,
+    bounds,
+    center: { x: cx, z: cz, r: Math.hypot(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ) / 2 },
+    courses: [c],
+    // Höhle/Zelt nur, wenn die Strecke darin liegt (dann geschlossen: keine Eingänge)
+    structures: WORLD.structures.filter((st) => Math.hypot(st.x - (Math.min(...xs) + Math.max(...xs)) / 2, st.z - (Math.min(...zs) + Math.max(...zs)) / 2) < st.r).map((st) => ({ ...st, doors: [] })),
+    rails: WORLD.rails.filter((r) => r.pts.every(([x, z]) => inside(x, z, -20))),
+    regions: WORLD.regions.filter((r) => inside(r.x, r.z, r.r + (r.fade ?? 120)) || r.base),
+  };
+}

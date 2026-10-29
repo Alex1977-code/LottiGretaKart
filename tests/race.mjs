@@ -21,53 +21,15 @@ if (!base) {
   await new Promise((r) => setTimeout(r, 2500));
 }
 const only = process.argv[2];
-// Fälle: Runden auf jeder Strecke, Grand Prix mit Anfahrt (inkl. Seeüberquerung), K.-o.-Tour
+// Fälle: Runden auf jeder Strecke (jede in ihrer eigenen Welt), Grand Prix, Mehrspieler, Nacht und Wetter
 const CASES = [
   ...['kraxelwiese', 'herbstwald', 'laternengrotte', 'manege', 'autobahn', 'strand', 'gipfel', 'burg', 'wueste', 'vulkan', 'bonbon', 'loroparque', 'piratenbucht', 'dinodschungel', 'wrackriff', 'spukinsel', 'katzeninsel', 'hasenhuegel', 'palmencity', 'mitternacht', 'teneriffa', 'hafenstadt', 'arena', 'schlossring', 'schlucht'].map((t) => ({ id: t, q: `race=${t}&laps=1&racer=greta`, rows: 12 })),
-  { id: 'gp-wiese-wald', q: 'mode=gp&from=kraxelwiese&race=herbstwald&laps=1&racer=lotti', rows: 12 },
-  { id: 'gp-zirkus-wiese', q: 'mode=gp&from=manege&race=kraxelwiese&laps=1&racer=pflaume', rows: 12 },
-  { id: 'gp-wiese-strand', q: 'mode=gp&from=kraxelwiese&race=strand&laps=1&racer=kobold', rows: 12 },
-  { id: 'gp-strand-stadt', q: 'mode=gp&from=strand&race=autobahn&laps=1&racer=baron', rows: 12 },
-  { id: 'gp-stadt-gipfel', q: 'mode=gp&from=autobahn&race=gipfel&laps=1&racer=wuehler', rows: 12 },
-  { id: 'gp-gipfel-wald', q: 'mode=gp&from=gipfel&race=herbstwald&laps=1&racer=bulle', rows: 12 },
-  { id: 'gp-wald-burg', q: 'mode=gp&from=herbstwald&race=burg&laps=1&racer=greta', rows: 12 },
-  { id: 'ko-kueste', q: 'mode=ko&tour=kueste&racer=lotti', rows: 12, ko: true },
-  { id: 'gp-stadt-wueste', q: 'mode=gp&from=autobahn&race=wueste&laps=1&racer=lotti', rows: 12 },
-  { id: 'gp-grotte-vulkan', q: 'mode=gp&from=laternengrotte&race=vulkan&laps=1&racer=greta', rows: 12 },
-  { id: 'gp-burg-bonbon', q: 'mode=gp&from=burg&race=bonbon&laps=1&racer=pilzling', rows: 12 },
   { id: 'mp-2', q: 'race=strand&laps=1&players=lotti:kb1,greta:kb2', rows: 12 },
-  { id: 'mp-4-gp', q: 'mode=gp&from=autobahn&race=gipfel&laps=1&players=pflaume:pad0,bulle:pad1,kobold:kb1,baron:kb2', rows: 12 },
-  { id: 'ko-kurz', q: 'mode=ko&tour=kurz&race=kraxelwiese&racer=lotti', rows: 12, ko: true },
-  { id: 'gp-strand-zoo', q: 'mode=gp&from=strand&race=loroparque&laps=1&racer=lotti', rows: 12 },
-  { id: 'gp-zoo-stadt', q: 'mode=gp&from=loroparque&race=autobahn&laps=1&racer=greta', rows: 12 },
-  { id: 'ko-safari', q: 'mode=ko&tour=safari&racer=lotti', rows: 12, ko: true },
-  { id: 'gp-zirkus-piraten', q: 'mode=gp&from=manege&race=piratenbucht&laps=1&racer=greta', rows: 12 },
-  { id: 'gp-piraten-vulkan', q: 'mode=gp&from=piratenbucht&race=vulkan&laps=1&racer=lotti', rows: 12 },
-  { id: 'ko-schatz', q: 'mode=ko&tour=schatz&racer=greta', rows: 12, ko: true },
-  { id: 'gp-wald-dino', q: 'mode=gp&from=herbstwald&race=dinodschungel&laps=1&racer=lotti', rows: 12 },
-  { id: 'gp-dino-gipfel', q: 'mode=gp&from=dinodschungel&race=gipfel&laps=1&racer=greta', rows: 12 },
-  { id: 'gp-burg-riff', q: 'mode=gp&from=burg&race=wrackriff&laps=1&racer=lotti', rows: 12 },
-  { id: 'gp-riff-dino', q: 'mode=gp&from=wrackriff&race=dinodschungel&laps=1&racer=greta', rows: 12 },
-  { id: 'gp-bonbon-spuk', q: 'mode=gp&from=bonbon&race=spukinsel&laps=1&racer=lotti', rows: 12 },
-  { id: 'gp-katzen-vulkan', q: 'mode=gp&from=katzeninsel&race=vulkan&laps=1&racer=greta', rows: 12 },
-  { id: 'gp-vulkan-hasen', q: 'mode=gp&from=vulkan&race=hasenhuegel&laps=1&racer=lotti', rows: 12 },
-  { id: 'gp-hasen-grotte', q: 'mode=gp&from=hasenhuegel&race=laternengrotte&laps=1&racer=greta', rows: 12 },
-  { id: 'gp-wueste-city', q: 'mode=gp&from=wueste&race=palmencity&laps=1&racer=lotti', rows: 12 },
-  { id: 'ko-verfolgung', q: 'mode=ko&tour=verfolgung&racer=greta', rows: 12, ko: true },
-  { id: 'gp-wueste-nacht', q: 'mode=gp&from=wueste&race=mitternacht&laps=1&racer=lotti', rows: 12 },
-  { id: 'gp-nacht-city', q: 'mode=gp&from=mitternacht&race=palmencity&laps=1&racer=greta', rows: 12 },
-  { id: 'ko-mitternacht', q: 'mode=ko&tour=mitternacht&racer=lotti', rows: 12, ko: true },
-  { id: 'gp-hafen-arena', q: 'mode=gp&from=hafenstadt&race=arena&laps=1&racer=lotti', rows: 12 },
-  { id: 'gp-arena-schloss', q: 'mode=gp&from=arena&race=schlossring&laps=1&racer=greta', rows: 12 },
-  { id: 'gp-burg-schlucht', q: 'mode=gp&from=burg&race=schlucht&laps=1&racer=lotti', rows: 12 },
-  { id: 'ko-gleitflug', q: 'mode=ko&tour=gleitflug&racer=greta', rows: 12, ko: true },
+  { id: 'gp-gleiter', q: 'mode=gp&race=schlucht&laps=1&racer=lotti', rows: 12 },
+  { id: 'mp-4-gp', q: 'mode=gp&race=gipfel&laps=1&players=pflaume:pad0,bulle:pad1,kobold:kb1,baron:kb2', rows: 12 },
   { id: 'nacht-kraxelwiese', q: 'race=kraxelwiese&laps=1&racer=greta&night=1', rows: 12 },
-  { id: 'gp-zoo-teneriffa', q: 'mode=gp&from=loroparque&race=teneriffa&laps=1&racer=lotti', rows: 12 },
-  { id: 'gp-teneriffa-city', q: 'mode=gp&from=teneriffa&race=palmencity&laps=1&racer=greta', rows: 12 },
-  { id: 'ko-kanaren', q: 'mode=ko&tour=kanaren&racer=lotti', rows: 12, ko: true },
   { id: 'regen-strand', q: 'race=strand&laps=1&racer=lotti&weather=rain', rows: 12 },
   { id: 'calima-wueste', q: 'race=wueste&laps=1&racer=greta&weather=calima&night=1', rows: 12 },
-  { id: 'ko-tauchgang', q: 'mode=ko&tour=tauchgang&racer=lotti', rows: 12, ko: true },
 ].filter((c) => !only || c.id === only);
 const browser = await pw.chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 let failed = 0;
@@ -105,19 +67,56 @@ for (const c of CASES) {
       if (p.boostT > 0) boosts++;
     }
     k.step(0);
-    return { state: r.state, time: r.time, steps, used, items, maxSpeed, drifts, boosts, place: p.place, finished: r.racers.filter((x) => x.finished).length, lapTime: p.finishTime, out: r.outOrder.length, rescues: r.rescues ?? 0, length: r.track.finishS };
+    return { state: r.state, time: r.time, steps, used, items, maxSpeed, drifts, boosts, place: p.place, finished: r.racers.filter((x) => x.finished).length, lapTime: p.finishTime, rescues: r.rescues ?? 0, length: r.track.finishS };
   });
   await page.waitForTimeout(400);
   await page.evaluate(() => { window.__kart.freeze = true; });
   await page.screenshot({ path: `tests/out/race-${id}.png`, timeout: 120000 });
   const rows = await page.evaluate(() => document.querySelectorAll('.results tr').length);
   check(res.state === 'done', `Rennen beendet (Zustand ${res.state}, ${(res.steps / 60).toFixed(0)} s)`);
-  check(res.finished === 12, `alle zwölf gewertet (${res.finished}${c.ko ? `, davon ${res.out} ausgeschieden` : ''})`);
+  check(res.finished === 12, `alle zwölf gewertet (${res.finished})`);
   check(rows === c.rows, `Ergebnisliste mit ${c.rows} Zeilen (${rows})`);
   check(res.lapTime > 15 && res.lapTime < 300, `Zeit der Spielerin ${res.lapTime?.toFixed(1)} s für ${res.length.toFixed(0)} m, Platz ${res.place}`);
   check(res.rescues <= 3, `Rettungen (Festgefahren/Meer): ${res.rescues}`);
   check(res.items > 0, `Kisten eingesammelt: ${res.items}, Gegenstände benutzt: ${res.used}`);
   check(res.maxSpeed > 18, `Höchsttempo ${res.maxSpeed.toFixed(1)} m/s, Turbo-Bilder ${res.boosts}, Drift-Bilder ${res.drifts}`);
+  check(errors.length === 0, `keine Konsolenfehler${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
+  await page.close();
+}
+// Grand Prix über das Menü: zwei Rennen nacheinander, dazwischen wird die nächste Strecken-Welt geladen
+// (die alte abgebaut) – wie in Mario Kart 8 Deluxe
+if (!only || only === 'menue-gp') {
+  console.log('Fall menue-gp');
+  const page = await browser.newPage({ viewport: { width: 1024, height: 576 } });
+  const errors = [];
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('pageerror', (e) => errors.push(`${e.message}\n${e.stack}`));
+  await page.goto(`${base}?quality=2`);
+  await page.waitForFunction(() => window.__kart?.race?.demo && document.querySelector('#loading.done'), null, { timeout: 120000 });
+  const courses = [];
+  for (let k = 0; k < 2; k++) {
+    await page.evaluate((k) => {
+      const m = window.__kart.menus;
+      m.settings.laps = 1;
+      if (k === 0) { m.mode = 'gp'; m.startGP(m.constructor.CUPS?.[0] ?? { id: 'gleiter', name: 'Gleiter-Cup', tracks: ['schlucht', 'hafenstadt', 'arena', 'schlossring'] }); }
+      else document.querySelector('[data-next]').click();
+    }, k);
+    await page.waitForFunction(() => { const r = window.__kart?.race; return r && !r.demo && r.state !== 'done' && document.querySelector('#loading.done'); }, null, { timeout: 120000 });
+    const res = await page.evaluate(() => {
+      const k = window.__kart, r = k.race, p = r.player;
+      k.paused = true;
+      k.ai.initAI(p, 0.8, Math.random);
+      let steps = 0;
+      while (r.state !== 'done' && steps < 60 * 400) { window.__testInput = k.ai.aiInput(p, r, 1 / 60); k.step(1, 1 / 60, false); steps++; }
+      k.paused = false;
+      return { state: r.state, course: k.courseId, roads: k.world.roads.length, groups: k.scene.children.filter((c) => c.name === 'welt').length };
+    });
+    courses.push(res.course);
+    check(res.state === 'done', `Rennen ${k + 1} (${res.course}) beendet`);
+    check(res.roads === 1 && res.groups === 1, `nur die eine Strecke geladen (Straßen ${res.roads}, Welten ${res.groups})`);
+    await page.waitForSelector('[data-next]', { timeout: 30000 });
+  }
+  check(courses[0] !== courses[1], `zweites Rennen auf neuer Strecke (${courses.join(' → ')})`);
   check(errors.length === 0, `keine Konsolenfehler${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
   await page.close();
 }

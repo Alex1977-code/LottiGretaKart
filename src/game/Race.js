@@ -1,10 +1,9 @@
-// Ein Rennen in der Insel-Welt (wie Mario Kart World). Die Welt (Gelände, Strecken, Kulisse, Himmel) besteht
-// dauerhaft; das Rennen legt Fahrer, Gegenstände, Gefahren und Effekte in eine eigene Gruppe und folgt einem
-// Rennpfad (RacePath). Modi:
-//   race   Runden auf einer Strecke                  gp     Grand Prix: ab dem 2. Rennen mit Anfahrt
-//   trial  Zeitfahren (allein, drei Turbo-Beeren)     ko     K.-o.-Tour über die Insel mit Checkpoints
-//   free   Freie Fahrt (offene Welt, Sternmünzen)     demo   Menü-Hintergrund (nur Computer-Fahrer)
-// Zustände: intro → countdown → race → finish → done (Freie Fahrt/Demo: free/demo)
+// Ein Rennen auf einer Strecke (wie in Mario Kart 8 Deluxe). Die Strecken-Welt (Gelände, Strecke, Kulisse) wird
+// vorher geladen (ctx.loadCourse); das Rennen legt Fahrer, Gegenstände, Gefahren und Effekte in eine eigene Gruppe
+// und folgt einem Rennpfad (RacePath). Modi:
+//   race   Runden auf einer Strecke                  gp     Grand Prix (vier Rennen nacheinander)
+//   trial  Zeitfahren (allein, drei Turbo-Beeren)     demo   Menü-Hintergrund (nur Computer-Fahrer)
+// Zustände: intro → countdown → race → finish → done (Demo: demo)
 // Mehrspieler: bis zu vier Menschen im geteilten Bildschirm (je Spieler Kamera, Anzeige und Eingabequelle).
 
 import * as THREE from 'three';
@@ -52,7 +51,7 @@ function mulberry(seed) {
 export class Race {
   /**
    * @param {object} app  { renderer, camera, audio, hud, world, worldView, sky, scene, quality }
-   * @param {object} o    { mode, courseId, fromId, laps, tour, roster (Startreihenfolge, vorn zuerst), playerId, cc, assist,
+   * @param {object} o    { mode, courseId, laps, roster (Startreihenfolge, vorn zuerst), playerId, cc, assist,
    *                        players ([{ id, src }] für Mehrspieler; sonst playerId mit Eingabe 'auto'),
    *                        seed, onDone(results), onEvent(name, value, racer) }
    */
@@ -65,9 +64,7 @@ export class Race {
     this.world = app.world;
     this.mode = o.mode ?? 'race';
     this.demo = this.mode === 'demo';
-    this.free = this.mode === 'free';
     this.trial = this.mode === 'trial';
-    this.ko = this.mode === 'ko';
     this.assist = !!o.assist;
     this.ccKey = o.cc ?? 100;
     this.ccDef = CC[this.ccKey] ?? CC[100];
@@ -77,10 +74,8 @@ export class Race {
     this.stateT = 0;
     this.shake = 0;
     this.finishOrder = [];
-    this.outOrder = [];
     this.onDone = o.onDone ?? null;
     this.onEvent = o.onEvent ?? null;
-    this.tour = o.tour ?? null;
     // Mehrere Handys: Gastgeber rechnet, Gäste fahren ihr eigenes Kart und zeigen die anderen nach Schnappschüssen
     this.net = o.net ?? null;
     this.netHost = this.net?.isHost === true;
@@ -91,15 +86,12 @@ export class Race {
 
     // Rennpfad
     const w = this.world;
-    if (this.ko) this.track = RacePath.forTour(w, o.tour.stops, o.tour.survivors);
-    else if (this.free) this.track = null;
-    else if (this.mode === 'gp' && o.fromId && o.fromId !== o.courseId) this.track = RacePath.forRoute(w, o.fromId, o.courseId, o.laps ?? 2);
-    else this.track = RacePath.forCourse(w, o.courseId, o.laps ?? 3);
+    this.track = RacePath.forCourse(w, o.courseId, o.laps ?? 3);
     this.laps = this.track?.laps ?? 1;
     this.course = w.courseById[o.courseId ?? this.track?.courseId ?? 'kraxelwiese'] ?? w.courses[0];
     this.def = this.course.def;
     this.theme = this.course.theme;
-    this.label = this.track?.label ?? 'Freie Fahrt';
+    this.label = this.track.label;
     // Nacht: Strecke (oder Einstellung) bestimmt es; Laternen, Scheinwerfer, stärkeres Leuchten
     this.night = o.night ?? (isNight() || !!this.def?.night);
     app.post?.setNight(this.night ? 1 : 0);
@@ -161,7 +153,7 @@ export class Race {
       sp.target.position.set(14, -1, 0);
       h.root.add(sp, sp.target);
     }
-    if (this.free) this.setupFree(); else this.grid();
+    this.grid();
     if (this.trial) for (const h of this.humans) h.item = { id: 'beere3', charges: 3 };
     // Start-Ampel neben der Startlinie
     if (this.track) {
@@ -237,35 +229,6 @@ export class Race {
     });
   }
 
-  /** Freie Fahrt: Spielerin an der Kraxelwiese, Computer-Fahrer kreisen auf ihren Heimstrecken. */
-  setupFree() {
-    const w = this.world, ids = w.courses.map((c) => c.id);
-    this.racers.forEach((r, k) => {
-      if (r.isPlayer) {
-        const tr = w.courseById.kraxelwiese.track, p = tr.pointAt(0.02, ((r.pi ?? 0) - (this.humans.length - 1) / 2) * 3);
-        r.path = null;
-        r.placeAt(p.x, p.z, p.yaw);
-        return;
-      }
-      const cid = ids[k % ids.length];
-      r.path = RacePath.loop(w, cid, 40);
-      const s = r.path.startS + 30 + this.rnd() * (r.path.length * 0.05);
-      const p = r.path.pointAtS(s, (this.rnd() - 0.5) * 4);
-      r.placeAt(p.x, p.z, p.yaw, p.i);
-      r.updateProgress(r.loc);
-    });
-    // Sternmünzen
-    this.starCoins = w.def.starCoins.map(([x, z], k) => {
-      const m = getModel('star_coin');
-      const y = w.floorAt(x, z);
-      m.root.position.set(x, y + 0.9, z);
-      m.root.scale.setScalar(1.6);
-      this.scene.add(m.root);
-      return { k, x, z, y, m, got: !!this.app.collected?.has(k) };
-    });
-    for (const c of this.starCoins) c.m.root.visible = !c.got;
-  }
-
   // ------------------------------------------------------------------ Hilfen für Gegenstände/KI
   active() { return this.racers.filter((r) => !r.out); }
   leader() { return this.racers.find((r) => r.place === 1 && !r.out) ?? this.racers.find((r) => !r.out); }
@@ -274,7 +237,7 @@ export class Race {
 
   /** Gummiband: Computer-Fahrer hinter der Spielerin werden etwas schneller, vorn etwas langsamer. */
   rubber(r) {
-    if (r.isPlayer || !this.player || r.finished || this.free || !this.player.path) return 1;
+    if (r.isPlayer || !this.player || r.finished || !this.player.path) return 1;
     // Bezug: der vorderste Mensch, der noch fährt
     let ref = this.player;
     for (const h of this.humans) if (!h.finished && !h.out && (ref.finished || ref.out || h.progress > ref.progress)) ref = h;
@@ -285,7 +248,7 @@ export class Race {
     return skill * (1 + clamp(-d / 120, 0, 1) * k * 1.4);
   }
 
-  /** Fortschritt eines Fahrers: Runden, Checkpoints (K.-o.), Ziel. */
+  /** Fortschritt eines Fahrers: Runden, Ziel. */
   onProgress(r) {
     const tr = r.path;
     if (!tr || r.finished || r.out || tr !== this.track) return;
@@ -298,45 +261,7 @@ export class Race {
       r.lap = lap;
       this.onLap(r);
     }
-    if (this.ko) {
-      r.cp = r.cp ?? 0;
-      const cp = tr.checkpoints[r.cp];
-      if (cp && r.progress >= cp.s) {
-        r.cp++;
-        cp.passed = (cp.passed ?? 0) + 1;
-        if (r.isPlayer) { this.hudOf(r)?.message(`Checkpoint: ${cp.name}`, 1.6, 'good'); this.audio.sfx('checkpoint'); }
-        if (cp.passed >= cp.survivors && !cp.closed && !this.netGuest) this.closeCheckpoint(cp, r.cp);
-      }
-    }
     if (r.progress >= tr.finishS) this.finishRacer(r);
-  }
-
-  /** K.-o.: Sobald genug Fahrer durch sind, scheiden alle anderen aus. */
-  closeCheckpoint(cp, index) {
-    cp.closed = true;
-    const losers = this.racers.filter((r) => !r.out && !r.finished && (r.cp ?? 0) < index).sort((a, b) => a.progress - b.progress);
-    for (const r of losers) this.eliminate(r);
-    for (const h of this.humans) if (!h.out) this.hudOf(h)?.message(`Weiter! Noch ${this.active().length} im Rennen`, 2.2, 'final');
-  }
-
-  eliminate(r) {
-    r.out = true;
-    r.finished = true;
-    r.finishTime = this.time;
-    this.outOrder.push(r);
-    this.effects.sparkle(r.pos, 0xffffff, 24, 4);
-    this.effects.confetti(r.pos, 20, 2);
-    r.root.visible = false;
-    if (r.isPlayer) {
-      const hud = this.hudOf(r), v = this.viewOf(r);
-      this.audio.sfx('die');
-      hud?.countdown('RAUS!', 'goal');
-      setTimeout(() => hud?.countdown(''), 1800);
-      this.onEvent?.('out', this.active().length + 1, r);
-      if (v) v.spectate = this.leader();
-      if (!this.split) this.spectate = this.leader();
-      this.checkHumansDone();
-    }
   }
 
   onLap(r) {
@@ -405,14 +330,13 @@ export class Race {
   introSetup() {
     this.stateT = 0;
     if (this.demo) { this.state = 'demo'; return; }
-    if (this.free) { this.state = 'free'; this.audio.play('course_map'); for (const h of this.huds()) h.message('Freie Fahrt – erkunde die Insel!', 3, 'intro'); return; }
     this.state = 'intro';
     this.audio.play(this.def.music ?? 'course_grass');
-    const MODE = { gp: 'Grand Prix', ko: 'K.-o.-Tour', trial: 'Zeitfahren' };
+    const MODE = { gp: 'Grand Prix', trial: 'Zeitfahren' };
     const info = {
-      name: this.ko ? this.tour?.name ?? this.label : this.label || this.def.name || '',
+      name: this.label || this.def.name || '',
       cup: [MODE[this.mode] ?? 'Rennen', this.ccDef.label].filter(Boolean).join(' · '),
-      laps: this.ko ? 'die Letzten scheiden aus' : this.laps > 1 ? `${this.laps} Runden` : '1 Runde',
+      laps: this.laps > 1 ? `${this.laps} Runden` : '1 Runde',
     };
     for (const h of this.huds()) h.intro(true, info);
   }
@@ -457,7 +381,7 @@ export class Race {
 
     if (this.state === 'intro' && this.stateT > 3.2) { this.state = 'countdown'; this.stateT = 0; for (const h of this.huds()) h.intro(false); }
     if (this.state === 'countdown') this.countdown();
-    const running = ['race', 'finish', 'demo', 'free'].includes(this.state);
+    const running = ['race', 'finish', 'demo'].includes(this.state);
     if (running) this.time += dt;
 
     for (const r of this.racers) {
@@ -483,7 +407,6 @@ export class Race {
       this.rescue(dt);
       this.collide();
       this.items.update(dt, t);
-      if (this.free) this.updateFree(dt, t);
     } else this.items.update(0, t);
     this.groundLights?.begin();
     this.hazards.update(running ? dt : 0, t);
@@ -503,7 +426,6 @@ export class Race {
     if (this.starMusic && this.humans.every((h) => h.starT <= 0)) {
       this.starMusic = false;
       if (this.state === 'race') this.audio.play(this.def.music ?? 'course_grass');
-      if (this.state === 'free') this.audio.play('course_map');
     }
     if (this.player && !this.demo) {
       const p = this.player;
@@ -511,7 +433,7 @@ export class Race {
     }
     if (this.state === 'finish' && !this.netGuest) {
       const allDone = this.racers.every((r) => r.finished);
-      if (this.stateT > (this.ko && this.humans.every((h) => h.out) ? 5 : 7) || (allDone && this.stateT > 4)) { this.state = 'done'; this.complete(); }
+      if (this.stateT > 7 || (allDone && this.stateT > 4)) { this.state = 'done'; this.complete(); }
     }
     this.updateCamera(dt, t);
     this.weatherFx.update(dt, this.views?.[0]?.cam ?? this.camera);
@@ -552,29 +474,6 @@ export class Race {
     }
   }
 
-  /** Freie Fahrt: Sternmünzen einsammeln. */
-  updateFree(dt, t) {
-    if (!this.humans.length) return;
-    for (const c of this.starCoins) {
-      if (c.got) continue;
-      const vis = this.focusDist2(c.x, c.z) < 260 * 260;
-      c.m.root.visible = vis;
-      if (!vis) continue;
-      c.m.update(dt, 'idle');
-      c.m.root.rotation.y = t * 2 + c.k;
-      const p = this.humans.find((h) => (h.pos.x - c.x) ** 2 + (h.pos.z - c.z) ** 2 < 2.4 * 2.4 && Math.abs(h.pos.y - c.y) < 3);
-      if (p) {
-        c.got = true;
-        c.m.root.visible = false;
-        this.effects.sparkle(c.m.root.position, 0x8fe060, 30, 5);
-        this.audio.sfx('bigCoin');
-        this.onEvent?.('starcoin', c.k);
-        const got = this.starCoins.filter((x) => x.got).length;
-        this.hudOf(p)?.message(got === this.starCoins.length ? 'Alle Sternmünzen gefunden!' : `Sternmünze ${got}/${this.starCoins.length}`, 2, 'good');
-      }
-    }
-  }
-
   /** Stimmung (Himmel, Licht, Nebel) nach der Region um die Kamera-Mitte. */
   updateAmbience(dt) {
     this.ambT -= dt;
@@ -600,7 +499,7 @@ export class Race {
       r.finished = true;
       fin.push(r);
     }
-    const order = [...fin, ...[...this.outOrder].reverse()];
+    const order = fin;
     this.audio.stopMotor();
     const results = order.map((r, i) => ({ id: r.id, name: r.name, place: i + 1, time: r.finishTime, isPlayer: r.isPlayer, pi: r.pi, out: !!r.out, best: Math.min(...r.lapTimes, Infinity) }));
     if (this.netHost) this.net.raceDone(results);
@@ -647,7 +546,6 @@ export class Race {
   }
 
   rank() {
-    if (this.free) { for (let i = 0; i < this.racers.length; i++) this.racers[i].place = i + 1; return; }
     // je Bild: wiederverwendete Liste statt neuer Arrays
     let n = 0;
     for (let i = 0; i < this.finishOrder.length; i++) { const r = this.finishOrder[i]; if (!r.out) r.place = ++n; }
@@ -656,8 +554,6 @@ export class Race {
     for (let i = 0; i < this.racers.length; i++) if (!this.racers[i].finished) rest.push(this.racers[i]);
     rest.sort(byProgress);
     for (let i = 0; i < rest.length; i++) rest[i].place = n + i + 1;
-    n += rest.length;
-    for (let i = this.outOrder.length - 1, k = 1; i >= 0; i--, k++) this.outOrder[i].place = n + k;
   }
 
   /** Karts schubsen sich gegenseitig (Gewicht zählt); Stern/Riese werfen andere um. */
@@ -923,7 +819,6 @@ export class Race {
     setRoadWetness('sun');
     this.audio?.setWeather?.(null);
     this.trafficLight?.model.dispose();
-    for (const c of this.starCoins ?? []) c.m.dispose();
     if (this.splitRoot) { for (const v of this.views) v.hud?.dispose(); this.splitRoot.remove(); }
     this.scene.removeFromParent();
   }

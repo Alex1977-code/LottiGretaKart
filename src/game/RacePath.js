@@ -1,7 +1,5 @@
-// Rennpfad in der offenen Welt: eine abgewickelte, offene Linie, der das Rennen folgt – z. B. Startaufstellung
-// an Strecke A → Teil von A bis zum Tor → Verbindungsstraße → Strecke B bis zur Ziellinie → weitere Runden von B
-// (Grand Prix wie in Mario Kart World), nur Runden einer Strecke, oder eine Rallye über mehrere Strecken
-// (K.-o.-Tour). Runden sind hintereinander abgelegt, Fortschritt = Meter entlang des Pfads.
+// Rennpfad: eine abgewickelte, offene Linie, der das Rennen folgt – Startaufstellung hinter der Ziellinie, dann
+// die Runden hintereinander und der Auslauf. Fortschritt = Meter entlang des Pfads.
 //
 // Gleiche Abfragen wie Track (locate, pointAt, curv, hw, tx/tz …), damit Fahrphysik, KI und Gegenstände
 // unverändert darauf arbeiten. Banden kommen aus der Welt-Kollision (wallAt = ∞).
@@ -63,7 +61,6 @@ export class RacePath {
     // Markierungen (Meter auf dem Pfad): Ziellinien-Überfahrten, Checkpoints, Ziel, Startlinie
     const m = (s) => s * this.scale;
     this.lapMarks = (meta.lapMarks ?? []).map(m);
-    this.checkpoints = (meta.checkpoints ?? []).map((c) => ({ ...c, s: m(c.s) }));
     this.startS = m(meta.startS ?? 0);
     this.finishS = meta.finishS !== undefined ? m(meta.finishS) : L - 1;
     this.laps = meta.laps ?? 1;
@@ -138,14 +135,6 @@ export class RacePath {
     }
   }
 
-  static connectorPiece(pts, conn, reverse) {
-    const tr = conn.track;
-    for (let k = 0; k < tr.N; k++) {
-      const i = reverse ? tr.N - 1 - k : k;
-      pts.push({ x: tr.px[i], z: tr.pz[i], hw: tr.hw[i] });
-    }
-  }
-
   static lengthOf(pts) { let L = 0; for (let k = 1; k < pts.length; k++) L += Math.hypot(pts[k].x - pts[k - 1].x, pts[k].z - pts[k - 1].z); return L; }
 
   /** Nur Runden einer Strecke (Startaufstellung hinter der Linie). */
@@ -165,59 +154,4 @@ export class RacePath {
     const finishS = marks[marks.length - 1];
     return new RacePath(world, pts, { lapMarks: marks, startS, finishS: Math.min(finishS, L - 4), laps, courseId, label: c.def.name, runout: L - finishS });
   }
-
-  /**
-   * Grand Prix mit Anfahrt: Start an Strecke A, über die Verbindungsstraße zu B, dann Runden auf B.
-   * Die Anfahrt bis zur Ziellinie von B zählt als erste Runde.
-   */
-  static forRoute(world, fromId, toId, laps = 2, back = 45) {
-    const link = world.connectorBetween(fromId, toId);
-    if (!link) return RacePath.forCourse(world, toId, laps);
-    const A = world.courseById[fromId], B = world.courseById[toId];
-    const gateA = link.reverse ? link.conn.b : link.conn.a, gateB = link.reverse ? link.conn.a : link.conn.b;
-    const pts = [], marks = [];
-    const NA = A.track.N, b0 = Math.round(back / A.track.ds);
-    RacePath.coursePiece(pts, A, NA - b0, NA - 1);
-    const startS = RacePath.lengthOf(pts);
-    RacePath.coursePiece(pts, A, 0, gateA.i);
-    RacePath.connectorPiece(pts, link.conn, link.reverse);
-    RacePath.coursePiece(pts, B, gateB.i, B.track.N - 1);
-    marks.push(RacePath.lengthOf(pts) + B.track.ds);
-    for (let l = 1; l < laps; l++) {
-      RacePath.coursePiece(pts, B, 0, B.track.N - 1);
-      marks.push(RacePath.lengthOf(pts) + B.track.ds);
-    }
-    const tr = B.track;
-    RacePath.coursePiece(pts, B, 0, Math.min(tr.N - 1, Math.round(RUNOUT / tr.ds)));   // Auslauf
-    const L = RacePath.lengthOf(pts);
-    return new RacePath(world, pts, { lapMarks: marks, startS, finishS: Math.min(marks[marks.length - 1], L - 4), laps, courseId: toId, fromId, label: `${A.def.short ?? A.def.name} → ${B.def.name}` });
-  }
-
-  /** Rallye über mehrere Strecken (K.-o.-Tour); Checkpoints an der Ankunft jeder Zwischenstation. */
-  static forTour(world, stops, survivors = []) {
-    const pts = [], checkpoints = [];
-    const A = world.courseById[stops[0]];
-    const NA = A.track.N, b0 = Math.round(45 / A.track.ds);
-    RacePath.coursePiece(pts, A, NA - b0, NA - 1);
-    const startS = RacePath.lengthOf(pts);
-    let entry = 0; // Eintrittsindex in die aktuelle Strecke
-    for (let k = 0; k < stops.length - 1; k++) {
-      const cur = world.courseById[stops[k]];
-      const link = world.connectorBetween(stops[k], stops[k + 1]);
-      const gateOut = link.reverse ? link.conn.b : link.conn.a, gateIn = link.reverse ? link.conn.a : link.conn.b;
-      RacePath.coursePiece(pts, cur, entry, gateOut.i);
-      // Checkpoint an der Ausfahrt jeder Zwischenstation (nach der Durchfahrt)
-      if (k >= 1) checkpoints.push({ s: RacePath.lengthOf(pts), survivors: survivors[k - 1] ?? 1, name: cur.def.name });
-      RacePath.connectorPiece(pts, link.conn, link.reverse);
-      entry = gateIn.i;
-    }
-    const last = world.courseById[stops[stops.length - 1]];
-    RacePath.coursePiece(pts, last, entry, last.track.N - 1);
-    const finishS = RacePath.lengthOf(pts) + last.track.ds;
-    RacePath.coursePiece(pts, last, 0, Math.min(last.track.N - 1, Math.round(RUNOUT / last.track.ds)));   // Auslauf
-    return new RacePath(world, pts, { checkpoints, startS, finishS, laps: 1, courseId: last.id, label: 'K.-o.-Tour' });
-  }
-
-  /** Endlos-Runden (Freie Fahrt: Computer-Fahrer kreisen auf ihrer Heimstrecke). */
-  static loop(world, courseId, laps = 40) { return RacePath.forCourse(world, courseId, laps, 10); }
 }

@@ -18,6 +18,7 @@ const GRASS = {
 };
 
 const AUTUMN = {
+  rock: 0xa08a74,   // Felsen (Gelände und Fernsicht)
   ...GRASS,
   label: 'Herbstwald',
   sky: [[1, 0x3a7fd8], [0.45, 0x6ab2f0], [0.15, 0xb3dcf5], [0.03, 0xffe7c4], [0, 0xfff1dc], [-0.1, 0xe6d2b8], [-1, 0xb89a7a]],
@@ -76,6 +77,7 @@ const CAVE = {
 };
 
 const BEACH = {
+  rock: 0xb8a48a,   // Felsen (Gelände und Fernsicht)
   ...GRASS,
   label: 'Strand',
   sky: [[1, 0x1f8fe0], [0.45, 0x3fb4f5], [0.15, 0x86dcff], [0.03, 0xd2f6ff], [0, 0xf0fcff], [-0.1, 0xb8e6f0], [-1, 0x7cc8dc]],
@@ -90,6 +92,7 @@ const BEACH = {
 };
 
 const SNOW = {
+  rock: 0x9aa4b8,   // Felsen (Gelände und Fernsicht)
   ...GRASS,
   label: 'Schneegipfel',
   sky: [[1, 0x2a6fd0], [0.45, 0x5ea2ec], [0.15, 0xa8d4f8], [0.03, 0xe4f2ff], [0, 0xf6fbff], [-0.1, 0xdce8f4], [-1, 0xb4c8dc]],
@@ -104,6 +107,7 @@ const SNOW = {
 };
 
 const CASTLE = {
+  rock: 0x6a6478,   // Felsen (Gelände und Fernsicht)
   ...GRASS,
   label: 'Burg',
   sky: [[1, 0x0e0a26], [0.45, 0x231a4a], [0.15, 0x4a2c66], [0.04, 0x8a3c5e], [0, 0xb8506a], [-0.1, 0x4a2a44], [-1, 0x1a1024]],
@@ -118,6 +122,7 @@ const CASTLE = {
 };
 
 const DESERT = {
+  rock: 0xc8784a,   // Felsen (Gelände und Fernsicht)
   ...GRASS,
   label: 'Wüste',
   sky: [[1, 0x2f7fd0], [0.45, 0x6aa8e0], [0.15, 0xb8d4e8], [0.03, 0xf4dcb4], [0, 0xffe8c8], [-0.1, 0xe8c8a0], [-1, 0xc89a6a]],
@@ -132,6 +137,7 @@ const DESERT = {
 };
 
 const VOLCANO = {
+  rock: 0x4a3a36,   // Felsen (Gelände und Fernsicht)
   ...GRASS,
   label: 'Vulkan',
   sky: [[1, 0x1a0e14], [0.45, 0x3a1a1e], [0.15, 0x7a2a1e], [0.04, 0xc8501e], [0, 0xe86a2a], [-0.1, 0x6a2418], [-1, 0x1a0a08]],
@@ -146,6 +152,7 @@ const VOLCANO = {
 };
 
 const CANDY = {
+  rock: 0xe8a0c8,   // Felsen (Gelände und Fernsicht)
   ...GRASS,
   label: 'Bonbonland',
   sky: [[1, 0x7a8af0], [0.45, 0xa8b0ff], [0.15, 0xe0c8ff], [0.03, 0xffd8f0], [0, 0xffe8f6], [-0.1, 0xf0c8e8], [-1, 0xd0a0d8]],
@@ -192,6 +199,7 @@ const PIRATE = {
 
 // Spukinsel (Halloween): Vollmondnacht, lila Nebel, orange Kürbislicht, Kopfsteinpflaster, Banden orange-schwarz
 const HALLOWEEN = {
+  rock: 0x4a4656,   // Felsen (Gelände und Fernsicht)
   ...GRASS,
   label: 'Spukinsel',
   sky: [[1, 0x07061a], [0.45, 0x17123a], [0.15, 0x3a1e5a], [0.04, 0x6a2a6a], [0, 0x8a3a5a], [-0.1, 0x2a1a3a], [-1, 0x0e0a18]],
@@ -254,6 +262,7 @@ const CITY = {
 // Teneriffa: kräftig blauer Kanaren-Himmel, warmes Licht, trockenes Grün, dunkler Vulkansand am Wegrand,
 // weiße Banden mit Kanaren-Blau und Gelb.
 const TENERIFE = {
+  rock: 0x6a5a52,   // Felsen (Gelände und Fernsicht)
   ...GRASS,
   label: 'Teneriffa',
   sky: [[1, 0x1a6ae0], [0.45, 0x3a92f4], [0.15, 0x86c8fa], [0.03, 0xd2eefc], [0, 0xeaf8ff], [-0.1, 0xbfe2f2], [-1, 0x7ab8d8]],
@@ -350,6 +359,7 @@ const REEF = {
 
 // Dino-Dschungel: feucht-grüner Urwald, leichter Dunst, rote Lehmstraße, Bambusbanden
 const JUNGLE = {
+  rock: 0x7a8a62,   // Felsen (Gelände und Fernsicht)
   ...GRASS,
   label: 'Dschungel',
   sky: [[1, 0x2a7ad0], [0.45, 0x5aa8e0], [0.15, 0xa8dce8], [0.03, 0xd8f0e0], [0, 0xe8f6e8], [-0.1, 0xb8d8c0], [-1, 0x8ab898]],

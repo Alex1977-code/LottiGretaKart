@@ -5,6 +5,10 @@
 import * as THREE from 'three';
 import { colorize, lin, mixc, smooth, Rnd } from '../lgw/three/world/geometry.js';
 
+// Luftperspektive wie in Mario Kart 8 Deluxe: der Nebel setzt spät ein – nah klare Farben, am Horizont die
+// Berge der Fernsicht im Dunst (die Themen-Werte sind für die frühere Inselwelt gedacht und werden gestreckt)
+const FOG_NEAR = 2.2, FOG_FAR = 2.7;
+
 const SKY_R = 900;
 const _c = new THREE.Color();
 
@@ -26,7 +30,7 @@ export class Sky {
     this.group.name = 'himmel';
     scene.add(this.group);
     scene.background = new THREE.Color(theme.background);
-    scene.fog = new THREE.Fog(theme.fog.color, theme.fog.near, theme.fog.far);
+    scene.fog = new THREE.Fog(theme.fog.color, theme.fog.near * FOG_NEAR, theme.fog.far * FOG_FAR);
     this.forceSun = !!sunDisc;
     this.buildDome();
     if (theme.clouds || sunDisc) this.buildClouds();
@@ -122,8 +126,8 @@ export class Sky {
     const mixNum = (get) => weights.reduce((a, { theme, w }) => a + get(theme) * w, 0);
     this.scene.background.copy(mixHex((t) => t.background));
     this.scene.fog.color.copy(mixHex((t) => t.fog.color));
-    this.scene.fog.near = mixNum((t) => t.fog.near);
-    this.scene.fog.far = mixNum((t) => t.fog.far);
+    this.scene.fog.near = mixNum((t) => t.fog.near) * FOG_NEAR;
+    this.scene.fog.far = mixNum((t) => t.fog.far) * FOG_FAR;
     this.hemi.color.copy(mixHex((t) => t.hemi.sky));
     this.hemi.groundColor.copy(mixHex((t) => t.hemi.ground));
     this.hemi.intensity = mixNum((t) => t.hemi.intensity) * this.hemiK;

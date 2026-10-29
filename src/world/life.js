@@ -33,14 +33,15 @@ export class IslandLife {
     const rnd = new Rnd(4711);
     // ---------------------------------------------------------------- Segelboote vor der Küste
     this.boats = [];
-    const is = world.def.island;
+    // Strecken-Welt: Boote kreisen um die Strecke (nur auf dem Wasser sichtbar)
+    const c = world.def.center, is = c ? { cx: c.x, cz: c.z, rx: c.r, rz: c.r } : world.def.island;
     const sails = [[0xffffff, 0xe8392d], [0xfff4d8, 0x2a7ad8], [0xffffff, 0x3aa84a], [0xffe8a8, 0xff8a1a], [0xffffff, 0x8a3ab8]];
     const nb = quality >= 2 ? 9 : 4;
     for (let k = 0; k < nb; k++) {
       const [sc, st] = sails[k % sails.length];
       const m = new THREE.Mesh(boatGeo(sc, st), vcol(0.5, { side: THREE.DoubleSide }, 'boat'));
       m.castShadow = true;
-      const a0 = rnd.frac() * TAU, rr = 1.6 + rnd.frac() * 0.12;   // außerhalb der Nachbarinseln
+      const a0 = rnd.frac() * TAU, rr = c ? 0.7 + rnd.frac() * 0.6 : 1.6 + rnd.frac() * 0.12;
       this.boats.push({ m, a0, rr, w: (rnd.frac() < 0.5 ? -1 : 1) * (0.004 + rnd.frac() * 0.004), ph: rnd.frac() * 10 });
       this.group.add(m);
     }
@@ -58,7 +59,8 @@ export class IslandLife {
     const bc = new THREE.Color();
     for (let f = 0; f < nf; f++) {
       const b = world.def.bounds;
-      this.flocks.push({ cx: b.minX + 300 + rnd.frac() * (b.maxX - b.minX - 600), cz: b.minZ + 250 + rnd.frac() * (b.maxZ - b.minZ - 500), r: 60 + rnd.frac() * 90, y: 45 + rnd.frac() * 35, w: (rnd.frac() < 0.5 ? -1 : 1) * (0.08 + rnd.frac() * 0.05), a0: rnd.frac() * TAU });
+      const mx = Math.min(300, (b.maxX - b.minX) / 4), mz = Math.min(250, (b.maxZ - b.minZ) / 4);
+      this.flocks.push({ cx: b.minX + mx + rnd.frac() * (b.maxX - b.minX - 2 * mx), cz: b.minZ + mz + rnd.frac() * (b.maxZ - b.minZ - 2 * mz), r: 60 + rnd.frac() * 90, y: 45 + rnd.frac() * 35, w: (rnd.frac() < 0.5 ? -1 : 1) * (0.08 + rnd.frac() * 0.05), a0: rnd.frac() * TAU });
       for (let j = 0; j < per; j++) this.birds.setColorAt(f * per + j, bc.setHex(f % 2 ? 0xf4f4f8 : 0x3a3a48));
     }
     this.perFlock = per;
@@ -92,6 +94,7 @@ export class IslandLife {
       const a = b.a0 + t * b.w, ex = Math.cos(a), ez = Math.sin(a);
       const x = this.is.cx + ex * this.is.rx * b.rr, z = this.is.cz + ez * this.is.rz * b.rr;
       b.m.position.set(x, 0.05 + Math.sin(t * 1.3 + b.ph) * 0.12, z);
+      b.m.visible = this.world.heightAt(x, z) < -1.5;
       // Fahrtrichtung = Tangente der Ellipse
       const tx = -Math.sin(a) * this.is.rx * Math.sign(b.w), tz = Math.cos(a) * this.is.rz * Math.sign(b.w);
       b.m.rotation.set(Math.sin(t * 1.1 + b.ph) * 0.05, Math.atan2(-tz, tx), Math.sin(t * 0.9 + b.ph) * 0.08 + 0.12 * Math.sign(b.w));
