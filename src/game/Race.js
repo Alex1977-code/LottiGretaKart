@@ -115,6 +115,15 @@ export class Race {
     // Scheinwerfer-Kegel auf der Straße (nachts und bei Regen), dem Boden angelegt
     this.lightsOn = this.night || this.weather === 'rain';
     this.groundLights = this.lightsOn ? new GroundLights(this.scene, this.world) : null;
+    // Kanonen der Strecke: { c0 (Kontrollpunkt-Stelle der Kanone), c1 (Landestelle), h (Scheitelhöhe über der Geraden) }
+    {
+      const tr = this.course.track;
+      this.cannons = (this.def.cannons ?? []).map((k) => {
+        const u0 = tr.uCtrl(k.c0), u1 = tr.uCtrl(k.c1), a = tr.pointAt(u0, 0), b = tr.pointAt(u1, 0);
+        return { x0: a.x, z0: a.z, tx: tr.tx[a.i], tz: tr.tz[a.i], x1: b.x, y1: b.y, z1: b.z, h: k.h ?? 30, along: (((u1 - u0) % 1) + 1) % 1 * tr.length };
+      });
+      if (!this.cannons.length) this.cannons = null;
+    }
     this.items = new Items(this);
     this.items.build(w, { boxes: !this.trial });
     this.hazards = new Hazards(this);
@@ -271,11 +280,11 @@ export class Race {
     if (!r.isPlayer || r.lap > this.laps) return;
     const hud = this.hudOf(r);
     if (r.lap === this.laps && this.laps > 1) {
-      hud?.message('LETZTE RUNDE!', 2.2, 'final');
+      hud?.message(this.track.sections ? 'LETZTER ABSCHNITT!' : 'LETZTE RUNDE!', 2.2, 'final');
       this.audio.sfx('timewarn');
       this.audio.energy(true);
     } else if (r.lap > 1) {
-      hud?.message(`RUNDE ${r.lap}`, 1.4);
+      hud?.message(`${this.track.sections ? 'ABSCHNITT' : 'RUNDE'} ${r.lap}`, 1.4);
       this.audio.sfx('checkpoint');
     }
   }
@@ -339,7 +348,7 @@ export class Race {
     const info = {
       name: this.label || this.def.name || '',
       cup: [MODE[this.mode] ?? 'Rennen', this.ccDef.label].filter(Boolean).join(' · '),
-      laps: this.laps > 1 ? `${this.laps} Runden` : '1 Runde',
+      laps: this.track.sections ? `${this.laps} Abschnitte` : this.laps > 1 ? `${this.laps} Runden` : '1 Runde',
     };
     for (const h of this.huds()) h.intro(true, info);
   }

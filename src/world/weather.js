@@ -7,11 +7,11 @@
 import * as THREE from 'three';
 import { RAIN_WET } from './shaders.js';
 
-export const WEATHERS = ['sun', 'rain', 'calima'];
+export const WEATHERS = ['sun', 'rain', 'calima', 'snow'];
 // 'auto': das Wetter der Strecke (def.weather, wie in Mario Kart 8 Deluxe fest je Strecke), sonst Sonne
 let setting = 'auto';
 export const getWeatherSetting = () => setting;
-export function setWeatherSetting(v) { setting = ['auto', 'sun', 'rain', 'calima', 'random'].includes(v) ? v : 'auto'; }
+export function setWeatherSetting(v) { setting = ['auto', 'sun', 'rain', 'calima', 'snow', 'random'].includes(v) ? v : 'auto'; }
 
 /** Wetter für ein Rennen: Einstellung, bei „Zufall“ meist Sonne (Strecken können eigene Chancen haben). */
 export function resolveWeather(def, rnd = Math.random) {
@@ -33,10 +33,10 @@ const toward = (c, target, k, dim = 1) => {
   return _a.setHex(c).lerp(_b, k).multiplyScalar(dim).getHex();
 };
 
-const caches = { rain: new WeakMap(), calima: new WeakMap() };
+const caches = { rain: new WeakMap(), calima: new WeakMap(), snow: new WeakMap() };
 /** Thema im Wetter umfärben (zwischengespeichert). */
 export function weatherTheme(t, kind) {
-  if (kind !== 'rain' && kind !== 'calima') return t;
+  if (kind !== 'rain' && kind !== 'calima' && kind !== 'snow') return t;
   const cache = caches[kind];
   let n = cache.get(t);
   if (n) return n;
@@ -50,6 +50,18 @@ export function weatherTheme(t, kind) {
       hemi: { sky: toward(t.hemi.sky, 0xc8d2dc, 0.7), ground: t.hemi.ground, intensity: t.hemi.intensity * 0.85 },
       sun: { ...t.sun, color: toward(t.sun.color, 0xdfe6ee, 0.8), intensity: t.sun.intensity * 0.3 },
       sunDisc: false, clouds: true,
+    };
+  } else if (kind === 'snow') {
+    // leichter Schneefall: kühles, helles Licht, weißlicher Dunst, Wolken
+    const cold = 0xdce8f4;
+    n = {
+      ...t,
+      sky: t.sky.map(([h, c]) => [h, toward(c, h > 0.1 ? 0xa8c0dc : cold, 0.55)]),
+      background: toward(t.background, cold, 0.7),
+      fog: { color: toward(t.fog.color, 0xe4ecf6, 0.75), near: t.fog.near * 0.6, far: t.fog.far * 0.75 },
+      hemi: { sky: toward(t.hemi.sky, 0xe8f0ff, 0.6), ground: t.hemi.ground, intensity: t.hemi.intensity },
+      sun: { ...t.sun, color: toward(t.sun.color, 0xeef4ff, 0.7), intensity: t.sun.intensity * 0.75 },
+      clouds: true,
     };
   } else {
     const ochre = 0xd8a060;
@@ -101,7 +113,7 @@ const RAIN_FS = /* glsl */ `
 
 const DUST_VS = /* glsl */ `
   attribute vec3 aOff;
-  uniform float uTime, uSize;
+  uniform float uTime, uSize, uFall;
   uniform vec3 uCam, uBox;
   uniform vec2 uWind;
   varying float vA;
@@ -109,7 +121,7 @@ const DUST_VS = /* glsl */ `
     vec3 o = uCam - uBox * vec3(0.5, 0.25, 0.5);
     vec3 p = aOff * uBox;
     p.xz += uWind * uTime * (0.7 + 0.6 * aOff.y);
-    p.y += sin(uTime * 0.7 + aOff.x * 40.0) * 0.6;
+    p.y += sin(uTime * 0.7 + aOff.x * 40.0) * 0.6 - uTime * uFall * (0.8 + 0.4 * aOff.z);
     vec3 w = o + mod(p - o, uBox);
     vec4 mv = viewMatrix * vec4(w, 1.0);
     float dist = -mv.z;
@@ -132,17 +144,18 @@ export class WeatherFx {
   constructor(scene, kind, quality = 2) {
     this.kind = kind;
     this.t = 0;
-    if (kind !== 'rain' && kind !== 'calima') return;
-    const n = kind === 'rain' ? (quality >= 3 ? 4200 : quality >= 2 ? 2800 : 1400) : (quality >= 3 ? 1600 : quality >= 2 ? 1100 : 600);
+    if (kind !== 'rain' && kind !== 'calima' && kind !== 'snow') return;
+    const snow = kind === 'snow';
+    const n = snow ? (quality >= 3 ? 2400 : quality >= 2 ? 1600 : 700) : kind === 'rain' ? (quality >= 3 ? 4200 : quality >= 2 ? 2800 : 1400) : (quality >= 3 ? 1600 : quality >= 2 ? 1100 : 600);
     const off = new Float32Array(n * 3);
     for (let i = 0; i < off.length; i++) off[i] = Math.random();
     const uniforms = {
       uTime: { value: 0 }, uCam: { value: new THREE.Vector3() },
-      uBox: { value: kind === 'rain' ? new THREE.Vector3(56, 24, 56) : new THREE.Vector3(70, 16, 70) },
-      uWind: { value: kind === 'rain' ? new THREE.Vector2(2.2, 1.2) : new THREE.Vector2(3.2, 1.6) },
-      uFall: { value: 17 }, uLen: { value: 0.75 }, uWidth: { value: 0.022 }, uSize: { value: 0.09 },
-      uColor: { value: new THREE.Color(kind === 'rain' ? 0xd8e4f0 : 0xe8c08a) },
-      uAlpha: { value: kind === 'rain' ? 0.42 : 0.5 },
+      uBox: { value: kind === 'rain' ? new THREE.Vector3(56, 24, 56) : snow ? new THREE.Vector3(60, 22, 60) : new THREE.Vector3(70, 16, 70) },
+      uWind: { value: kind === 'rain' ? new THREE.Vector2(2.2, 1.2) : snow ? new THREE.Vector2(1.2, 0.6) : new THREE.Vector2(3.2, 1.6) },
+      uFall: { value: kind === 'rain' ? 17 : snow ? 1.6 : 0 }, uLen: { value: 0.75 }, uWidth: { value: 0.022 }, uSize: { value: snow ? 0.12 : 0.09 },
+      uColor: { value: new THREE.Color(kind === 'rain' ? 0xd8e4f0 : snow ? 0xffffff : 0xe8c08a) },
+      uAlpha: { value: kind === 'rain' ? 0.42 : snow ? 0.85 : 0.5 },
     };
     this.uniforms = uniforms;
     let obj;
@@ -162,7 +175,7 @@ export class WeatherFx {
     }
     obj.frustumCulled = false;
     obj.renderOrder = 6;
-    obj.name = kind === 'rain' ? 'regen' : 'calima-staub';
+    obj.name = kind === 'rain' ? 'regen' : snow ? 'schnee' : 'calima-staub';
     this.obj = obj;
     scene.add(obj);
   }

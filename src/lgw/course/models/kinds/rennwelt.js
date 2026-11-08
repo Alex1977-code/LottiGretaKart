@@ -14,6 +14,17 @@
 // stone_face    riesiges Steingesicht (Tempelruinen)
 // step_pyramid  Stufenpyramide mit Treppe und Tempelhaus, opts { h }
 // temple_gate   Tempeltor zum Durchfahren (Breite opts.width)
+// mansion_hall  Festsaal der Spukvilla zum Durchfahren: Wände mit leuchtenden Fenstern, Kronleuchter, Tafeln,
+//               Gemälde, Dach (Länge entlang X), opts { length, width }
+// barrel_cannon Fass-Kanone über der Fahrbahn (Gipfelabfahrt): schießt die Karts zurück auf den Gipfel
+// slalom_gate   Slalomtor aus zwei Fahnenstangen mit Banner (Breite opts.width)
+// airplane      großes Passagierflugzeug (Ferienflughafen); opts { color }
+// control_tower Kontrollturm mit verglaster Kanzel
+// baggage_cart  Gepäckschlepper mit zwei Anhängern (fährt im Verkehr mit)
+// dolphin       Delfin (springt in der Delfinlagune)
+// speaker_tower Boxenturm mit pulsierenden Lautsprechern (Disco-Halle)
+// disco_ball    Discokugel, dreht sich und glitzert
+// light_beam    farbiger Scheinwerferkegel, schwenkt (opts.color)
 
 import * as THREE from 'three';
 import { Build, mesh, vcol, basic, cached, joint, makeModel, canvasTexture } from '../lib/kit.js';
@@ -386,4 +397,205 @@ function templeGate(o = {}) {
   return makeModel('temple_gate', root, () => {});
 }
 
-export const MODELS = { tram, grandstand, palace, waterfall, mine_cart: mineCart, jumbotron, balloons, ferris_wheel: ferrisWheel, carousel, water_slide: waterSlide, cake, temple_pillar: templePillar, stone_face: stoneFace, step_pyramid: stepPyramid, temple_gate: templeGate };
+/** Festsaal zum Durchfahren (entlang X): hohe Wände mit Spitzbogenfenstern, Dach, Kronleuchter, lange Tafeln
+ *  mit Kerzen an beiden Seiten, Gemälde. */
+function mansionHall(o = {}) {
+  const L = o.length ?? 80, Wd = o.width ?? 26, H = 14;
+  const root = new THREE.Group();
+  root.add(mesh(cached(`rw:hall:${L}:${Wd}`, () => {
+    const b = new Build();
+    const wall = 0x4a3a5e, trim = 0x2a1e3a, gold = 0xc89a3a, wood = 0x5a3a2a, cloth = 0xf2ece0;
+    for (const s of [-1, 1]) {
+      b.box(L, H, 1, wall, { p: [0, H / 2, s * Wd / 2] }, 0.1);
+      b.box(L, 0.6, 1.4, gold, { p: [0, H - 0.3, s * Wd / 2] }, 0.05);
+      for (let x = -L / 2 + 4; x < L / 2 - 2; x += 8) {
+        b.box(0.6, H, 1.6, trim, { p: [x, H / 2, s * Wd / 2] }, 0.05);
+        // Gemälde mit Goldrahmen
+        b.box(4.2, 3.2, 0.2, gold, { p: [x + 4, 6, s * (Wd / 2 - 0.6)] }, 0.05);
+        b.box(3.6, 2.6, 0.22, [0x2a4a6a, 0x5a2a3a, 0x3a5a2a][Math.abs(Math.round(x)) % 3], { p: [x + 4, 6, s * (Wd / 2 - 0.62)] }, 0.02);
+      }
+      // lange Tafel mit weißem Tuch und Kerzen
+      b.box(L - 12, 1, 2.4, cloth, { p: [0, 1.1, s * (Wd / 2 - 2.6)] }, 0.1);
+      for (let x = -L / 2 + 8; x < L / 2 - 6; x += 6) b.cyl(0.08, 0.08, 0.8, 0xfaf6ee, { p: [x, 2, s * (Wd / 2 - 2.6)] }, 6);
+    }
+    // Dach: Satteldach mit Gauben
+    for (const s of [-1, 1]) b.box(L + 2, 0.6, Wd * 0.62, 0x2a2238, { p: [0, H + Wd * 0.2, s * Wd * 0.25], r: [s * 0.62, 0, 0] }, 0.1);
+    for (const s of [-1, 1]) b.box(1, H, Wd + 2, wood, { p: [s * L / 2, H / 2, 0] }, 0.05);   // Rahmen an den Enden (Tor bleibt offen)
+    return b.geometry();
+  }), vcol(0.7), {}, true));
+  // Öffnungen an den Enden: Tor im Rahmen ausschneiden geht nicht – die Rahmen sind nur Pfeiler, daher Torbogen oben
+  const glowMat = basic('rw:hall:glow', { color: new THREE.Color(2.2, 1.7, 0.8) });
+  for (let x = -L / 2 + 8; x < L / 2 - 4; x += 16) {
+    const c = new THREE.Group();
+    c.position.set(x, H - 3.5, 0);
+    c.add(mesh(cached('rw:chandelier', () => {
+      const b = new Build();
+      b.add(new THREE.TorusGeometry(1.8, 0.12, 6, 24), 0xc89a3a, { r: [Math.PI / 2, 0, 0] });
+      b.cyl(0.05, 0.05, 3.5, 0x3a3a48, { p: [0, 1.75, 0] }, 4);
+      return b.geometry();
+    }), vcol(0.4)));
+    for (let k = 0; k < 6; k++) { const f = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), glowMat); f.position.set(Math.cos(k * 1.047) * 1.8, 0.3, Math.sin(k * 1.047) * 1.8); c.add(f); }
+    root.add(c);
+  }
+  // Fenster leuchten von innen (Spitzbögen als helle Flächen außen)
+  const winMat = basic('rw:hall:win', { color: new THREE.Color(1.6, 1.2, 0.5) });
+  for (const s of [-1, 1]) for (let x = -L / 2 + 8; x < L / 2 - 2; x += 8) {
+    const w = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 4.4), winMat);
+    w.position.set(x, 9.6, s * (Wd / 2 + 0.52)); w.rotation.y = s > 0 ? 0 : Math.PI;
+    root.add(w);
+  }
+  return makeModel('mansion_hall', root, () => {});
+}
+
+/** Fass-Kanone: großes Holzfass auf Gestell, Öffnung nach +X, schräg nach oben. */
+function barrelCannon() {
+  const root = new THREE.Group();
+  root.add(mesh(cached('rw:bcannon', () => {
+    const b = new Build();
+    b.cyl(5.2, 5.2, 11, 0x8a5a32, { p: [0, 7, 0], r: [0, 0, Math.PI / 2 - 0.35] }, 24, true);
+    for (const x of [-4, 0, 4]) b.add(new THREE.TorusGeometry(5.25, 0.3, 6, 32), 0x3a3a44, { p: [x * Math.cos(0.35), 7 + x * Math.sin(0.35), 0], r: [0, Math.PI / 2, 0.35] });
+    b.box(2, 4, 9, 0x5a3a22, { p: [-1, 2, 0] }, 0.1);
+    b.cone(1.2, 2.2, 0xffc21a, { p: [-3.5, 10.5, 0], r: [0, 0, 0.6] }, 5);
+    return b.geometry();
+  }), vcol(0.7), {}, true));
+  return makeModel('barrel_cannon', root, () => {});
+}
+
+/** Slalomtor: zwei rot-weiße Stangen, Banner oben; Durchfahrt entlang X. */
+function slalomGate(o = {}) {
+  const W = o.width ?? 14;
+  const root = new THREE.Group();
+  root.add(mesh(cached(`rw:slalom:${W}`, () => {
+    const b = new Build();
+    for (const s of [-1, 1]) for (let k = 0; k < 6; k++) b.cyl(0.18, 0.18, 1, k % 2 ? 0xffffff : 0xe8392d, { p: [0, 0.5 + k, s * W / 2] }, 8);
+    b.box(0.2, 1.4, W, 0x1e6cff, { p: [0, 5.4, 0] }, 0.05);
+    for (let k = 0; k < 5; k++) b.box(0.22, 0.4, 0.8, 0xffffff, { p: [0.02, 5.4, -W / 2 + (k + 0.5) * W / 5] }, 0.02);
+    return b.geometry();
+  }), vcol(0.5), {}, true));
+  return makeModel('slalom_gate', root, () => {});
+}
+
+/** Passagierflugzeug: Rumpf entlang X, Flügel, Leitwerk, Triebwerke, Fensterband. */
+function airplane(o = {}) {
+  const C = o.color ?? 0x1e6cff;
+  const root = new THREE.Group();
+  root.add(mesh(cached(`rw:plane:${C}`, () => {
+    const b = new Build();
+    b.capsule(2.6, 30, 0xfaf8f4, { r: [0, 0, Math.PI / 2] }, 6, 16);
+    b.cone(2.6, 6, 0xfaf8f4, { p: [-19.5, 0.6, 0], r: [0, 0, Math.PI / 2], s: [1, 1, 0.9] }, 16);
+    b.box(30, 0.5, 0.2, 0x2a3a4a, { p: [1, 0.9, 2.55] }, 0.1);
+    b.box(30, 0.5, 0.2, 0x2a3a4a, { p: [1, 0.9, -2.55] }, 0.1);
+    b.box(32, 0.9, 5.2, C, { p: [0, -1.6, 0] }, 0.3);   // Bauchstreifen
+    for (const s of [-1, 1]) {
+      b.box(9, 0.6, 18, 0xe8ecf2, { p: [0, -0.8, s * 11], r: [0, s * 0.45, s * 0.05] }, 0.2);
+      b.cyl(1.4, 1.4, 5, 0xc8ccd4, { p: [1.5, -2.2, s * 8], r: [0, 0, Math.PI / 2] }, 16);
+      b.box(4, 0.4, 6, 0xe8ecf2, { p: [-17, 1.4, s * 3.5], r: [0, s * 0.4, 0] }, 0.1);
+    }
+    b.box(6, 7, 0.5, C, { p: [-17.5, 4.5, 0], r: [0, 0, -0.45] }, 0.2);
+    for (const [x, z] of [[10, 0], [-2, 2.5], [-2, -2.5]]) b.cyl(0.6, 0.6, 0.5, 0x1a1a22, { p: [x, -3.6, z], r: [Math.PI / 2, 0, 0] }, 12);
+    return b.geometry();
+  }), vcol(0.35), {}, true));
+  return makeModel('airplane', root, () => {});
+}
+
+/** Kontrollturm: schlanker Schaft, verglaste Kanzel, rot-weiße Antenne. */
+function controlTower() {
+  const root = new THREE.Group();
+  root.add(mesh(cached('rw:tower', () => {
+    const b = new Build();
+    b.cyl(2.4, 3, 24, 0xf2f0ea, { p: [0, 12, 0] }, 20);
+    b.cyl(5.2, 3.6, 2, 0xf2f0ea, { p: [0, 25, 0] }, 20);
+    b.cyl(5.4, 5.4, 3.2, 0x3a8ac8, { p: [0, 27.6, 0] }, 20);
+    b.cyl(5.8, 5.8, 0.6, 0xf2f0ea, { p: [0, 29.5, 0] }, 20);
+    for (let k = 0; k < 4; k++) b.cyl(0.15, 0.15, 1.2, k % 2 ? 0xffffff : 0xe8392d, { p: [0, 30.4 + k * 1.2, 0] }, 6);
+    return b.geometry();
+  }), vcol(0.3), {}, true));
+  return makeModel('control_tower', root, () => {});
+}
+
+/** Gepäckschlepper (fährt entlang X) mit zwei Anhängern voller bunter Koffer. */
+function baggageCart() {
+  const root = new THREE.Group();
+  const body = joint();
+  body.add(mesh(cached('rw:baggage', () => {
+    const b = new Build();
+    b.box(2.6, 1.4, 1.8, 0xffc21a, { p: [3.4, 0.9, 0] }, 0.2);
+    b.box(1, 0.9, 1.6, 0x2a3a4a, { p: [3.2, 1.9, 0] }, 0.1);
+    const cols = [0xe8392d, 0x1e6cff, 0x4fb833, 0xff6aa8, 0xb47fe6, 0x2a2a30];
+    for (const x of [0, -3.4]) {
+      b.box(2.8, 0.3, 1.8, 0x6a6a74, { p: [x, 0.6, 0] }, 0.05);
+      for (let k = 0; k < 4; k++) b.box(0.9, 0.6 + (k % 2) * 0.3, 0.7, cols[(k + (x ? 3 : 0)) % 6], { p: [x - 0.7 + (k % 2) * 1.2, 1.1 + (k > 1 ? 0.6 : 0), (k % 2 ? 0.35 : -0.35)] }, 0.1);
+    }
+    for (const x of [3.8, 2.8, 0.8, -0.8, -2.6, -4.2]) for (const z of [-0.85, 0.85]) b.cyl(0.32, 0.32, 0.2, 0x1a1a22, { p: [x, 0.32, z], r: [Math.PI / 2, 0, 0] }, 10);
+    return b.geometry();
+  }), vcol(0.45), {}, true));
+  root.add(body);
+  return makeModel('baggage_cart', root, (dt, st) => { if (st.anim === 'squashed') body.scale.set(1.05, 0.5, 1.05); else body.scale.setScalar(1); });
+}
+
+/** Delfin: grau-blauer Körper entlang X, Finne, Fluke. */
+function dolphin() {
+  const root = new THREE.Group();
+  root.add(mesh(cached('rw:dolphin', () => {
+    const b = new Build();
+    b.sphere(1, 0x6a8ab0, { s: [2.6, 0.75, 0.75] }, 16, 10);
+    b.sphere(0.8, 0xe8eef4, { p: [0.4, -0.25, 0], s: [2.2, 0.45, 0.6] }, 14, 8);
+    b.cone(0.28, 1.1, 0x6a8ab0, { p: [2.9, -0.05, 0], r: [0, 0, -Math.PI / 2] }, 10);
+    b.cone(0.4, 1, 0x5a7aa0, { p: [0, 0.9, 0], r: [0, 0, 0.5] }, 8);
+    b.box(0.5, 0.12, 1.8, 0x5a7aa0, { p: [-2.7, 0, 0] }, 0.06);
+    for (const z of [-0.45, 0.45]) b.sphere(0.1, 0x1a1a22, { p: [2, 0.2, z] }, 6, 4);
+    return b.geometry();
+  }), vcol(0.3), {}, true));
+  return makeModel('dolphin', root, () => {});
+}
+
+/** Boxenturm: Stapel großer Lautsprecher, die im Takt pumpen (Membranen leuchten). */
+function speakerTower(o = {}) {
+  const root = new THREE.Group();
+  root.add(mesh(cached('rw:speaker', () => {
+    const b = new Build();
+    for (let k = 0; k < 3; k++) b.box(4, 3.6, 3.6, 0x1a1a24, { p: [0, 1.8 + k * 3.7, 0] }, 0.2);
+    return b.geometry();
+  }), vcol(0.4), {}, true));
+  const col = new THREE.Color(o.color ?? 0xff3ab8).multiplyScalar(2.5);
+  const mat = new THREE.MeshBasicMaterial({ color: col });
+  const cones = [];
+  for (let k = 0; k < 3; k++) for (const z of [-0.8, 0.8]) {
+    const c = new THREE.Mesh(new THREE.CircleGeometry(0.7, 20), mat);
+    c.position.set(2.02, 1.8 + k * 3.7, z); c.rotation.y = Math.PI / 2;
+    root.add(c); cones.push(c);
+  }
+  let t = Math.random() * 3;
+  return makeModel('speaker_tower', root, (dt) => { t += dt; const s = 1 + 0.18 * Math.max(0, Math.sin(t * 2 * Math.PI * 2.1)); for (const c of cones) c.scale.setScalar(s); });
+}
+
+/** Discokugel: verspiegelte Facetten, dreht sich. */
+function discoBall() {
+  const root = new THREE.Group();
+  const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(3, 2), new THREE.MeshStandardMaterial({ color: 0xe8ecf4, metalness: 0.9, roughness: 0.15, flatShading: true, emissive: 0x3a3a5a }));
+  root.add(ball);
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 20, 6), new THREE.MeshStandardMaterial({ color: 0x3a3a48 }));
+  rod.position.y = 12.5;
+  root.add(rod);
+  return makeModel('disco_ball', root, (dt) => { ball.rotation.y += dt * 0.8; });
+}
+
+/** Farbiger Scheinwerferkegel (additiv), schwenkt hin und her. */
+function lightBeam(o = {}) {
+  const root = new THREE.Group();
+  const pivot = new THREE.Group();
+  root.add(pivot);
+  const col = new THREE.Color(o.color ?? 0x3ae0ff);
+  const geo = new THREE.ConeGeometry(4, 60, 20, 1, true);
+  geo.translate(0, -30, 0);
+  const beam = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  beam.rotation.x = Math.PI;
+  pivot.add(beam);
+  root.add(mesh(cached('rw:beambase', () => new Build().cyl(1.2, 1.4, 1.2, 0x2a2a34, { p: [0, 0.6, 0] }, 12).geometry()), vcol(0.4)));
+  let t = Math.random() * 10;
+  return makeModel('light_beam', root, (dt) => { t += dt; pivot.rotation.set(Math.sin(t * 0.7) * 0.5, 0, Math.cos(t * 0.53) * 0.5); });
+}
+
+export const MODELS = { tram, grandstand, palace, waterfall, mine_cart: mineCart, jumbotron, balloons, ferris_wheel: ferrisWheel, carousel, water_slide: waterSlide, cake, temple_pillar: templePillar, stone_face: stoneFace, step_pyramid: stepPyramid, temple_gate: templeGate, mansion_hall: mansionHall,
+  barrel_cannon: barrelCannon, slalom_gate: slalomGate, airplane, control_tower: controlTower, baggage_cart: baggageCart, dolphin,
+  speaker_tower: speakerTower, disco_ball: discoBall, light_beam: lightBeam };

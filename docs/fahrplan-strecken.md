@@ -21,8 +21,10 @@ leicht und hell, Strecke 2–3 je eine neue Mechanik, Strecke 4 dunkler und gef�
 
 ## Etappen 2 ff. – neue Cups
 
-Erledigt: **Etappe 2 – Sonnen-Cup** (Kart-Stadion, Seepark, Zuckerschlucht, Tempelruinen). Die übrigen
-bisherigen Strecken fahren bis zu ihrem Ersatz im Wald-, Zirkus-, Insel-, Stadt- und Kanaren-Cup.
+Erledigt: **Etappe 2 – Sonnen-Cup** (Kart-Stadion, Seepark, Zuckerschlucht, Tempelruinen), **Etappe 3 –
+Blüten-Cup** (Blumenring, Hafenstadt, Spukvilla, Wasserfall-Schlucht) und **Etappe 4 – Sternen-Cup**
+(Ferienflughafen, Delfinlagune, Disco-Halle, Gipfelabfahrt mit Abschnitten, Fass-Kanone und Schneefall). Die übrigen
+bisherigen Strecken fahren bis zu ihrem Ersatz im Muschel-, Blatt-, Kronen- und Kanaren-Cup.
 
 | Etappe | Cup | Strecke (eigener Name) | Archetyp / Vorbild | ersetzt |
 | --- | --- | --- | --- | --- |

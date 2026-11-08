@@ -89,7 +89,7 @@ export class Racer {
     // y: Höhe des Platzes (auf Brücken das Deck) – sonst Boden in der bisherigen Höhe
     this.pos.set(x, y !== undefined ? y : this.groundAt(x, z), z);
     this.yaw = yaw;
-    this.speed = 0; this.vlat = 0; this.vy = 0; this.air = false; this.crest = false;
+    this.speed = 0; this.vlat = 0; this.vy = 0; this.air = false; this.crest = false; this.cannon = null;
     if (this.glide) { this.glide = false; this.setGlider(false); }
     this.lastI = -1;
     if (this.path) { this.path.locate(x, z, hintI, this.loc); this.lastI = this.loc.i; }
@@ -163,6 +163,12 @@ export class Racer {
     if (this.bumpCooldown > 0) this.bumpCooldown = Math.max(0, this.bumpCooldown - dt);
     if (this.wetT > 0) this.wetT = Math.max(0, this.wetT - dt);
 
+    // Kanone (wie das Fass in Mario Kart): fester Flug in hohem Bogen, kein Lenken
+    if (this.cannon) { this.updateCannon(dt); return; }
+    if (!this.air && this.race.cannons && track) for (const c of this.race.cannons) {
+      const dx = this.pos.x - c.x0, dz = this.pos.z - c.z0;
+      if (dx * dx + dz * dz < 6.5 * 6.5 && Math.cos(this.yaw) * c.tx - Math.sin(this.yaw) * c.tz > 0.2) { this.startCannon(c); return; }
+    }
     const loc = track ? track.locate(this.pos.x, this.pos.z, this.lastI, this.loc) : this.loc;
     this.antigrav = !!track?.ag?.[loc.i];
     const surface = world.surfaceAt(this.pos.x, this.pos.z, this.pos.y);
@@ -439,6 +445,36 @@ export class Racer {
     this.pos.set(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f + 0.15, a[2] + (b[2] - a[2]) * f);
     this.yaw = Math.atan2(-(b[2] - a[2]) * g.dir, (b[0] - a[0]) * g.dir);
     this.vlat = 0;
+  }
+
+  /** In die Kanone: Flugbahn vom Kanonenrohr zur Landestelle (Fortschritt läuft entlang der Strecke mit). */
+  startCannon(c) {
+    this.cancelDrift();
+    const dist = Math.hypot(c.x1 - this.pos.x, c.z1 - this.pos.z);
+    this.cannon = { c, t: 0, T: Math.max(2.5, dist / 32), x0: this.pos.x, y0: this.pos.y, z0: this.pos.z, s0: this.progress, s1: this.progress + c.along };
+    this.yaw = Math.atan2(-(c.z1 - this.pos.z), c.x1 - this.pos.x);
+    this.air = true; this.crest = false;
+    this.race.effects?.sparkle(this.pos, 0xffc21a, 20, 4);
+    if (this.isPlayer) { this.race.audio.sfx('bounce'); this.race.shake = Math.max(this.race.shake ?? 0, 0.5); }
+  }
+
+  updateCannon(dt) {
+    const C = this.cannon, c = C.c;
+    C.t = Math.min(1, C.t + dt / C.T);
+    const t = C.t, y1 = c.y1 + 1.5;
+    const yPrev = this.pos.y;
+    this.pos.set(C.x0 + (c.x1 - C.x0) * t, C.y0 + (y1 - C.y0) * t + 4 * c.h * t * (1 - t), C.z0 + (c.z1 - C.z0) * t);
+    this.vy = (this.pos.y - yPrev) / Math.max(dt, 1e-3);
+    this.speed = Math.max(this.speed, this.phys.top);
+    if (t > 0.55 && !this.glide) { this.glide = true; this.setGlider(true); }
+    // Fortschritt entlang der Strecke (für Platzierung und Runden)
+    const path = this.path;
+    this.progress = C.s0 + (C.s1 - C.s0) * t;
+    this.loc.s = this.progress;
+    this.loc.i = Math.max(0, Math.min(path.N - 1, Math.round(this.progress / path.ds)));
+    this.lastI = this.loc.i;
+    this.race.onProgress?.(this);
+    if (t >= 1) { this.cannon = null; this.vy = -2; this.trick.ready = true; this.trick.done = false; }
   }
 
   /** Spin-Boost (Anti-Gravitation): beim Zusammenstoß mit einem Kart oder Spin-Pfosten kurz schneller. */

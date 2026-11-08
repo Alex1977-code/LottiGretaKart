@@ -415,5 +415,28 @@ const RUINS = {
   wallA: 0xd8b47a, wallB: 0xb89a6a, wallTop: 0x5a8a3a, wallH: 1.0,
 };
 
-export const THEMES = { park: PARK, sweets: SWEETS, ruins: RUINS, stadium: STADIUM, canyon: CANYON, royal: ROYAL, arena: ARENA, harbor: HARBOR, tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
+// Ferienflughafen (Archetyp tropischer Ferienflughafen): Terminalweiß, Himmelblau, Palmengrün, gelbe Markierungen.
+const AIRPORT = {
+  ...GRASS,
+  label: 'Ferienflughafen',
+  sky: [[1, 0x1470ec], [0.45, 0x3a9cf8], [0.15, 0x8ad2fc], [0.03, 0xd8f4ff], [0, 0xf0fbff], [-0.1, 0xc0e4f4], [-1, 0x78bcd8]],
+  fog: { color: 0xdcf0fa, near: 130, far: 540 },
+  sun: { color: 0xfff4dc, intensity: 3.1, dir: [-0.3, 1, 0.45] },
+  grass: 0x6ccc48, grass2: 0x62c042, grassFar: 0x58b23c, offroad: 0xeee0b0, offroad2: 0xe4d6a4,   // Sand
+  road: 0x5e5e6c, road2: 0x585866, line: 0xffd23a, lineYellow: 0xffd23a, curbA: 0xffd23a, curbB: 0x2a2a34,
+  wallA: 0xfaf8f4, wallB: 0x1e8cff, wallTop: 0xffd23a, wallH: 0.85,
+};
+
+// Disco-Halle (Archetyp Musikclub bei Nacht): Neonpink, Cyan, Lila, Goldglitter; dunkle Bahn.
+const DISCO = {
+  ...NIGHTCITY,
+  rock: 0x3a2a5a,
+  label: 'Disco-Halle',
+  sky: [[1, 0x05041a], [0.45, 0x120a3a], [0.15, 0x2a1460], [0.03, 0x5a1a7a], [0, 0x6a1a80], [-0.1, 0x200a34], [-1, 0x08040f]],
+  grass: 0x2a1a4a, grass2: 0x24163f, grassFar: 0x1a1030, offroad: 0x3a2a5e, offroad2: 0x342654,
+  road: 0x2e2a46, road2: 0x2a2640, line: 0xff4ad8, curbA: 0xff3ab8, curbB: 0x3ae0ff,
+  wallA: 0x3ae0ff, wallB: 0xff3ab8, wallTop: 0xffd23a, wallH: 0.9,
+};
+
+export const THEMES = { airport: AIRPORT, disco: DISCO, park: PARK, sweets: SWEETS, ruins: RUINS, stadium: STADIUM, canyon: CANYON, royal: ROYAL, arena: ARENA, harbor: HARBOR, tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
 export const getTheme = (n) => THEMES[n] ?? GRASS;

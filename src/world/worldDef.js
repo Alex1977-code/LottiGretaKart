@@ -8,18 +8,12 @@
 // flats       ebene Flächen (Stadion, Zelt, Höhle, Stadt), damit Bauten und Strecken nicht auf Hügeln stehen.
 // rails       Grind-Schienen (Polylinie, Höhe über Boden bzw. über dem Wasser).
 
-import herbstwald from '../tracks/herbstwald.js';
 import laternengrotte from '../tracks/laternengrotte.js';
-import manege from '../tracks/manege.js';
-import autobahn from '../tracks/autobahn.js';
-import gipfel from '../tracks/gipfel.js';
 import burg from '../tracks/burg.js';
 import wueste from '../tracks/wueste.js';
 import vulkan from '../tracks/vulkan.js';
 import loroparque from '../tracks/loroparque.js';
 import piratenbucht from '../tracks/piratenbucht.js';
-import wrackriff from '../tracks/wrackriff.js';
-import spukinsel from '../tracks/spukinsel.js';
 import katzeninsel from '../tracks/katzeninsel.js';
 import hasenhuegel from '../tracks/hasenhuegel.js';
 import palmencity from '../tracks/palmencity.js';
@@ -49,18 +43,12 @@ export const WORLD = {
     { name: 'Schluchtinsel', x: -490, z: -1090, rx: 270, rz: 160 },
   ],
   courses: [
-    { def: herbstwald, ox: 0, oz: -278 },
     { def: laternengrotte, ox: -414, oz: 18 },
-    { def: manege, ox: -335, oz: 280 },
-    { def: autobahn, ox: 430, oz: 120 },
-    { def: gipfel, ox: 620, oz: -190 },
     { def: burg, ox: -200, oz: -515 },
     { def: wueste, ox: 880, oz: 60 },
     { def: vulkan, ox: -700, oz: 380 },
     { def: loroparque, ox: 600, oz: 410 },
     { def: piratenbucht, ox: -320, oz: 590 },
-    { def: wrackriff, ox: 40, oz: -770 },
-    { def: spukinsel, ox: -900, oz: -730 },
     { def: katzeninsel, ox: -1040, oz: 720 },
     { def: hasenhuegel, ox: -870, oz: 40 },
     { def: palmencity, ox: 1470, oz: 300 },
@@ -170,12 +158,12 @@ export const WORLD = {
 export const WORLD_CUPS = [
   // neue Strecken nach den Archetypen von Mario Kart 8 Deluxe (docs/fahrplan-strecken.md)
   { id: 'sonnen', name: 'Sonnen-Cup', tracks: ['kartstadion', 'seepark', 'zuckerschlucht', 'tempelruinen'] },
-  { id: 'gleiter', name: 'Gleiter-Cup', tracks: ['schlucht', 'hafenstadt', 'arena', 'schlossring'] },
+  { id: 'blueten', name: 'Blüten-Cup', tracks: ['blumenring', 'hafenstadt', 'spukvilla', 'schlucht'] },
+  { id: 'sternen', name: 'Sternen-Cup', tracks: ['flughafen', 'delfinlagune', 'discohalle', 'gipfelabfahrt'] },
   // bisherige Strecken (werden Etappe für Etappe ersetzt)
-  { id: 'wald', name: 'Wald-Cup', tracks: ['herbstwald', 'laternengrotte', 'burg', 'gipfel'] },
-  { id: 'zirkus', name: 'Zirkus-Cup', tracks: ['manege', 'autobahn', 'wueste', 'vulkan'] },
-  { id: 'insel', name: 'Insel-Cup', tracks: ['piratenbucht', 'wrackriff', 'spukinsel', 'katzeninsel'] },
-  { id: 'stadt', name: 'Stadt-Cup', tracks: ['hasenhuegel', 'autobahn', 'palmencity', 'mitternacht'] },
+  { id: 'muschel', name: 'Muschel-Cup', tracks: ['hasenhuegel', 'piratenbucht', 'mitternacht', 'schlossring'] },
+  { id: 'blatt', name: 'Blatt-Cup', tracks: ['arena', 'katzeninsel', 'palmencity', 'laternengrotte'] },
+  { id: 'krone', name: 'Kronen-Cup', tracks: ['laternengrotte', 'wueste', 'burg', 'vulkan'] },
   { id: 'kanaren', name: 'Kanaren-Cup', tracks: ['loroparque', 'teneriffa', 'hafenstadt', 'palmencity'] },
 ];
 

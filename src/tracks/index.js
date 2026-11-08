@@ -1,11 +1,11 @@
 // Alle Strecken.
 import kartstadion from './kartstadion.js';
-import herbstwald from './herbstwald.js';
+import blumenring from './blumenring.js';
 import laternengrotte from './laternengrotte.js';
-import manege from './manege.js';
-import autobahn from './autobahn.js';
+import discohalle from './discohalle.js';
+import flughafen from './flughafen.js';
 import seepark from './seepark.js';
-import gipfel from './gipfel.js';
+import gipfelabfahrt from './gipfelabfahrt.js';
 import burg from './burg.js';
 import wueste from './wueste.js';
 import vulkan from './vulkan.js';
@@ -13,8 +13,8 @@ import zuckerschlucht from './zuckerschlucht.js';
 import loroparque from './loroparque.js';
 import piratenbucht from './piratenbucht.js';
 import tempelruinen from './tempelruinen.js';
-import wrackriff from './wrackriff.js';
-import spukinsel from './spukinsel.js';
+import delfinlagune from './delfinlagune.js';
+import spukvilla from './spukvilla.js';
 import katzeninsel from './katzeninsel.js';
 import hasenhuegel from './hasenhuegel.js';
 import palmencity from './palmencity.js';
@@ -25,5 +25,5 @@ import arena from './arena.js';
 import schlossring from './schlossring.js';
 import schlucht from './schlucht.js';
 
-export const TRACKS = [kartstadion, seepark, zuckerschlucht, tempelruinen, herbstwald, laternengrotte, manege, autobahn, gipfel, burg, wueste, vulkan, loroparque, piratenbucht, wrackriff, spukinsel, katzeninsel, hasenhuegel, palmencity, mitternacht, teneriffa, hafenstadt, arena, schlossring, schlucht];
+export const TRACKS = [kartstadion, seepark, zuckerschlucht, tempelruinen, blumenring, hafenstadt, spukvilla, schlucht, flughafen, delfinlagune, discohalle, gipfelabfahrt, arena, schlossring, laternengrotte, burg, wueste, vulkan, loroparque, piratenbucht, katzeninsel, hasenhuegel, palmencity, mitternacht, teneriffa];
 export const TRACK_BY_ID = Object.fromEntries(TRACKS.map((t) => [t.id, t]));

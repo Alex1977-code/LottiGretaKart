@@ -45,12 +45,12 @@ Schmetterlinge um das eigene Kart (`src/world/life.js`).
 | Strecke | Region | Besonderheit |
 | --- | --- | --- |
 | Kart-Stadion | eigene Landschaft (Archetyp Stadion) | Start-Ziel-Gerade zwischen vollen **Tribünen**, **Großbildschirme**, Ballons, Fahnen; den Hang hinauf in die große **Anti-Gravitations-Steilkurve** (blaue Kanten, schwebende Räder, **Spin-Pfosten**), über die Kuppe und die **Gleiter-Schanze** über den Teich zurück ins Stadion; sonniger Tag |
-| Herbstwald-Runde | Laubwald im Norden | Krabbelkäfer, Hummel, zwei Schanzen |
+| Blumenring | eigene Landschaft (Archetyp Rennstrecke in der Wiese) | Klassische Rennstrecke zwischen Blumenwiesen, im Hintergrund das **Märchenschloss**; eine **Acht** mit **Anti-Grav-Brücke** über sich selbst, **Gleiter-Schanze** auf dem Hügel über den Teich, **Pilzlinge** laufen über die Fahrbahn; heller Tag |
 | Laternengrotte | im Höhlenberg im Westen | Stampfsteine krachen von der Decke |
-| Kippfeld-Manege | im Zirkuszelt im Südwesten | Panzerkröten, stürmender Rammbock-Bulle, Trampoline |
-| Brummbärs Abendautobahn | Stadt im Osten | Bombenkanonen schießen Kickbomben (roter Ring = Einschlag) |
+| Disco-Halle | eigene Landschaft (Archetyp Musikclub), **Nacht** | Fast komplett **Anti-Gravitation**: **Wellenbahn** über die Tanzfläche, steile Wandkurven, Treppe hinauf zur Bühne mit Turbo-Feldern, **Gleiter**; **Boxentürme pumpen im Takt**, **Scheinwerferkegel** schwenken, riesige **Discokugel**, Großbildschirme |
+| Ferienflughafen | eigene Insel (Archetyp Ferienflughafen) | Vorfeld mit **Gepäckschleppern**, mitten durch das **Terminal**, **Anti-Grav-Steilkurve** um den **Kontrollturm**, breite **Startbahn** an geparkten Flugzeugen vorbei (ein **Jet startet** über die Köpfe), **Gleiter** vom Bahnende hinunter zum Strand; strahlender Sonnentag |
 | Seepark | eigene Landschaft (Archetyp Freizeitpark am See) | Start auf der Promenade zwischen **Karussells**, **Wasserrutschen**, Buden und Ballons, dann hinunter in den See: langer Abschnitt **unter Wasser** (Seegras, Korallen, Riesenmuscheln, Fischschwärme, Quallen), Sprung aus dem Wasser, **Anti-Grav-Kurve** um das große **Riesenrad** mit Spin-Pfosten; Kirmes-Farben Blau, Pink, Gelb |
-| Glitzergipfel | verschneites Hochplateau im Nordosten | Serpentinen, Bohnenranken, Riesenschneebälle rollen über die Bahn |
+| Gipfelabfahrt | eigene Landschaft (Archetyp Winterberg), **Schneefall** | **Sektionsstrecke ohne Runden**: drei Abschnitte in einer langen Spirale vom Gipfel ins Tal, **Slalomtore** mit Turbo, Schneehügel als Trick-Buckel, rollende Schneebälle, Tannenwald, Hütten; unten schießt die **Fass-Kanone** die Karts mit dem Gleiter zurück auf den Gipfel ins Ziel |
 | Brummbär-Burg | Festung auf der Nordklippe, im Mondlicht | Burgmauern und Türme, Bombenkanonen, Pilzlingsturm, Rammbock-Bulle, Schnappblumen |
 | Sonnenschlucht | Wüste im fernen Osten | Tafelberge, Kakteen, Oase, Steppenläufer rollen über die Bahn, Skorpion-Käfer |
 | Feuerberg | Vulkan im Südwesten | Lava-Seen (hineinfahren = zurückgesetzt), Feuer-Geysire (roter Ring = Warnung), Stampfsteine |
@@ -58,8 +58,8 @@ Schmetterlinge um das eigene Kart (`src/world/life.js`).
 | Loro Parque | Tierpark an der Ostküste | Thai-Tor, Papageien-Volieren, Flamingos, Gorillas, Tiger, Planet Penguin (Pinguine watscheln über die Straße), gläserner Hai-Tunnel, Delfin-Lagune, Seelöwen – und die **Orca-Show**: der Wal springt und spritzt eine Welle über die Fahrbahn (blauer Ring = gleich! nass = langsamer, „PLATSCH!“) |
 | Piratenbucht | Südküste | **Eine Acht**: in der Mitte unten durch, später oben über die Holzbrücke. Piratenschiff in der Lagune, Piratenkanonen schießen Kanonenkugeln (roter Ring = Einschlag), rollende Pulverfässer, Krabben, Schatzinsel mit Totenkopf-Felsen, Leuchtturm |
 | Tempelruinen | eigene Landschaft (Archetyp Dschungeltempel) | Lichtung, großes **Tempeltor**, Säulengang im Tempelhof mit herabkrachenden **Stampfsteinen**, hinab ins türkise **Tempelbecken** (unter Wasser), **Anti-Grav-Wand** an der **Stufenpyramide**, Steingesichter, Sprungkuppe; Sandstein, Moosgrün, Türkis, Gold |
-| Wrack-Riff | Nordküste, **halb unter Wasser** (wie in Mario Kart 8) | Start am Hafenkai mit Containerkränen, über die Heckrampe **mitten durch die große Fähre** (Autodeck mit Lampen und Containern, rollende Fässer), aus der offenen Bugklappe **Sprung ins Meer** – dann über den Meeresgrund: Korallengarten, schwebende Quallen, Kugelfische, Fischschwärme, Schildkröten, Mantarochen, gelbes U-Boot, **durch ein versunkenes Schiffswrack** und einen Felsbogen, durch den Seetangwald und den Strand wieder hinauf. Unter Wasser schweben Sprünge länger, das Kart zieht Luftblasen, alles wird blau |
-| Spukinsel | Nachbarinsel im Nordwesten, **Halloween** bei Vollmond | Kürbisfeld mit Vogelscheuchen, Friedhof mit Gespenstern, **mitten durch das Spukhaus** (Kronleuchter, Ahnenbilder, die Hexe fliegt durch die Halle), kahler Wald, Hexenkessel, Spinnennetze; Gespenster schweben über die Fahrbahn, Fledermäuse, rollende Kürbisse |
+| Delfinlagune | eigene Insel (Archetyp Ozean) | Start am Sandstrand, langer Abschnitt **unter Wasser** durch das **Korallenriff** und unter dem **Felsbogen** (Riesenmuscheln, Schildkröten, Mantas, Fischschwärme, Quallen), hinauf auf den **Holzsteg mit Wellen** (Anti-Gravitation), daneben **springen Delfine** |
+| Spukvilla | eigene Landschaft (Archetyp Spukvilla), **Nacht** | Friedhofsgarten mit Grabsteinen, Kürbissen und Laternen, hinter dem Haus hinab in den **gefluteten Keller** (unter Wasser), die Treppe hinauf in den **Festsaal** (Anti-Gravitation, **Kronleuchter**, Tafeln, Gemälde, Spin-Pfosten) und mit dem **Gleiter aus dem Fenster**; Gespenster, Fledermäuse |
 | Katzeninsel | Nachbarinsel im Südwesten | Die Strecke ist ein **großes Herz**: riesige schlafende Katze in der Mitte (atmet, Zzz), **Karton-Tunnel „MIAU!“** (oben spazieren Katzen), Kratzbäume, Winkekatzen, Näpfe, Kissen, Katzen in allen Fellfarben; Wollknäuel rollen, Mäuse flitzen, Kätzchen tapsen über die Fahrbahn |
 | Hasenhügel | Westküste | Lange Schlängelrunde durch die Frühlingswiese: Möhrenbeete, Riesenmöhren, Hasenställe, Hasenlöcher mit Kaninchen, Windmühle, **durch den großen Hasenbau** (Erdröhre mit Wurzeln und Glühwürmchen); Kaninchen hoppeln über die Fahrbahn, bemalte Riesen-Eier rollen |
 | Palmen-City | Nachbarinsel im Osten, **Großstadt** im Sonnenuntergang | **Acht mit Stadtautobahn-Brücke**, Hochhäuser, Neon-Türme und Neon-Schilder, Palmen, Tankstelle; **Verfolgungsjagd**: Polizeiautos mit Blaulicht und Stadtverkehr kreuzen die Fahrbahn, der Polizeihubschrauber kreist mit Suchscheinwerfer, Absperrungen, Sprungschanze |
@@ -71,7 +71,7 @@ Schmetterlinge um das eigene Kart (`src/world/life.js`).
 | Wasserfall-Schlucht | Schluchtinsel im Norden (nach dem Vorbild von **Shy Guy Falls**) | Start unten in der **Schlucht am Fluss**, vorbei am **großen Wasserfall**, dann **steil die Felswand hinauf** auf das rote **Hochplateau** (4 m → 32 m) mit **Kristallmine** (bunte Kristalle, **Loren** rollen über die Strecke, holprige Gleise), an der Kante über die **Gleiter-Schanze** neben dem zweiten Wasserfall und im Gleitflug zurück in die Schlucht. |
 
 **Modi**
-- **Grand Prix** (Sonnen-, Gleiter-, Wald-, Zirkus-, Insel-, Stadt- und Kanaren-Cup): vier Strecken nacheinander, Punkte für 12 Fahrer,
+- **Grand Prix** (Sonnen-, Blüten-, Sternen-, Muschel-, Blatt-, Kronen- und Kanaren-Cup): vier Strecken nacheinander, Punkte für 12 Fahrer,
   am Ende Siegerehrung mit Pokal.
 - **Einzelrennen** und **Zeitfahren** (mit drei Turbo-Beeren, Bestzeiten werden gespeichert).
 
@@ -108,7 +108,8 @@ steht in [`docs/fahrplan-strecken.md`](docs/fahrplan-strecken.md). Mechaniken da
 blaues Leuchten unter dem Kart; Zusammenstöße geben beiden einen **Spin-Boost**), **Spin-Pfosten** (Gefahr `spinpost`),
 **feste Tageszeit und festes Wetter je Strecke** (`time: 'day' | 'dusk' | 'night'`, `weather`; neu ist das Abendlicht –
 in den Einstellungen „Wie die Strecke“ oder für alle Strecken Tag bzw. Nacht) und eine **eigene Landschaft je Strecke**
-(`land: { sea, island, hills, flats, lakes }`).
+(`land: { sea, island, hills, flats, lakes }`), **Sektionsstrecken** ohne Runden (`sections: 3`, Anzeige
+„Abschnitt“), eine **Fass-Kanone** (`cannons`: fester Flug in hohem Bogen mit Gleiter) und **Schneefall** als Wetter.
 
 **Höhenprofile wie in Mario Kart 8 Deluxe**: Strecken können ein festes Höhenprofil haben (`heights` je
 Kontrollpunkt, dazwischen stetig per Catmull-Rom) – das Gelände wird daran angeglichen (Dämme, Einschnitte, Böschungen

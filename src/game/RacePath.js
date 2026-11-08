@@ -66,6 +66,7 @@ export class RacePath {
     this.startS = m(meta.startS ?? 0);
     this.finishS = meta.finishS !== undefined ? m(meta.finishS) : L - 1;
     this.laps = meta.laps ?? 1;
+    this.sections = !!meta.sections;   // Abschnitte statt Runden
     this.courseId = meta.courseId ?? null;
     this.label = meta.label ?? '';
   }
@@ -142,6 +143,8 @@ export class RacePath {
   /** Nur Runden einer Strecke (Startaufstellung hinter der Linie). */
   static forCourse(world, courseId, laps = 3, back = 45) {
     const c = world.courseById[courseId], tr = c.track, N = tr.N;
+    const sections = c.def.sections ?? 0;
+    if (sections) laps = 1;
     const pts = [], marks = [];
     const b0 = Math.round(back / tr.ds);
     RacePath.coursePiece(pts, c, N - b0, N - 1);
@@ -154,6 +157,13 @@ export class RacePath {
     RacePath.coursePiece(pts, c, 0, Math.min(N - 1, Math.round(RUNOUT / tr.ds)));
     const L = RacePath.lengthOf(pts);
     const finishS = marks[marks.length - 1];
-    return new RacePath(world, pts, { lapMarks: marks, startS, finishS: Math.min(finishS, L - 4), laps, courseId, label: c.def.name, runout: L - finishS });
+    // Sektionsstrecke (wie die Bergabfahrt in Mario Kart 8 Deluxe): eine einzige Runde in n Abschnitten
+    if (sections) {
+      const lap = finishS - startS;
+      marks.length = 0;
+      for (let k = 1; k <= sections; k++) marks.push(startS + (lap * k) / sections);
+      laps = sections;
+    }
+    return new RacePath(world, pts, { lapMarks: marks, startS, finishS: Math.min(finishS, L - 4), laps, sections: !!sections, courseId, label: c.def.name, runout: L - finishS });
   }
 }

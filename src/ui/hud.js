@@ -167,7 +167,7 @@ export class Hud {
     if (!p) return;
     this.me = p;
     // Runde
-    const lapHtml = `<small>RUNDE</small> <b>${Math.max(1, Math.min(race.laps, p.lap))}</b><i>/${race.laps}</i>`;
+    const lapHtml = `<small>${race.track.sections ? 'ABSCHNITT' : 'RUNDE'}</small> <b>${Math.max(1, Math.min(race.laps, p.lap))}</b><i>/${race.laps}</i>`;
     if (lapHtml !== this.lapHtml) { this.lapHtml = lapHtml; this.q('.hud-lap').innerHTML = lapHtml; }
     this.timeEl.textContent = fmtTime(p.finished ? p.finishTime : race.time);
     this.coinsEl.textContent = p.coins;

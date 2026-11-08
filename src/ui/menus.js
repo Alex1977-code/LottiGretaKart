@@ -224,7 +224,7 @@ export class Menus {
             </div>
             <h3>Tageszeit</h3><div class="row">${[['auto', '🏁 Wie die Strecke', 'Tag, Abend oder Nacht'], ['day', '☀️ Immer Tag', ''], ['night', '🌙 Immer Nacht', 'Laternen, Scheinwerfer, Neon']].map(([v, n, d]) => `<button class="opt ${(s.time ?? 'auto') === v ? 'on' : ''}" data-time="${v}">${n}${d ? `<small>${d}</small>` : ''}</button>`).join('')}
             </div>
-            <h3>Wetter</h3><div class="row">${[['auto', '🏁 Wie die Strecke', ''], ['sun', '☀️ Sonne', ''], ['rain', '🌧️ Regen', 'nasse Straße, Gischt'], ['calima', '🌫️ Calima', 'Saharastaub-Dunst'], ['random', '🎲 Zufall', 'jedes Rennen anders']].map(([v, n, d]) => `<button class="opt ${(s.weather ?? 'auto') === v ? 'on' : ''}" data-weather="${v}">${n}${d ? `<small>${d}</small>` : ''}</button>`).join('')}</div>
+            <h3>Wetter</h3><div class="row">${[['auto', '🏁 Wie die Strecke', ''], ['sun', '☀️ Sonne', ''], ['rain', '🌧️ Regen', 'nasse Straße, Gischt'], ['calima', '🌫️ Calima', 'Saharastaub-Dunst'], ['snow', '❄️ Schnee', 'leichter Schneefall'], ['random', '🎲 Zufall', 'jedes Rennen anders']].map(([v, n, d]) => `<button class="opt ${(s.weather ?? 'auto') === v ? 'on' : ''}" data-weather="${v}">${n}${d ? `<small>${d}</small>` : ''}</button>`).join('')}</div>
             <h3>Grafik</h3><div class="row">${qBtns}</div>
           </div>
           <div class="row"><button class="small" data-act="reset">Bestzeiten löschen</button><button class="go" data-back data-focus>Fertig</button></div>
