@@ -8,7 +8,7 @@ import { CC } from '../game/Race.js';
 import { Ceremony } from '../game/Ceremony.js';
 import { Track } from '../world/Track.js';
 import { getTheme } from '../world/themes.js';
-import { setNight } from '../world/night.js';
+import { setTimeSetting } from '../world/night.js';
 import { setWeatherSetting } from '../world/weather.js';
 import { racerIcon, preloadIcons } from './icons.js';
 import { logoHTML } from './logo.js';
@@ -43,8 +43,10 @@ export class Menus {
     this.best = load(BEST_KEY, {});
     this.cups = load(CUP_KEY, {});
     ctx.touch.setAutoGas(this.settings.autoGas);
-    setNight(this.settings.night);
-    setWeatherSetting(this.settings.weather ?? 'sun');
+    // Version 3: Tageszeit und Wetter standardmäßig wie die Strecke (fest je Strecke wie in Mario Kart 8 Deluxe)
+    if ((this.settings.v ?? 1) < 3) { this.settings.time = 'auto'; this.settings.weather = 'auto'; this.settings.v = 3; save(SAVE_KEY, this.settings); }
+    setTimeSetting(this.settings.time ?? 'auto');
+    setWeatherSetting(this.settings.weather ?? 'auto');
     this.mode = 'gp';
     this.gp = null;
     this.screen = null;
@@ -220,11 +222,9 @@ export class Menus {
               <button class="opt ${!s.autoGas ? 'on' : ''}" data-gas="0">Knopf<small>2× Gas = Drift, halten = weiterdriften</small></button>
               <button class="opt ${s.autoGas ? 'on' : ''}" data-gas="1">automatisch</button>
             </div>
-            <h3>Tageszeit</h3><div class="row">
-              <button class="opt ${!s.night ? 'on' : ''}" data-night="0">☀️ Tag</button>
-              <button class="opt ${s.night ? 'on' : ''}" data-night="1">🌙 Nacht<small>Laternen, Scheinwerfer, Neon</small></button>
+            <h3>Tageszeit</h3><div class="row">${[['auto', '🏁 Wie die Strecke', 'Tag, Abend oder Nacht'], ['day', '☀️ Immer Tag', ''], ['night', '🌙 Immer Nacht', 'Laternen, Scheinwerfer, Neon']].map(([v, n, d]) => `<button class="opt ${(s.time ?? 'auto') === v ? 'on' : ''}" data-time="${v}">${n}${d ? `<small>${d}</small>` : ''}</button>`).join('')}
             </div>
-            <h3>Wetter</h3><div class="row">${[['sun', '☀️ Sonne', ''], ['rain', '🌧️ Regen', 'nasse Straße, Gischt'], ['calima', '🌫️ Calima', 'Saharastaub-Dunst'], ['random', '🎲 Zufall', 'jedes Rennen anders']].map(([v, n, d]) => `<button class="opt ${(s.weather ?? 'sun') === v ? 'on' : ''}" data-weather="${v}">${n}${d ? `<small>${d}</small>` : ''}</button>`).join('')}</div>
+            <h3>Wetter</h3><div class="row">${[['auto', '🏁 Wie die Strecke', ''], ['sun', '☀️ Sonne', ''], ['rain', '🌧️ Regen', 'nasse Straße, Gischt'], ['calima', '🌫️ Calima', 'Saharastaub-Dunst'], ['random', '🎲 Zufall', 'jedes Rennen anders']].map(([v, n, d]) => `<button class="opt ${(s.weather ?? 'auto') === v ? 'on' : ''}" data-weather="${v}">${n}${d ? `<small>${d}</small>` : ''}</button>`).join('')}</div>
             <h3>Grafik</h3><div class="row">${qBtns}</div>
           </div>
           <div class="row"><button class="small" data-act="reset">Bestzeiten löschen</button><button class="go" data-back data-focus>Fertig</button></div>
@@ -237,7 +237,7 @@ export class Menus {
       location.reload();   // die Insel wird mit der neuen Detailstufe neu gebaut
     });
     this.on('[data-weather]', (b) => { s.weather = b.dataset.weather; setWeatherSetting(s.weather); save(SAVE_KEY, s); this.showSettings(); });
-    this.on('[data-night]', (b) => { s.night = b.dataset.night === '1'; setNight(s.night); save(SAVE_KEY, s); this.showSettings(); });
+    this.on('[data-time]', (b) => { s.time = b.dataset.time; setTimeSetting(s.time); save(SAVE_KEY, s); this.showSettings(); });
     this.on('[data-cc]', (b) => { s.cc = Number(b.dataset.cc); save(SAVE_KEY, s); this.showSettings(); });
     this.on('[data-laps]', (b) => { s.laps = Number(b.dataset.laps); save(SAVE_KEY, s); this.showSettings(); });
     this.on('[data-assist]', (b) => { s.assist = b.dataset.assist === '1'; save(SAVE_KEY, s); this.showSettings(); });

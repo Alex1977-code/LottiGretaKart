@@ -1,5 +1,5 @@
 // Alle Strecken.
-import kraxelwiese from './kraxelwiese.js';
+import kartstadion from './kartstadion.js';
 import herbstwald from './herbstwald.js';
 import laternengrotte from './laternengrotte.js';
 import manege from './manege.js';
@@ -25,5 +25,5 @@ import arena from './arena.js';
 import schlossring from './schlossring.js';
 import schlucht from './schlucht.js';
 
-export const TRACKS = [kraxelwiese, herbstwald, laternengrotte, manege, autobahn, strand, gipfel, burg, wueste, vulkan, bonbon, loroparque, piratenbucht, dinodschungel, wrackriff, spukinsel, katzeninsel, hasenhuegel, palmencity, mitternacht, teneriffa, hafenstadt, arena, schlossring, schlucht];
+export const TRACKS = [kartstadion, herbstwald, laternengrotte, manege, autobahn, strand, gipfel, burg, wueste, vulkan, bonbon, loroparque, piratenbucht, dinodschungel, wrackriff, spukinsel, katzeninsel, hasenhuegel, palmencity, mitternacht, teneriffa, hafenstadt, arena, schlossring, schlucht];
 export const TRACK_BY_ID = Object.fromEntries(TRACKS.map((t) => [t.id, t]));

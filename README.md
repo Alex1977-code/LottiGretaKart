@@ -44,7 +44,7 @@ Schmetterlinge um das eigene Kart (`src/world/life.js`).
 
 | Strecke | Region | Besonderheit |
 | --- | --- | --- |
-| Kraxelwiesen-Ring | Wiese in der Inselmitte | Pilzlinge watscheln über die Fahrbahn, Schanze |
+| Kart-Stadion | eigene Landschaft (Archetyp Stadion) | Start-Ziel-Gerade zwischen vollen **Tribünen**, **Großbildschirme**, Ballons, Fahnen; den Hang hinauf in die große **Anti-Gravitations-Steilkurve** (blaue Kanten, schwebende Räder, **Spin-Pfosten**), über die Kuppe und die **Gleiter-Schanze** über den Teich zurück ins Stadion; sonniger Tag |
 | Herbstwald-Runde | Laubwald im Norden | Krabbelkäfer, Hummel, zwei Schanzen |
 | Laternengrotte | im Höhlenberg im Westen | Stampfsteine krachen von der Decke |
 | Kippfeld-Manege | im Zirkuszelt im Südwesten | Panzerkröten, stürmender Rammbock-Bulle, Trampoline |
@@ -101,6 +101,14 @@ Figuren, Karts, Bäumen und Bauten. Auf allen Strecken: rot-weiße **Pfeilschild
 **Reifenspuren** auf der Ideallinie, bunte **Wimpelketten** über den Geraden. Ungültige Pixelwerte (NaN/unendlich)
 werden vor dem Leuchten herausgefiltert (über die Bits, da `isnan()` auf dem iPhone wegoptimiert wird) – sonst würde
 ein einzelnes Pixel über den ganzen Bildschirm verschmiert und das Bild blitzte schwarz auf.
+
+**Neue Strecken nach den Archetypen von Mario Kart 8 Deluxe** ersetzen nach und nach die bisherigen – der Plan
+steht in [`docs/fahrplan-strecken.md`](docs/fahrplan-strecken.md). Mechaniken dafür: **Anti-Gravitation**
+(`antigrav`: die Fahrbahn neigt sich in Kurven zur Steilkurve, blau leuchtende Kanten, die Räder klappen waagerecht,
+blaues Leuchten unter dem Kart; Zusammenstöße geben beiden einen **Spin-Boost**), **Spin-Pfosten** (Gefahr `spinpost`),
+**feste Tageszeit und festes Wetter je Strecke** (`time: 'day' | 'dusk' | 'night'`, `weather`; neu ist das Abendlicht –
+in den Einstellungen „Wie die Strecke“ oder für alle Strecken Tag bzw. Nacht) und eine **eigene Landschaft je Strecke**
+(`land: { sea, island, hills, flats, lakes }`).
 
 **Höhenprofile wie in Mario Kart 8 Deluxe**: Strecken können ein festes Höhenprofil haben (`heights` je
 Kontrollpunkt, dazwischen stetig per Catmull-Rom) – das Gelände wird daran angeglichen (Dämme, Einschnitte, Böschungen

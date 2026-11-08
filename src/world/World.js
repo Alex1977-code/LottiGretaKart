@@ -112,7 +112,7 @@ export class World {
       tr.water = new Uint8Array(N);
       for (let i = 0; i < N; i++) {
         if (tr.flight?.[i]) { tr.water[i] = 1; continue; }   // Flugstrecke: keine Straße, Gelände bleibt
-        prof[i] = Math.max(prof[i], 0.8);
+        if (!tr.elev) prof[i] = Math.max(prof[i], 0.8);   // (mit festem Höhenprofil auch unter Wasser möglich)
         // abtauchende Strecke (Unterwasser-Abschnitt): Profil um |lift| tiefer, Gelände wird dorthin gelegt
         if (tr.hasDive && tr.lift[i] < 0) prof[i] += tr.lift[i];
       }
@@ -122,8 +122,12 @@ export class World {
         // unter Brücken bleibt das Gelände, wie es ist (Wasser, die andere Straße)
         if (tr.hasLift && tr.lift[i] > 0.5) continue;
         // Damm bzw. Einschnitt: je größer der Höhenunterschied zum Gelände, desto breiter die Böschung
-        const inner = tr.hw[i] + pad, R = inner + 14 + (tr.elev ? Math.min(46, Math.abs(prof[i] - raw[i]) * 1.3) : 0);
+        // (an einer Flugstrecke steil abfallen: die Kante der Schanze, darunter bleibt das Gelände – See, Tal)
+        const edge = tr.flight && (tr.flight[tr.wrap(i + 30)] || tr.flight[tr.wrap(i - 30)] || tr.flight[tr.wrap(i + 12)] || tr.flight[tr.wrap(i - 12)]);
+        const inner = tr.hw[i] + pad, R = inner + (edge ? 4 : 14 + (tr.elev ? Math.min(46, Math.abs(prof[i] - raw[i]) * 1.3) : 0));
         const cx = (tr.px[i] - b.minX) / CELL, cz = (tr.pz[i] - b.minZ) / CELL, rr = Math.ceil(R / CELL);
+        // Steilkurve (Anti-Gravitation): Höhe steigt quer zur Fahrtrichtung (rechts = (−tz, tx))
+        const bk = tr.bank ? tr.bank[i] : 0, rx = -tr.tz[i], rz = tr.tx[i];
         for (let jz = Math.max(0, Math.floor(cz - rr)); jz <= Math.min(nz - 1, Math.ceil(cz + rr)); jz++) {
           for (let jx = Math.max(0, Math.floor(cx - rr)); jx <= Math.min(nx - 1, Math.ceil(cx + rr)); jx++) {
             const d = Math.hypot(jx - cx, jz - cz) * CELL;
@@ -132,7 +136,12 @@ export class World {
             const k = jz * nx + jx;
             // bei gleichem Gewicht (innen) prägt der nächste Abtastpunkt – sonst liegt das Gelände an steilen
             // Straßen (Abtauchen) über bzw. unter der Fahrbahn
-            if (ww > w[k] || (ww === w[k] && d < dk[k])) { w[k] = ww; t[k] = prof[i]; dk[k] = d; }
+            if (ww > w[k] || (ww === w[k] && d < dk[k])) {
+              w[k] = ww; dk[k] = d;
+              let y = prof[i];
+              if (bk) { const lat = ((jx - cx) * rx + (jz - cz) * rz) * CELL; y += bk * Math.max(-inner, Math.min(inner, lat)); }
+              t[k] = y;
+            }
           }
         }
         // Unterwasser-Zone um tief liegende Straßenstücke (großzügig, damit auch der Rand dazugehört)

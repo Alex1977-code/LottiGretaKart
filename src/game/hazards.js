@@ -11,6 +11,8 @@
 //   traffic     Stadtverkehr (Need-for-Speed-Nacht): Autos fahren auf ihren Spuren mit der Strecke mit, mit
 //               Scheinwerfern und Rücklichtern; Polizei (police: true) ist schneller und wechselt die Spur.
 //               { u, lane (Querversatz in m), speed (m/s), model, opts, police }
+//   spinpost    Spin-Pfosten (Anti-Gravitation, wie in Mario Kart 8): blau-weiß gestreifte Säule auf der Fahrbahn –
+//               wer sie in der Anti-Gravitation streift, bekommt einen Spin-Boost; sonst prallt man ab. { u, lat }
 // Definition in der Strecke: hazards: [{ kind, u, model?, speed?, lat?, side?, every? }]
 
 import * as THREE from 'three';
@@ -217,6 +219,27 @@ export class Hazards {
           h.phase = 'idle'; h.pt = 0;
           break;
         }
+        case 'spinpost': {
+          const root = new THREE.Group();
+          const stripe = new THREE.MeshStandardMaterial({ color: 0x2a8cff, emissive: 0x0a3a9a, emissiveIntensity: 0.8, roughness: 0.3 });
+          const white = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+          for (let k = 0; k < 4; k++) {
+            const m = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.66, 0.42, 20), k % 2 ? white : stripe);
+            m.position.y = 0.21 + k * 0.42;
+            root.add(m);
+          }
+          const cap = new THREE.Mesh(new THREE.SphereGeometry(0.64, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xffc21a, emissive: 0x6a4a00, emissiveIntensity: 0.6, roughness: 0.3 }));
+          cap.position.y = 1.68;
+          root.add(cap);
+          h.model = { root, update() {} };
+          h.holder = new THREE.Group();
+          h.holder.add(root);
+          const p = track.pointAt(d.u, (d.lat ?? 0) * base.hw);
+          h.pos = new THREE.Vector3(p.x, p.y, p.z);
+          h.holder.position.copy(h.pos);
+          h.r = 0.66;
+          break;
+        }
         default: continue;
       }
       h.model.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
@@ -236,6 +259,19 @@ export class Hazards {
       else if (!(h.down > 0)) h.holder.visible = true;
       h.t += dt;
       switch (h.kind) {
+        case 'spinpost': {
+          h.holder.rotation.y += dt * 2.5;
+          for (const r of race.racers) {
+            if (r.out || r.remote || r.puppet || r.air) continue;
+            const dx = r.pos.x - h.pos.x, dz = r.pos.z - h.pos.z, d2 = dx * dx + dz * dz, R = h.r + r.radius;
+            if (d2 > R * R || d2 < 1e-6) continue;
+            const d = Math.sqrt(d2), nx = dx / d, nz = dz / d;
+            r.pos.x = h.pos.x + nx * R; r.pos.z = h.pos.z + nz * R;
+            r.vlat += 4 * (nx * Math.sin(r.yaw) + nz * Math.cos(r.yaw));
+            if (r.antigrav) r.spinBoost(); else r.speed *= 0.7;
+          }
+          break;
+        }
         case 'walker': case 'brummer': {
           const hw = h.base.hw;
           if (h.down > 0) {

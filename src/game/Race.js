@@ -19,7 +19,7 @@ import { hostSnapshot, applyRemote, guestState, guestApply, guestPuppets } from 
 import { SPARK_COLORS } from './kartModel.js';
 import { getModel } from '../lgw/course/models/index.js';
 import { getTheme } from '../world/themes.js';
-import { isNight, nightTheme, applyNightGlow, GroundLights } from '../world/night.js';
+import { resolveTime, nightTheme, duskTheme, applyNightGlow, GroundLights } from '../world/night.js';
 import { resolveWeather, weatherTheme, WeatherFx, setRoadWetness } from '../world/weather.js';
 
 const SIDES = [-1, 1];
@@ -88,13 +88,16 @@ export class Race {
     const w = this.world;
     this.track = RacePath.forCourse(w, o.courseId, o.laps ?? 3);
     this.laps = this.track?.laps ?? 1;
-    this.course = w.courseById[o.courseId ?? this.track?.courseId ?? 'kraxelwiese'] ?? w.courses[0];
+    this.course = w.courseById[o.courseId ?? this.track?.courseId] ?? w.courses[0];
     this.def = this.course.def;
     this.theme = this.course.theme;
     this.label = this.track.label;
     // Nacht: Strecke (oder Einstellung) bestimmt es; Laternen, Scheinwerfer, stärkeres Leuchten
-    this.night = o.night ?? (isNight() || !!this.def?.night);
-    app.post?.setNight(this.night ? 1 : 0);
+    // Tageszeit: wie die Strecke es vorsieht (oder Einstellung); nachts Laternen, Scheinwerfer, stärkeres Leuchten
+    this.daytime = o.daytime ?? (o.night !== undefined ? (o.night ? 'night' : 'day') : resolveTime(this.def));
+    this.night = this.daytime === 'night';
+    this.dusk = this.daytime === 'dusk';
+    app.post?.setNight(this.night ? 1 : this.dusk ? 0.3 : 0);
     applyNightGlow(this.night);
     // Wetter: Sonne, Regen oder Calima (Einstellung oder Zufall)
     this.weather = o.weather ?? resolveWeather(this.def, this.rnd);
@@ -480,7 +483,7 @@ export class Race {
     if (this.ambT > 0) return;
     this.ambT = 0.15;
     const f = this.focus ?? this.camera.position;
-    const ws = this.world.ambienceAt(f.x, f.z).map((x) => ({ theme: weatherTheme(this.night ? nightTheme(getTheme(x.theme)) : getTheme(x.theme), this.weather), w: x.w, name: x.theme }));
+    const ws = this.world.ambienceAt(f.x, f.z).map((x) => ({ theme: weatherTheme(this.night ? nightTheme(getTheme(x.theme)) : this.dusk ? duskTheme(getTheme(x.theme)) : getTheme(x.theme), this.weather), w: x.w, name: x.theme }));
     this.app.sky.blend(ws);
     const dark = (this.night ? 0.5 : 0) + ws.reduce((a, x) => a + ((x.name === 'cave' || x.name === 'circus') ? x.w : x.name === 'castle' || x.name === 'halloween' ? x.w * 0.6 : x.name === 'volcano' ? x.w * 0.35 : 0), 0);
     this.playerLight.intensity = 26 * dark;
@@ -581,6 +584,8 @@ export class Race {
         else if (B.starT > 0 && A.starT <= 0) A.hit('spin', B);
         if (A.giantT > 0 && B.giantT <= 0 && B.starT <= 0) B.hit('squish', A);
         else if (B.giantT > 0 && A.giantT <= 0 && A.starT <= 0) A.hit('squish', B);
+        // Anti-Gravitation: Zusammenstoß gibt beiden einen Spin-Boost (wie in Mario Kart 8)
+        if (A.antigrav && B.antigrav) { A.spinBoost(); B.spinBoost(); }
         if ((A.isPlayer || B.isPlayer) && (A.bumpCooldown <= 0 || B.bumpCooldown <= 0)) {
           A.bumpCooldown = B.bumpCooldown = 0.3;
           this.audio.sfx('stomp');

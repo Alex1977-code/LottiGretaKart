@@ -127,7 +127,9 @@ export class Items {
         this.scene.add(m.root);
         this.pads.push({ model: m, x: p.x, z: p.z, yaw: p.yaw, len, w: 2.2, i: p.i });
       }
-      for (const [u, lat = 0, w = 5] of def.ramps ?? []) {
+      for (const r0 of def.ramps ?? []) {
+        // [u, Seite, Breite] oder { c: Kontrollpunkt-Stelle, lat, w }
+        const [u, lat = 0, w = 5] = Array.isArray(r0) ? r0 : [tr.uCtrl(r0.c), r0.lat, r0.w];
         const hw = tr.hw[tr.wrap(Math.round(u * tr.N))];
         const p = tr.pointAt(u, lat * hw);
         const g = rampModel(w, this.race.theme);

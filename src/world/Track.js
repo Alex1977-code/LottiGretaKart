@@ -112,6 +112,28 @@ export class Track {
       const ang = Math.atan2(this.tx[a] * this.tz[b] - this.tz[a] * this.tx[b], this.tx[a] * this.tx[b] + this.tz[a] * this.tz[b]);
       this.curv[i] = ang / (8 * this.ds); // rad/m, + = Rechtskurve
     }
+    // Anti-Gravitation: [von Kontrollpunkt, bis Kontrollpunkt, größte Neigung in Grad] – blau leuchtende Kanten,
+    // die Fahrbahn neigt sich in Kurven zur Steilkurve (außen hoch), Zusammenstöße geben Spin-Boost
+    if (def.antigrav) {
+      this.ag = new Uint8Array(N);
+      this.bank = new Float32Array(N);
+      const raw = new Float32Array(N);
+      for (const [c0, c1, deg = 40] of def.antigrav) {
+        let a = -1, b = -1;
+        for (let i = 0; i < N; i++) if (this.ctrlT[i] >= c0 && this.ctrlT[i] <= c1) { this.ag[i] = 1; if (a < 0) a = i; b = i; }
+        for (let i = a; i >= 0 && i <= b; i++) {
+          const ramp = Math.min(1, (i - a) * this.ds / 18, (b - i) * this.ds / 18);
+          const k = Math.min(1, Math.max(0, (Math.abs(this.curv[i]) - 0.003) / 0.01));   // ab ~100 m Radius volle Neigung
+          raw[i] = -Math.sign(this.curv[i]) * Math.tan((deg * Math.PI / 180) * k) * ramp;
+        }
+      }
+      // geglättet: die Neigung baut sich über ~20 m auf und ab
+      for (let i = 0; i < N; i++) {
+        let sum = 0;
+        for (let k = -10; k <= 10; k++) sum += raw[this.wrap(i + k)];
+        this.bank[i] = sum / 21;
+      }
+    }
   }
 
   /** Rundenanteil u an Kontrollpunkt-Stelle c (z. B. 11.25 = ein Viertel zwischen Punkt 11 und 12). */
@@ -358,6 +380,17 @@ export class Track {
     // Curbs: rot-weiß, außen abgeschrägt
     add(this.ribbon((i) => -hw(i) - 1.0, (i) => -hw(i), (i, s) => (s ? 0.1 : 0.04), (i) => (Math.floor(i / 2) % 2 ? cA : cB), 1, sk), 'curb-l');
     add(this.ribbon((i) => hw(i), (i) => hw(i) + 1.0, (i, s) => (s ? 0.04 : 0.1), (i) => (Math.floor(i / 2) % 2 ? cA : cB), 1, sk), 'curb-r');
+    // Anti-Gravitation: blau leuchtende Kanten (hell genug für das Leuchten im Bloom)
+    if (this.ag) {
+      const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.5, 2.4, 3.6), side: THREE.DoubleSide, toneMapped: true });
+      const AG = this.ag, on = (i) => !(AG[i] && AG[(i + 1) % this.N]) || (sk && sk(i));
+      for (const s of [-1, 1]) {
+        const m = new THREE.Mesh(this.ribbon((i) => s * hw(i) - 0.35, (i) => s * hw(i) + 0.35, () => 0.09, (i) => (Math.floor(i / 3) % 3 ? cL : null), 1, on), glow);
+        m.name = 'antigrav-kante';
+        this.group.add(m);
+      }
+      add(this.ribbon((i) => -hw(i), (i) => hw(i), () => 0.065, (i) => (Math.floor(i / 2) % 6 === 0 ? lin(0x7ad8ff) : null), 1, on), 'antigrav-streifen');
+    }
     // Markierungen
     const lanes = this.def.lanes ?? 1;
     if (lanes > 1) {

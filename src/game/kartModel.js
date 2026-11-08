@@ -173,7 +173,7 @@ export function buildKart(style) {
       const spin = mesh(wheelGeo(def.r, style.rim ?? 0xffc21a), rimMat, {}, true);
       hub.add(spin);
       root.add(hub);
-      wheels.push({ hub, spin, front, r: def.r });
+      wheels.push({ hub, spin, front, r: def.r, side: s });
     }
   }
 
@@ -202,15 +202,24 @@ export function buildKart(style) {
   glow.position.set(-1.0, 0.4, 0);
   body.add(glow);
 
+  // Anti-Gravitation: blaues Leuchten unter dem Kart (die Räder klappen dabei waagerecht)
+  const hoverGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0x58c8ff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+  hoverGlow.scale.set(2.6, 1.2, 1);
+  hoverGlow.position.set(0, 0.12, 0);
+  root.add(hoverGlow);
+
   let roll = 0;
   return {
     root, body, seat, wheels, steering, flames, sparks,
     update(dt, k) {
       const speed = k.speed ?? 0;
+      const hover = k.hover ?? 0;
       for (const w of wheels) {
         w.spin.rotation.z -= (speed / w.r) * dt;
         if (w.front) w.hub.rotation.y = (k.steer ?? 0) * 0.42;
+        w.hub.rotation.x = w.side * hover * Math.PI / 2;   // Anti-Gravitation: Räder waagerecht
       }
+      hoverGlow.material.opacity = hover * (0.55 + 0.15 * Math.sin((k.t ?? 0) * 9));
       steering.rotation.x = -(k.steer ?? 0) * 0.9;
       // Federung: leichtes Rütteln mit dem Tempo, Neigung in der Kurve/beim Driften
       const t = k.t ?? 0;

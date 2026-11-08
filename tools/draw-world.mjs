@@ -4,7 +4,7 @@ import { World } from '../src/world/World.js';
 import { courseWorldDef } from '../src/world/worldDef.js';
 import { writeFileSync, mkdirSync } from 'node:fs';
 const t0 = Date.now();
-const id = process.argv[2] ?? 'kraxelwiese';
+const id = process.argv[2] ?? 'kartstadion';
 const w = new World(courseWorldDef(id));
 console.log('Welt gebaut in', Date.now() - t0, 'ms; Höhenfeld', w.hf.nx, 'x', w.hf.nz, '; Banden-Segmente', w.segs.length);
 const b = w.def.bounds, S = 0.6; // Pixel je Meter

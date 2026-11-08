@@ -322,6 +322,15 @@ const CANYON = {
   rock: 0xc06a44,   // Felswände und Plateau
 };
 
+// Kart-Stadion (Archetyp Rennstrecke/Stadion): sattes Rasengrün, dunkler Asphalt, rot-weiße Curbs, Gelb und Blau.
+const STADIUM = {
+  ...GRASS,
+  label: 'Stadion',
+  grass: 0x5ed040, grass2: 0x52c238, grassFar: 0x4fae34, offroad: 0x7fd552, offroad2: 0x72c84a,
+  road: 0x6e6c7e, road2: 0x686678, line: 0xfaf6ee, curbA: 0xe8392d, curbB: 0xfaf6ee,
+  wallA: 0x1e6cff, wallB: 0xffc21a, wallTop: 0xfaf6ee, wallH: 0.9,
+};
+
 // Mitternachts-Highway: Großstadt bei Nacht wie in Need for Speed – nasser, spiegelnder Asphalt, Neon in Pink und
 // Türkis, Natriumlicht im Tunnel, Lichtglocke der Stadt am Horizont. Immer Nacht.
 const NIGHTCITY = {
@@ -374,5 +383,37 @@ const JUNGLE = {
   bridge: 0x7a5a32, bridgePillar: 0x6a4a2a, bridgeTop: 0x9a7a4a, bridgeTop2: 0x8e6e42,
 };
 
-export const THEMES = { canyon: CANYON, royal: ROYAL, arena: ARENA, harbor: HARBOR, tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
+// Seepark (Archetyp Freizeitpark am See): Kirmes-Optik in kräftigem Blau, Pink, Gelb und Weiß.
+const PARK = {
+  ...GRASS,
+  label: 'Seepark',
+  sky: [[1, 0x1a78f0], [0.45, 0x42a2fa], [0.15, 0x92d4fc], [0.03, 0xd6f2fe], [0, 0xeefaff], [-0.1, 0xc4e6f4], [-1, 0x7cbcd8]],
+  grass: 0x6ad44a, grass2: 0x5ec842, grassFar: 0x56b83c, offroad: 0xe8d8a8, offroad2: 0xdccc9c,
+  road: 0x8a8ca8, road2: 0x8486a2, line: 0xfaf6ee, curbA: 0xff4a9a, curbB: 0xfaf6ee,
+  wallA: 0x1e8cff, wallB: 0xffd23a, wallTop: 0xff4a9a, wallH: 0.85,
+  bridge: 0x9a7a5a, bridgePillar: 0xfaf6ee, bridgeTop: 0xc8a878, bridgeTop2: 0xbe9e6e,
+};
+
+// Zuckerschlucht (Archetyp Süßigkeiten-Canyon): Rosa, Minze, Vanille, Schokobraun; Waffelbrücken.
+const SWEETS = {
+  ...CANDY,
+  rock: 0xe8b8a0,   // Keksfelsen
+  label: 'Zuckerschlucht',
+  grass: 0xb0f0d4, grass2: 0xa4e8ca, grassFar: 0x98dcbe, offroad: 0xfff8fc, offroad2: 0xfff0f8,   // Puderzucker
+  road: 0x8a5a44, road2: 0x84543e, curbA: 0xff5a8a, curbB: 0xfff4fa,
+  wallA: 0xfff4fa, wallB: 0x8fe0c0, wallTop: 0xff5a8a, wallH: 0.85,
+  bridge: 0xd8a050, bridgePillar: 0xc88a3a, bridgeTop: 0xf0c070, bridgeTop2: 0xe4b060,   // Waffel
+};
+
+// Tempelruinen (Archetyp Dschungeltempel): Sandstein-Ocker, Moosgrün, Türkiswasser, Gold.
+const RUINS = {
+  ...JUNGLE,
+  rock: 0xc8a46a,   // Sandstein
+  label: 'Tempelruinen',
+  sky: [[1, 0x2a86e0], [0.45, 0x5aaeea], [0.15, 0xb0dcea], [0.03, 0xe8f0d8], [0, 0xf4f4e4], [-0.1, 0xc8d8b8], [-1, 0x90b090]],
+  road: 0xc4a274, road2: 0xbc9a6c, line: 0xfff4e0, curbA: 0xffc21a, curbB: 0x8a6a3a,
+  wallA: 0xd8b47a, wallB: 0xb89a6a, wallTop: 0x5a8a3a, wallH: 1.0,
+};
+
+export const THEMES = { park: PARK, sweets: SWEETS, ruins: RUINS, stadium: STADIUM, canyon: CANYON, royal: ROYAL, arena: ARENA, harbor: HARBOR, tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
 export const getTheme = (n) => THEMES[n] ?? GRASS;

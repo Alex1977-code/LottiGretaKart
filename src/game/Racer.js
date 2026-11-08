@@ -164,6 +164,7 @@ export class Racer {
     if (this.wetT > 0) this.wetT = Math.max(0, this.wetT - dt);
 
     const loc = track ? track.locate(this.pos.x, this.pos.z, this.lastI, this.loc) : this.loc;
+    this.antigrav = !!track?.ag?.[loc.i];
     const surface = world.surfaceAt(this.pos.x, this.pos.z, this.pos.y);
     this.surface = surface;
     const offroad = surface === 'off' && !this.air && !this.grind;
@@ -440,6 +441,15 @@ export class Racer {
     this.vlat = 0;
   }
 
+  /** Spin-Boost (Anti-Gravitation): beim Zusammenstoß mit einem Kart oder Spin-Pfosten kurz schneller. */
+  spinBoost() {
+    if (this.spinBoostCool > this.race.time) return;
+    this.spinBoostCool = this.race.time + 0.8;
+    this.boost(0.55, 0x58c8ff, 1.12);
+    this.spinBoostT = 0.45;   // einmal um sich selbst drehen (nur Darstellung)
+    if (this.isPlayer) this.race.audio.sfx('switch');
+  }
+
   /** Gleiter auf- bzw. zuklappen (bunter Drachen über dem Kart). */
   setGlider(on) {
     if (on && !this.gliderObj) {
@@ -516,7 +526,9 @@ export class Racer {
     if (this.spinT > 0) this.spinAngle += dt * 14 * Math.min(1, this.spinT * 1.5); else this.spinAngle = damp(wrapA(this.spinAngle), 0, 10, dt || 1);
     if (this.tumbleT > 0) this.tumbleAngle = (1 - this.tumbleT / 1.5) * TAU; else this.tumbleAngle = 0;
     const trickRoll = this.trick.done ? Math.min(1, this.trick.t / 0.45) * TAU : 0;
-    this.root.rotation.set(roll + this.tumbleAngle + trickRoll, this.yaw + this.visDrift + this.spinAngle, pitch + (this.air && !d.hop ? clamp(this.vy * 0.02, -0.25, 0.25) : 0));
+    if (this.spinBoostT > 0) this.spinBoostT = Math.max(0, this.spinBoostT - dt);
+    const spinB = this.spinBoostT > 0 ? (1 - this.spinBoostT / 0.45) * TAU : 0;
+    this.root.rotation.set(roll + this.tumbleAngle + trickRoll, this.yaw + this.visDrift + this.spinAngle + spinB, pitch + (this.air && !d.hop ? clamp(this.vy * 0.02, -0.25, 0.25) : 0));
     // Größe: Riesentrank, platt gedrückt, Landung
     this.giantScale = damp(this.giantScale, this.giantT > 0 ? 1.75 : 1, 5, dt || 1);
     this.landSquash = damp(this.landSquash ?? 0, 0, 9, dt || 1);
@@ -524,11 +536,13 @@ export class Racer {
     const ls = 1 - 0.18 * (this.landSquash ?? 0);
     this.root.scale.set(this.giantScale * (1 + (1 - sq) * 0.3), this.giantScale * sq * ls, this.giantScale * (1 + (1 - sq) * 0.3));
     this.radius = 0.85 * this.giantScale;
+    // Anti-Gravitation: Räder klappen waagerecht, blaues Leuchten
+    this.hoverK = damp(this.hoverK ?? 0, this.antigrav ? 1 : 0, 6, dt || 1);
     // Kart-Animation
     this.kart.update(dt, {
       speed: this.speed, steer: this.disabled ? 0 : this.steer, t,
       boost: this.boostT > 0 ? Math.min(1, this.boostT * 2) : 0, boostColor: this.boostColor,
-      drift: d.on ? d.dir : 0, sparkLevel: d.level, offroad: this.offroad,
+      drift: d.on ? d.dir : 0, sparkLevel: d.level, offroad: this.offroad, hover: this.hoverK,
     });
     // Fahrer
     // Umschauen, wenn jemand dicht dahinter ist (wie im Vorbild), ab und zu prüfen

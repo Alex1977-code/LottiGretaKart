@@ -21,13 +21,14 @@ if (!base) {
   await new Promise((r) => setTimeout(r, 2500));
 }
 const only = process.argv[2];
+const { TRACKS } = await import('../src/tracks/index.js');
 // Fälle: Runden auf jeder Strecke (jede in ihrer eigenen Welt), Grand Prix, Mehrspieler, Nacht und Wetter
 const CASES = [
-  ...['kraxelwiese', 'herbstwald', 'laternengrotte', 'manege', 'autobahn', 'strand', 'gipfel', 'burg', 'wueste', 'vulkan', 'bonbon', 'loroparque', 'piratenbucht', 'dinodschungel', 'wrackriff', 'spukinsel', 'katzeninsel', 'hasenhuegel', 'palmencity', 'mitternacht', 'teneriffa', 'hafenstadt', 'arena', 'schlossring', 'schlucht'].map((t) => ({ id: t, q: `race=${t}&laps=1&racer=greta`, rows: 12 })),
+  ...TRACKS.map((t) => t.id).map((t) => ({ id: t, q: `race=${t}&laps=1&racer=greta`, rows: 12 })),
   { id: 'mp-2', q: 'race=strand&laps=1&players=lotti:kb1,greta:kb2', rows: 12 },
   { id: 'gp-gleiter', q: 'mode=gp&race=schlucht&laps=1&racer=lotti', rows: 12 },
   { id: 'mp-4-gp', q: 'mode=gp&race=gipfel&laps=1&players=pflaume:pad0,bulle:pad1,kobold:kb1,baron:kb2', rows: 12 },
-  { id: 'nacht-kraxelwiese', q: 'race=kraxelwiese&laps=1&racer=greta&night=1', rows: 12 },
+  { id: 'nacht-kartstadion', q: 'race=kartstadion&laps=1&racer=greta&night=1', rows: 12 },
   { id: 'regen-strand', q: 'race=strand&laps=1&racer=lotti&weather=rain', rows: 12 },
   { id: 'calima-wueste', q: 'race=wueste&laps=1&racer=greta&weather=calima&night=1', rows: 12 },
 ].filter((c) => !only || c.id === only);

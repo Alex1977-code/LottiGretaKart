@@ -5,14 +5,25 @@
 
 import * as THREE from 'three';
 
-let night = false;
-export const isNight = () => night;
-export function setNight(v) { night = !!v; }
+let night = false;   // gerade Nacht (setzt applyNightGlow beim Rennstart)
+
+// Tageszeit wie in Mario Kart 8 Deluxe fest je Strecke ('auto': def.time = 'day' | 'dusk' | 'night'); in den
+// Einstellungen lässt sie sich für alle Strecken auf Tag oder Nacht festlegen
+let timeSetting = 'auto';
+export const getTimeSetting = () => timeSetting;
+export function setTimeSetting(v) { timeSetting = ['auto', 'day', 'night'].includes(v) ? v : 'auto'; }
+/** Tageszeit für ein Rennen auf Strecke def. */
+const isNightTrack = (def) => !!def?.night || def?.time === 'night';
+
+export function resolveTime(def) {
+  if (timeSetting !== 'auto') return timeSetting;
+  return def?.time ?? (def?.night ? 'night' : 'day');
+}
 
 // Materialien, die nachts stärker leuchten (Fenster, Laternen …): [Material, Tag, Nacht]
 const glows = [];
 export function nightGlow(mat, day, nightK) { glows.push([mat, day, nightK]); mat.emissiveIntensity = night ? nightK : day; }
-export function applyNightGlow(on) { for (const [m, d, n] of glows) m.emissiveIntensity = on ? n : d; }
+export function applyNightGlow(on) { night = !!on; for (const [m, d, n] of glows) m.emissiveIntensity = on ? n : d; }
 
 const _a = new THREE.Color(), _b = new THREE.Color();
 const mix = (c, n, k) => _a.setHex(c).lerp(_b.setHex(n), k).getHex();
@@ -51,6 +62,25 @@ export function nightTheme(t) {
   return n;
 }
 
+const duskCache = new WeakMap();
+/** Abendvariante eines Themas: goldenes Licht, orange-violetter Himmel, warmer Dunst (zwischengespeichert). */
+export function duskTheme(t) {
+  let n = duskCache.get(t);
+  if (n) return n;
+  const sky = (h) => (h > 0.45 ? 0x3a4a9e : h > 0.15 ? 0x9a6ab0 : h > 0.03 ? 0xff9a5e : h >= 0 ? 0xffc27a : 0xb07a6a);
+  n = {
+    ...t,
+    sky: t.sky.map(([h, c]) => [h, mix(sky(h), c, 0.22)]),
+    background: mix(0xf0a878, t.background, 0.2),
+    fog: { color: mix(0xf2b28a, t.fog.color, 0.25), near: t.fog.near, far: t.fog.far * 0.95 },
+    hemi: { sky: mix(0xffc8a0, t.hemi.sky, 0.3), ground: mix(0x6a4a5a, t.hemi.ground, 0.6), intensity: t.hemi.intensity * 0.85 },
+    sun: { ...t.sun, color: 0xffa860, intensity: t.sun.intensity * 0.85 },
+  };
+  n.isDusk = true;
+  duskCache.set(t, n);
+  return n;
+}
+
 function poolTexture() {
   const c = document.createElement('canvas');
   c.width = c.height = 128;
@@ -76,10 +106,10 @@ const nearOver = (tr, u, du) => (tr.overRoad ?? []).some((o) => { let d = Math.a
  * Lampenkopf, warmer Lichtkegel auf der Fahrbahn (additiv, keine echten Lichter – schnell auch auf dem Handy).
  */
 export function buildNightLamps(world, quality = 2) {
-  const night = buildLampSet(world, quality, (tr) => !tr.def?.night, 'nachtlaternen');
+  const night = buildLampSet(world, quality, (tr) => !isNightTrack(tr.def), 'nachtlaternen');
   night.visible = false;
   // Nachtstrecken: Laternen immer an, auf nassem Asphalt mit Spiegelungen
-  const always = buildLampSet(world, quality, (tr) => !!tr.def?.night, 'nachtstadt-laternen');
+  const always = buildLampSet(world, quality, (tr) => isNightTrack(tr.def), 'nachtstadt-laternen');
   return { night, always };
 }
 

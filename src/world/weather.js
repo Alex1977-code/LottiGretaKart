@@ -8,12 +8,14 @@ import * as THREE from 'three';
 import { RAIN_WET } from './shaders.js';
 
 export const WEATHERS = ['sun', 'rain', 'calima'];
-let setting = 'sun';
+// 'auto': das Wetter der Strecke (def.weather, wie in Mario Kart 8 Deluxe fest je Strecke), sonst Sonne
+let setting = 'auto';
 export const getWeatherSetting = () => setting;
-export function setWeatherSetting(v) { setting = ['sun', 'rain', 'calima', 'random'].includes(v) ? v : 'sun'; }
+export function setWeatherSetting(v) { setting = ['auto', 'sun', 'rain', 'calima', 'random'].includes(v) ? v : 'auto'; }
 
 /** Wetter für ein Rennen: Einstellung, bei „Zufall“ meist Sonne (Strecken können eigene Chancen haben). */
 export function resolveWeather(def, rnd = Math.random) {
+  if (setting === 'auto') return def?.weather ?? 'sun';
   if (setting !== 'random') return setting;
   const [pr, pc] = def?.weatherOdds ?? [0.3, 0.15];
   const r = rnd();

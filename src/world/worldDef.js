@@ -8,7 +8,6 @@
 // flats       ebene Flächen (Stadion, Zelt, Höhle, Stadt), damit Bauten und Strecken nicht auf Hügeln stehen.
 // rails       Grind-Schienen (Polylinie, Höhe über Boden bzw. über dem Wasser).
 
-import kraxelwiese from '../tracks/kraxelwiese.js';
 import herbstwald from '../tracks/herbstwald.js';
 import laternengrotte from '../tracks/laternengrotte.js';
 import manege from '../tracks/manege.js';
@@ -30,6 +29,7 @@ import palmencity from '../tracks/palmencity.js';
 import mitternacht from '../tracks/mitternacht.js';
 import teneriffa from '../tracks/teneriffa.js';
 import hafenstadt from '../tracks/hafenstadt.js';
+import { TRACK_BY_ID } from '../tracks/index.js';
 import arena from '../tracks/arena.js';
 import schlossring from '../tracks/schlossring.js';
 import schlucht from '../tracks/schlucht.js';
@@ -52,7 +52,6 @@ export const WORLD = {
     { name: 'Schluchtinsel', x: -490, z: -1090, rx: 270, rz: 160 },
   ],
   courses: [
-    { def: kraxelwiese, ox: -20, oz: -60 },
     { def: herbstwald, ox: 0, oz: -278 },
     { def: laternengrotte, ox: -414, oz: 18 },
     { def: manege, ox: -335, oz: 280 },
@@ -175,9 +174,9 @@ export const WORLD = {
 
 /** Cups im Grand Prix: je vier Strecken nacheinander, Punkte nach Platz. */
 export const WORLD_CUPS = [
-  { id: 'beeren', name: 'Beeren-Cup', tracks: ['kraxelwiese', 'herbstwald', 'laternengrotte', 'manege'] },
-  { id: 'brummbaer', name: 'Brummbär-Cup', tracks: ['manege', 'kraxelwiese', 'autobahn', 'herbstwald'] },
-  { id: 'muschel', name: 'Muschel-Cup', tracks: ['manege', 'kraxelwiese', 'strand', 'autobahn'] },
+  { id: 'beeren', name: 'Beeren-Cup', tracks: ['kartstadion', 'herbstwald', 'laternengrotte', 'manege'] },
+  { id: 'brummbaer', name: 'Brummbär-Cup', tracks: ['manege', 'kartstadion', 'autobahn', 'herbstwald'] },
+  { id: 'muschel', name: 'Muschel-Cup', tracks: ['manege', 'kartstadion', 'strand', 'autobahn'] },
   { id: 'kronen', name: 'Kronen-Cup', tracks: ['autobahn', 'gipfel', 'herbstwald', 'burg'] },
   { id: 'bonbon', name: 'Bonbon-Cup', tracks: ['burg', 'bonbon', 'laternengrotte', 'vulkan'] },
   { id: 'wuesten', name: 'Wüsten-Cup', tracks: ['gipfel', 'wueste', 'autobahn', 'strand'] },
@@ -202,6 +201,8 @@ const PAD = 190;
  * diese Strecke, ihr Ausschnitt und die Bauten darin.
  */
 export function courseWorldDef(id) {
+  const own = TRACK_BY_ID[id];
+  if (own?.land) return landWorldDef(own);
   const c = WORLD.courses.find((k) => k.def.id === id) ?? WORLD.courses[0];
   const xs = c.def.ctrl.map((p) => p[0] + c.ox), zs = c.def.ctrl.map((p) => p[1] + c.oz);
   const bounds = { minX: Math.min(...xs) - PAD, maxX: Math.max(...xs) + PAD, minZ: Math.min(...zs) - PAD, maxZ: Math.max(...zs) + PAD };
@@ -217,5 +218,36 @@ export function courseWorldDef(id) {
     structures: WORLD.structures.filter((st) => Math.hypot(st.x - (Math.min(...xs) + Math.max(...xs)) / 2, st.z - (Math.min(...zs) + Math.max(...zs)) / 2) < st.r).map((st) => ({ ...st, doors: [] })),
     rails: WORLD.rails.filter((r) => r.pts.every(([x, z]) => inside(x, z, -20))),
     regions: WORLD.regions.filter((r) => inside(r.x, r.z, r.r + (r.fade ?? 120)) || r.base),
+  };
+}
+
+/**
+ * Welt einer Strecke mit eigener Landschaft (def.land, Koordinaten der Strecke) – für die Strecken nach den
+ * Archetypen von Mario Kart 8 Deluxe, unabhängig vom Inselplan:
+ *   land: { sea (Insel im Meer statt Land bis zum Horizont), island: { cx, cz, rx, rz } (Küste bei sea),
+ *           hills: [[x, z, r, h]], flats: [{ x, z, r, h }], lakes: [{ x, z, r, depth }], rails, structures }
+ */
+function landWorldDef(def) {
+  const L = def.land;
+  const xs = def.ctrl.map((p) => p[0]), zs = def.ctrl.map((p) => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
+  const bounds = { minX: x0 - PAD, maxX: x1 + PAD, minZ: z0 - PAD, maxZ: z1 + PAD };
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const island = L.sea
+    ? { cx: L.island?.cx ?? cx, cz: L.island?.cz ?? cz, rx: L.island?.rx ?? (x1 - x0) / 2 + 110, rz: L.island?.rz ?? (z1 - z0) / 2 + 110 }
+    : { cx, cz, rx: 9000, rz: 9000 };
+  return {
+    name: def.name,
+    island,
+    islets: [],
+    bounds,
+    center: { x: cx, z: cz, r: Math.hypot(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ) / 2 },
+    courses: [{ def, ox: 0, oz: 0 }],
+    hills: L.hills ?? [],
+    flats: L.flats ?? [],
+    lakes: L.lakes ?? [],
+    structures: (L.structures ?? []).map((st) => ({ ...st, doors: [] })),
+    rails: L.rails ?? [],
+    regions: [{ theme: def.theme, x: cx, z: cz, r: 4000, base: true }, ...(L.regions ?? [])],
   };
 }
