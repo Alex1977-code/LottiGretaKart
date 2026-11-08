@@ -25,11 +25,11 @@ const { TRACKS } = await import('../src/tracks/index.js');
 // Fälle: Runden auf jeder Strecke (jede in ihrer eigenen Welt), Grand Prix, Mehrspieler, Nacht und Wetter
 const CASES = [
   ...TRACKS.map((t) => t.id).map((t) => ({ id: t, q: `race=${t}&laps=1&racer=greta`, rows: 12 })),
-  { id: 'mp-2', q: 'race=strand&laps=1&players=lotti:kb1,greta:kb2', rows: 12 },
+  { id: 'mp-2', q: 'race=seepark&laps=1&players=lotti:kb1,greta:kb2', rows: 12 },
   { id: 'gp-gleiter', q: 'mode=gp&race=schlucht&laps=1&racer=lotti', rows: 12 },
   { id: 'mp-4-gp', q: 'mode=gp&race=gipfel&laps=1&players=pflaume:pad0,bulle:pad1,kobold:kb1,baron:kb2', rows: 12 },
   { id: 'nacht-kartstadion', q: 'race=kartstadion&laps=1&racer=greta&night=1', rows: 12 },
-  { id: 'regen-strand', q: 'race=strand&laps=1&racer=lotti&weather=rain', rows: 12 },
+  { id: 'regen-seepark', q: 'race=seepark&laps=1&racer=lotti&weather=rain', rows: 12 },
   { id: 'calima-wueste', q: 'race=wueste&laps=1&racer=greta&weather=calima&night=1', rows: 12 },
 ].filter((c) => !only || c.id === only);
 const browser = await pw.chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });

@@ -12,15 +12,12 @@ import herbstwald from '../tracks/herbstwald.js';
 import laternengrotte from '../tracks/laternengrotte.js';
 import manege from '../tracks/manege.js';
 import autobahn from '../tracks/autobahn.js';
-import strand from '../tracks/strand.js';
 import gipfel from '../tracks/gipfel.js';
 import burg from '../tracks/burg.js';
 import wueste from '../tracks/wueste.js';
 import vulkan from '../tracks/vulkan.js';
-import bonbon from '../tracks/bonbon.js';
 import loroparque from '../tracks/loroparque.js';
 import piratenbucht from '../tracks/piratenbucht.js';
-import dinodschungel from '../tracks/dinodschungel.js';
 import wrackriff from '../tracks/wrackriff.js';
 import spukinsel from '../tracks/spukinsel.js';
 import katzeninsel from '../tracks/katzeninsel.js';
@@ -56,15 +53,12 @@ export const WORLD = {
     { def: laternengrotte, ox: -414, oz: 18 },
     { def: manege, ox: -335, oz: 280 },
     { def: autobahn, ox: 430, oz: 120 },
-    { def: strand, ox: 140, oz: 445 },
     { def: gipfel, ox: 620, oz: -190 },
     { def: burg, ox: -200, oz: -515 },
     { def: wueste, ox: 880, oz: 60 },
     { def: vulkan, ox: -700, oz: 380 },
-    { def: bonbon, ox: -690, oz: -340 },
     { def: loroparque, ox: 600, oz: 410 },
     { def: piratenbucht, ox: -320, oz: 590 },
-    { def: dinodschungel, ox: 350, oz: -610 },
     { def: wrackriff, ox: 40, oz: -770 },
     { def: spukinsel, ox: -900, oz: -730 },
     { def: katzeninsel, ox: -1040, oz: 720 },
@@ -174,23 +168,15 @@ export const WORLD = {
 
 /** Cups im Grand Prix: je vier Strecken nacheinander, Punkte nach Platz. */
 export const WORLD_CUPS = [
-  { id: 'beeren', name: 'Beeren-Cup', tracks: ['kartstadion', 'herbstwald', 'laternengrotte', 'manege'] },
-  { id: 'brummbaer', name: 'Brummbär-Cup', tracks: ['manege', 'kartstadion', 'autobahn', 'herbstwald'] },
-  { id: 'muschel', name: 'Muschel-Cup', tracks: ['manege', 'kartstadion', 'strand', 'autobahn'] },
-  { id: 'kronen', name: 'Kronen-Cup', tracks: ['autobahn', 'gipfel', 'herbstwald', 'burg'] },
-  { id: 'bonbon', name: 'Bonbon-Cup', tracks: ['burg', 'bonbon', 'laternengrotte', 'vulkan'] },
-  { id: 'wuesten', name: 'Wüsten-Cup', tracks: ['gipfel', 'wueste', 'autobahn', 'strand'] },
-  { id: 'tierpark', name: 'Tierpark-Cup', tracks: ['strand', 'loroparque', 'autobahn', 'wueste'] },
-  { id: 'piraten', name: 'Piraten-Cup', tracks: ['manege', 'piratenbucht', 'vulkan', 'laternengrotte'] },
-  { id: 'dino', name: 'Dino-Cup', tracks: ['herbstwald', 'dinodschungel', 'gipfel', 'wueste'] },
-  { id: 'ozean', name: 'Ozean-Cup', tracks: ['burg', 'wrackriff', 'dinodschungel', 'herbstwald'] },
-  { id: 'grusel', name: 'Grusel-Cup', tracks: ['herbstwald', 'burg', 'bonbon', 'spukinsel'] },
-  { id: 'kuschel', name: 'Kuschel-Cup', tracks: ['katzeninsel', 'vulkan', 'hasenhuegel', 'laternengrotte'] },
-  { id: 'neon', name: 'Neon-Cup', tracks: ['strand', 'autobahn', 'wueste', 'palmencity'] },
-  { id: 'nacht', name: 'Mitternachts-Cup', tracks: ['autobahn', 'wueste', 'mitternacht', 'palmencity'] },
-  { id: 'kanaren', name: 'Kanaren-Cup', tracks: ['strand', 'loroparque', 'teneriffa', 'palmencity'] },
-  // Strecken nach dem Vorbild von Mario Kart 8 Deluxe: Höhenprofile, Kuppensprünge, Gleitflüge
+  // neue Strecken nach den Archetypen von Mario Kart 8 Deluxe (docs/fahrplan-strecken.md)
+  { id: 'sonnen', name: 'Sonnen-Cup', tracks: ['kartstadion', 'seepark', 'zuckerschlucht', 'tempelruinen'] },
   { id: 'gleiter', name: 'Gleiter-Cup', tracks: ['schlucht', 'hafenstadt', 'arena', 'schlossring'] },
+  // bisherige Strecken (werden Etappe für Etappe ersetzt)
+  { id: 'wald', name: 'Wald-Cup', tracks: ['herbstwald', 'laternengrotte', 'burg', 'gipfel'] },
+  { id: 'zirkus', name: 'Zirkus-Cup', tracks: ['manege', 'autobahn', 'wueste', 'vulkan'] },
+  { id: 'insel', name: 'Insel-Cup', tracks: ['piratenbucht', 'wrackriff', 'spukinsel', 'katzeninsel'] },
+  { id: 'stadt', name: 'Stadt-Cup', tracks: ['hasenhuegel', 'autobahn', 'palmencity', 'mitternacht'] },
+  { id: 'kanaren', name: 'Kanaren-Cup', tracks: ['loroparque', 'teneriffa', 'hafenstadt', 'palmencity'] },
 ];
 
 /** Rand rund um eine Strecke, der zur Strecken-Welt gehört (Gelände, Kulisse); dahinter beginnt die Fernsicht. */

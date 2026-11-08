@@ -139,7 +139,11 @@ export class World {
             if (ww > w[k] || (ww === w[k] && d < dk[k])) {
               w[k] = ww; dk[k] = d;
               let y = prof[i];
-              if (bk) { const lat = ((jx - cx) * rx + (jz - cz) * rz) * CELL; y += bk * Math.max(-inner, Math.min(inner, lat)); }
+              if (bk) {
+                // die Innenkante bleibt über dem Wasser: notfalls hebt sich die ganze Kurve etwas an
+                const lat = ((jx - cx) * rx + (jz - cz) * rz) * CELL;
+                y += bk * Math.max(-inner, Math.min(inner, lat)) + Math.max(0, Math.abs(bk) * inner - (prof[i] - 1.5));
+              }
               t[k] = y;
             }
           }

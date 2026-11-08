@@ -21,6 +21,9 @@ leicht und hell, Strecke 2–3 je eine neue Mechanik, Strecke 4 dunkler und gef�
 
 ## Etappen 2 ff. – neue Cups
 
+Erledigt: **Etappe 2 – Sonnen-Cup** (Kart-Stadion, Seepark, Zuckerschlucht, Tempelruinen). Die übrigen
+bisherigen Strecken fahren bis zu ihrem Ersatz im Wald-, Zirkus-, Insel-, Stadt- und Kanaren-Cup.
+
 | Etappe | Cup | Strecke (eigener Name) | Archetyp / Vorbild | ersetzt |
 | --- | --- | --- | --- | --- |
 | 2 | Sonnen-Cup | Kart-Stadion | Stadion: Tribünen, Großbildschirme, gekippte Anti-Grav-Steilkurve, Spin-Pfosten | Kraxelwiesen-Ring |

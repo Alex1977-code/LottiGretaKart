@@ -49,15 +49,15 @@ Schmetterlinge um das eigene Kart (`src/world/life.js`).
 | Laternengrotte | im Höhlenberg im Westen | Stampfsteine krachen von der Decke |
 | Kippfeld-Manege | im Zirkuszelt im Südwesten | Panzerkröten, stürmender Rammbock-Bulle, Trampoline |
 | Brummbärs Abendautobahn | Stadt im Osten | Bombenkanonen schießen Kickbomben (roter Ring = Einschlag) |
-| Funkelstrand | Südküste | Palmen, Sonnenschirme, Lagune, Strandkrabben, Schnappblumen, zwei Dünen-Schanzen |
+| Seepark | eigene Landschaft (Archetyp Freizeitpark am See) | Start auf der Promenade zwischen **Karussells**, **Wasserrutschen**, Buden und Ballons, dann hinunter in den See: langer Abschnitt **unter Wasser** (Seegras, Korallen, Riesenmuscheln, Fischschwärme, Quallen), Sprung aus dem Wasser, **Anti-Grav-Kurve** um das große **Riesenrad** mit Spin-Pfosten; Kirmes-Farben Blau, Pink, Gelb |
 | Glitzergipfel | verschneites Hochplateau im Nordosten | Serpentinen, Bohnenranken, Riesenschneebälle rollen über die Bahn |
 | Brummbär-Burg | Festung auf der Nordklippe, im Mondlicht | Burgmauern und Türme, Bombenkanonen, Pilzlingsturm, Rammbock-Bulle, Schnappblumen |
 | Sonnenschlucht | Wüste im fernen Osten | Tafelberge, Kakteen, Oase, Steppenläufer rollen über die Bahn, Skorpion-Käfer |
 | Feuerberg | Vulkan im Südwesten | Lava-Seen (hineinfahren = zurückgesetzt), Feuer-Geysire (roter Ring = Warnung), Stampfsteine |
-| Zuckerwatten-Allee | Bonbonland im Nordwesten | Schokoladen-Fahrbahn, Zuckerstangen, Lutscher, Donuts, rollende Kaugummikugeln |
+| Zuckerschlucht | eigene Landschaft (Archetyp Süßigkeiten-Canyon) | Zuckerguss-Hochebene mit riesigen **Torten**, Lutschern, Zuckerstangen, Donuts und Gummibärchen, hinunter in die **Keks-Schlucht**, über die **Waffelbrücke**, die **Anti-Grav-Steilwand** hinauf; **Puderzucker** neben der Fahrbahn bremst, **Schnappblumen** am Rand; Rosa, Minze, Vanille, Schoko |
 | Loro Parque | Tierpark an der Ostküste | Thai-Tor, Papageien-Volieren, Flamingos, Gorillas, Tiger, Planet Penguin (Pinguine watscheln über die Straße), gläserner Hai-Tunnel, Delfin-Lagune, Seelöwen – und die **Orca-Show**: der Wal springt und spritzt eine Welle über die Fahrbahn (blauer Ring = gleich! nass = langsamer, „PLATSCH!“) |
 | Piratenbucht | Südküste | **Eine Acht**: in der Mitte unten durch, später oben über die Holzbrücke. Piratenschiff in der Lagune, Piratenkanonen schießen Kanonenkugeln (roter Ring = Einschlag), rollende Pulverfässer, Krabben, Schatzinsel mit Totenkopf-Felsen, Leuchtturm |
-| Dino-Dschungel | Nordküste | **Schleife mit Looping**: großer Bogen, enge innere Schleife ums Dino-Nest, zurück über die Lianenbrücke genau über die eigene Strecke. T-Rex stapft über die Fahrbahn (platt!), Flugsaurier, Triceratops-Herde, rollende Felsbrocken, Brachiosaurier, Wasserfall |
+| Tempelruinen | eigene Landschaft (Archetyp Dschungeltempel) | Lichtung, großes **Tempeltor**, Säulengang im Tempelhof mit herabkrachenden **Stampfsteinen**, hinab ins türkise **Tempelbecken** (unter Wasser), **Anti-Grav-Wand** an der **Stufenpyramide**, Steingesichter, Sprungkuppe; Sandstein, Moosgrün, Türkis, Gold |
 | Wrack-Riff | Nordküste, **halb unter Wasser** (wie in Mario Kart 8) | Start am Hafenkai mit Containerkränen, über die Heckrampe **mitten durch die große Fähre** (Autodeck mit Lampen und Containern, rollende Fässer), aus der offenen Bugklappe **Sprung ins Meer** – dann über den Meeresgrund: Korallengarten, schwebende Quallen, Kugelfische, Fischschwärme, Schildkröten, Mantarochen, gelbes U-Boot, **durch ein versunkenes Schiffswrack** und einen Felsbogen, durch den Seetangwald und den Strand wieder hinauf. Unter Wasser schweben Sprünge länger, das Kart zieht Luftblasen, alles wird blau |
 | Spukinsel | Nachbarinsel im Nordwesten, **Halloween** bei Vollmond | Kürbisfeld mit Vogelscheuchen, Friedhof mit Gespenstern, **mitten durch das Spukhaus** (Kronleuchter, Ahnenbilder, die Hexe fliegt durch die Halle), kahler Wald, Hexenkessel, Spinnennetze; Gespenster schweben über die Fahrbahn, Fledermäuse, rollende Kürbisse |
 | Katzeninsel | Nachbarinsel im Südwesten | Die Strecke ist ein **großes Herz**: riesige schlafende Katze in der Mitte (atmet, Zzz), **Karton-Tunnel „MIAU!“** (oben spazieren Katzen), Kratzbäume, Winkekatzen, Näpfe, Kissen, Katzen in allen Fellfarben; Wollknäuel rollen, Mäuse flitzen, Kätzchen tapsen über die Fahrbahn |
@@ -71,7 +71,7 @@ Schmetterlinge um das eigene Kart (`src/world/life.js`).
 | Wasserfall-Schlucht | Schluchtinsel im Norden (nach dem Vorbild von **Shy Guy Falls**) | Start unten in der **Schlucht am Fluss**, vorbei am **großen Wasserfall**, dann **steil die Felswand hinauf** auf das rote **Hochplateau** (4 m → 32 m) mit **Kristallmine** (bunte Kristalle, **Loren** rollen über die Strecke, holprige Gleise), an der Kante über die **Gleiter-Schanze** neben dem zweiten Wasserfall und im Gleitflug zurück in die Schlucht. |
 
 **Modi**
-- **Grand Prix** (Beeren-, Brummbär-, Muschel-, Kronen-, Bonbon-, Wüsten-, Tierpark-, Piraten-, Dino-, Ozean-, Grusel-, Kuschel-, Neon-, Mitternachts-, Kanaren- und Gleiter-Cup): vier Strecken nacheinander, Punkte für 12 Fahrer,
+- **Grand Prix** (Sonnen-, Gleiter-, Wald-, Zirkus-, Insel-, Stadt- und Kanaren-Cup): vier Strecken nacheinander, Punkte für 12 Fahrer,
   am Ende Siegerehrung mit Pokal.
 - **Einzelrennen** und **Zeitfahren** (mit drei Turbo-Beeren, Bestzeiten werden gespeichert).
 
