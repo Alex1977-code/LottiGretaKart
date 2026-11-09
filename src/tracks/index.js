@@ -17,6 +17,10 @@ import delfinlagune from './delfinlagune.js';
 import spukvilla from './spukvilla.js';
 import eissee from './eissee.js';
 import felsental from './felsental.js';
+import kirschbluete from './kirschbluete.js';
+import drachenmauer from './drachenmauer.js';
+import neonmetropole from './neonmetropole.js';
+import goldmine from './goldmine.js';
 import kuhweide from './kuhweide.js';
 import musikpark from './musikpark.js';
 import nachtautobahn from './nachtautobahn.js';
@@ -26,5 +30,5 @@ import arena from './arena.js';
 import schlossring from './schlossring.js';
 import schlucht from './schlucht.js';
 
-export const TRACKS = [kartstadion, seepark, zuckerschlucht, tempelruinen, blumenring, hafenstadt, spukvilla, schlucht, flughafen, delfinlagune, discohalle, gipfelabfahrt, kuhweide, palmenstrand, nachtautobahn, schlossring, arena, eissee, musikpark, felsental, wolkenstrasse, knochenduenen, lavafestung, sternenbahn, loroparque, teneriffa];
+export const TRACKS = [kartstadion, seepark, zuckerschlucht, tempelruinen, blumenring, hafenstadt, spukvilla, schlucht, flughafen, delfinlagune, discohalle, gipfelabfahrt, kuhweide, palmenstrand, nachtautobahn, schlossring, arena, eissee, musikpark, felsental, wolkenstrasse, knochenduenen, lavafestung, sternenbahn, kirschbluete, drachenmauer, neonmetropole, goldmine, loroparque, teneriffa];
 export const TRACK_BY_ID = Object.fromEntries(TRACKS.map((t) => [t.id, t]));

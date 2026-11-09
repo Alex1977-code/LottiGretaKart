@@ -518,5 +518,110 @@ const VALLEY = {
   wallA: 0x9a9088, wallB: 0x7a7068, wallTop: 0xffc21a, wallH: 0.9,
 };
 
-export const THEMES = { frozen: FROZEN, icesheet: ICESHEET, music: MUSIC, valley: VALLEY, farm: FARM, skyway: SKYWAY, dunes: DUNES, lavafort: LAVAFORT, space: SPACE, airport: AIRPORT, disco: DISCO, park: PARK, sweets: SWEETS, ruins: RUINS, stadium: STADIUM, canyon: CANYON, royal: ROYAL, arena: ARENA, harbor: HARBOR, tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
+// Kirschblüteninsel (Archetyp Tempelinsel): Kirschrosa, Tempelrot, Bambusgrün.
+const BLOSSOM = {
+  ...GRASS,
+  label: 'Kirschblüteninsel',
+  grass: 0x7ad84e, grass2: 0x6ecb46, offroad: 0xe8c8b8, offroad2: 0xdcbcac,
+  road: 0x9a8e96, road2: 0x948890, line: 0xfff4f8, curbA: 0xd8281e, curbB: 0xfaf6ee,
+  wallA: 0xfaf6ee, wallB: 0xd8281e, wallTop: 0xffb8d8, wallH: 0.8,
+};
+// Drachenmauer (Archetyp Mauer über die Berge): Mauergrau, Bergwiese, Tempelrot.
+const GREATWALL = {
+  ...GRASS,
+  label: 'Drachenmauer',
+  rock: 0x8a8478,
+  grass: 0x6cbc48, grass2: 0x62b042, grassFar: 0x4f9a3a,
+  road: 0xb4a488, road2: 0xac9c80, line: 0xfff4e0, curbA: 0xc82a1e, curbB: 0xe8dcc4,
+  wallA: 0x9a8a72, wallB: 0x8a7a62, wallTop: 0xc82a1e, wallH: 1.1,
+};
+// Neonmetropole (Archetyp Zukunftsstadt bei Nacht): Cyan, Magenta, Violett, Chrom.
+const FUTURE = {
+  ...NIGHTCITY,
+  label: 'Neonmetropole',
+  city: [0x1a1e34, 0x20243e, 0x262a48, 0x1c1a38, 0x2a2850], cityWindow: 0x8ae8ff,
+  road: 0x2a2c3e, road2: 0x28293a, line: 0x3ad8ff, lineYellow: 0xff3ab8, curbA: 0x3ad8ff, curbB: 0x1a1a2a,
+  wallA: 0xc8d0e0, wallB: 0x8a94b0, wallTop: 0xff3ab8, wallH: 1.0,
+};
+// Goldmine (Archetyp Bergwerk): Gold, Holzbraun, Felsgrau.
+const MINE = {
+  ...CAVE,
+  label: 'Goldmine',
+  rock: 0x5a4e48,
+  fog: { color: 0x1c140e, near: 30, far: 150 },
+  hemi: { sky: 0xb89a6a, ground: 0x3a2a1a, intensity: 1.0 },
+  grass: 0x5a4636, grass2: 0x52402f, grassFar: 0x3a2c22, offroad: 0x6e5440, offroad2: 0x644a38,
+  road: 0x8a6e52, road2: 0x84684c, line: 0xffd23a, curbA: 0xffc21a, curbB: 0x5a3a22,
+  wallA: 0x7a5232, wallB: 0x6a4428, wallTop: 0xffc21a, wallH: 1.0,
+  bridge: 0x7a5232, bridgePillar: 0x6a4428, bridgeTop: 0x8a6240, bridgeTop2: 0x84603c,
+};
+
+// Käseland: Käsegelb, Orange, Himmelblau.
+const CHEESE = {
+  ...GRASS,
+  label: 'Käseland',
+  rock: 0xe8a82a,
+  grass: 0xffd85a, grass2: 0xffcf3a, grassFar: 0xf0c03a, offroad: 0xf0a82a, offroad2: 0xe89a22,
+  road: 0xc89a5a, road2: 0xc09254, line: 0xfffaf0, curbA: 0xe8892d, curbB: 0xfff4d0,
+  wallA: 0xfff4d0, wallB: 0xe8892d, wallTop: 0x3a8ae8, wallH: 0.8,
+};
+// Baumwipfelweg: Waldgrün, Holzbraun (Stege), Pilzrot.
+const TREETOP = {
+  ...GRASS,
+  label: 'Baumwipfelweg',
+  grass: 0x4f9a2a, grass2: 0x46902a, grassFar: 0x3a7a22, offroad: 0x6a5a32, offroad2: 0x625230,
+  road: 0xa8784a, road2: 0xa07044, line: 0xfff4e0, curbA: 0x7a5232, curbB: 0xd8b878,
+  wallA: 0x8a5a32, wallB: 0x6a4428, wallTop: 0x5cbf3a, wallH: 0.8,
+  bridge: 0x8a5a32, bridgePillar: 0x6a4428, bridgeTop: 0xa8784a, bridgeTop2: 0xa07044,
+};
+// Abendsteppe: Savannengold, Rotbraun, Akaziengrün.
+const SAVANNA = {
+  ...AUTUMN,
+  label: 'Abendsteppe',
+  rock: 0xb8784a,
+  grass: 0xd8b85a, grass2: 0xccac50, grassFar: 0xb89a48, offroad: 0xc8884a, offroad2: 0xbc7e44,
+  road: 0xb08a6a, road2: 0xa88264, line: 0xfff4e0, curbA: 0xd8501e, curbB: 0xfff4e0,
+  wallA: 0x8a5a32, wallB: 0xd8501e, wallTop: 0xffc21a, wallH: 0.8,
+};
+// Badezimmer (Miniaturwelt): Fliesenweiß und -blau, Chrom.
+const BATHROOM = {
+  ...GRASS,
+  label: 'Badezimmer',
+  sky: [[1, 0xdfeef8], [0.45, 0xe8f2fa], [0.15, 0xf0f6fc], [0, 0xf4f8fc], [-1, 0xdce8f2]],
+  background: 0xe8f2fa, fog: { color: 0xe8f0f8, near: 160, far: 520 },
+  hemi: { sky: 0xffffff, ground: 0xb8d0e0, intensity: 1.6 },
+  sun: { color: 0xffffff, intensity: 2.2, dir: [0.2, 1, 0.3] },
+  sunDisc: false, clouds: false, hills: null,
+  rock: 0xdce8f2,
+  grass: 0xf4f8fc, grass2: 0xbfe0f4, grassFar: 0xdce8f2, offroad: 0xe8eef4, offroad2: 0xdce6ee,
+  road: 0x8ab8d8, road2: 0x84b2d2, line: 0xffffff, curbA: 0x3a8ae8, curbB: 0xffffff,
+  wallA: 0xffffff, wallB: 0xc8d4e0, wallTop: 0xffd21f, wallH: 0.8,
+  bridge: 0xfaf8f4, bridgePillar: 0xe8eef4, bridgeTop: 0xffffff, bridgeTop2: 0xf4f6f8,
+};
+// Uhrwerk: Messing, dunkles Holz, Zifferblatt-Creme.
+const CLOCKWORK = {
+  ...CAVE,
+  label: 'Uhrwerk',
+  rock: 0x5a4632,
+  sky: [[1, 0x1a1208], [0, 0x2a1e10], [-1, 0x120c06]],
+  background: 0x2a1e10, fog: { color: 0x2a1e12, near: 40, far: 200 },
+  hemi: { sky: 0xffd8a0, ground: 0x4a3a22, intensity: 1.2 },
+  sun: { color: 0xffe0b0, intensity: 1.6, dir: [-0.3, 1, 0.4] },
+  grass: 0x4a3a28, grass2: 0x443424, grassFar: 0x3a2c1e, offroad: 0x6a5232, offroad2: 0x624a2e,
+  road: 0x8a7a5a, road2: 0x847454, line: 0xffd23a, curbA: 0xc8a03a, curbB: 0x3a2a1a,
+  wallA: 0xc8a03a, wallB: 0x8a6a2a, wallTop: 0xffd23a, wallH: 1.0,
+  bridge: 0x8a6a2a, bridgePillar: 0x6a5222, bridgeTop: 0xa8884a, bridgeTop2: 0xa08044,
+};
+// Stadtrundfahrt: Altstadt-Sandstein, Rasengrün, Rot und Blau bei Tag.
+const TOWN = {
+  ...GRASS,
+  label: 'Stadtrundfahrt',
+  city: [0xd8c8a8, 0xc8b898, 0xe8dcc4, 0xb8a888, 0xd0c4b0], cityWindow: 0x6a8ab8,
+  offroad: 0xc8c0b8, offroad2: 0xbeb6ae,
+  road: 0x7a7888, road2: 0x747282, line: 0xffffff, lineYellow: 0xffcf3a, curbA: 0xe8392d, curbB: 0xf8f6f0,
+  wallA: 0xd8dce4, wallB: 0x3a7ae8, wallTop: 0xffc21a, wallH: 0.9,
+  bridge: 0xb8a888, bridgePillar: 0xa89878, bridgeTop: 0x8a8898, bridgeTop2: 0x84829a,
+};
+
+export const THEMES = { cheese: CHEESE, treetop: TREETOP, savanna: SAVANNA, bathroom: BATHROOM, clockwork: CLOCKWORK, town: TOWN, blossom: BLOSSOM, greatwall: GREATWALL, future: FUTURE, mine: MINE, frozen: FROZEN, icesheet: ICESHEET, music: MUSIC, valley: VALLEY, farm: FARM, skyway: SKYWAY, dunes: DUNES, lavafort: LAVAFORT, space: SPACE, airport: AIRPORT, disco: DISCO, park: PARK, sweets: SWEETS, ruins: RUINS, stadium: STADIUM, canyon: CANYON, royal: ROYAL, arena: ARENA, harbor: HARBOR, tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
 export const getTheme = (n) => THEMES[n] ?? GRASS;

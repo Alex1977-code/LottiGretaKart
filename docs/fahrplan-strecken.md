@@ -29,6 +29,8 @@ Blüten-Cup** (Blumenring, Hafenstadt, Spukvilla, Wasserfall-Schlucht) und **Eta
 Glatteis, Musikpark mit Klaviertasten, Felsental mit Felssäulen auf der Fahrbahn). Damit sind alle bisherigen Strecken
 ersetzt; Teneriffa und Loro Parque fahren als Bonus im Kanaren-Cup (mit Hafenstadt und Palmenstrand).
 
+**Etappe 8 – Blitz-Cup** (neu): Kirschblüteninsel, Drachenmauer, Neonmetropole, Goldmine (fertig).
+
 Neue Technik für Etappe 5 ff.: Abschnitte ohne Leitplanken (`noWalls`, Herunterfallen = zurückgesetzt),
 Regenbogen-Fahrbahn (`rainbow`), Klaviertasten mit Tönen (`piano`), Matsch, Sand und Schnee neben der Fahrbahn
 (`mud`), Glatteis (`ice`), Lava neben der Strecke (`lavaAt`), feste Rundenzahl (`laps`), Tageszeit je Runde
@@ -61,7 +63,7 @@ Regenbogen-Fahrbahn (`rainbow`), Klaviertasten mit Tönen (`piano`), Matsch, San
 | 7 | Blatt-Cup | Eissee | zugefrorener See, Eishöhle, rutschig | Katzeninsel |
 | 7 | Blatt-Cup | Musikpark | Riesen-Instrumente, Tasten mit Tönen | Palmen-City |
 | 7 | Blatt-Cup | Felsental | Felssäulen teilen die Fahrbahn in mehrere Wege, rollende Riesen-Eier | – (neu) |
-| 8 | Blitz-Cup | Kirschblüteninsel | Tempel, Kirschbäume, Bambus, Anti-Grav über den Teich | Teneriffa (bleibt Bonus) |
+| 8 | Blitz-Cup | Kirschblüteninsel | Tempel, Kirschbäume, Bambus, Anti-Grav über den Teich | – (neu) |
 | 8 | Blitz-Cup | Drachenmauer | lange Mauer über die Berge, Drachenkopf-Tunnel | – |
 | 8 | Blitz-Cup | Neonmetropole | Zukunftsstadt bei Nacht, Anti-Grav-Röhren | – |
 | 8 | Blitz-Cup | Goldmine | Bergwerk, Loren, Holzbrücken, Höhle | – |

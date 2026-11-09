@@ -30,6 +30,21 @@
 // sky_tower      Zukunfts-Hochhaus mit Leuchtringen, opts { h, color }
 // gold_pile      Haufen Goldnuggets (glänzt)
 // mine_frame     hölzerner Stollenrahmen über der Fahrbahn (Durchfahrt entlang X), opts { width }
+// cheese_wedge   Käseecke mit Löchern
+// cheese_wheel   Käselaib (Mitte = Ursprung, Radius 1, Achse entlang X) – rollt als Gefahr
+// giant_tree     Riesenbaum mit dickem Stamm und breiter Krone (Baumwipfelweg)
+// giant_mushroom Riesenpilz, opts { color }
+// acacia         Schirmakazie (Abendsteppe)
+// elephant       Elefant, trottet (vorn = +X)
+// giraffe        Giraffe
+// bathtub        riesige Badewanne mit Schaum (Badezimmer)
+// rubber_duck    Gummiente (vorn = +X), watschelt
+// soap           Seifenstück, opts { color }
+// toothbrush     Zahnbürste im Becher
+// gear           Zahnrad, dreht sich, opts { r, color, speed }
+// clock_face     Zifferblatt mit drehenden Zeigern, opts { r }
+// clock_tower    Turm mit Uhr (Stadtrundfahrt)
+// tv_tower       Fernsehturm mit Kugel
 // truck          Sattelzug mit Auflieger (Nachtautobahn), vorn = +X, Länge ≈ 10 m, opts { color }
 
 import * as THREE from 'three';
@@ -520,25 +535,35 @@ function wallTower() {
   return makeModel('wall_tower', root, () => {});
 }
 
-/** Drachenkopf als Tunneltor: Kopf über der Fahrbahn, Maul offen, Hörner, leuchtende Augen. */
+/** Drachenkopf als Tunneltor: die Karts fahren (in +X) durch das offene Maul; Schnauze, Zähne, gelbe Augen, Hörner
+ *  und rote Mähne. */
 function dragonHead(o = {}) {
   const W = o.width ?? 20;
   const root = new THREE.Group();
   root.add(mesh(cached(`rw2:dhead:${W}`, () => {
     const b = new Build();
-    const G = 0x2a8a4a, G2 = 0x1f6a3a, Y = 0xffc21a;
+    const G = 0x2a9a4a, G2 = 0x1f7a3a, Y = 0xffd23a, RED = 0xd8281e, T = 0xfaf6ee;
     const R = W / 2 + 2;
-    for (let k = 0; k <= 12; k++) { const a = (k / 12) * Math.PI; b.box(8, 2.4, 2.4, k % 2 ? G : G2, { p: [0, Math.sin(a) * R * 0.8 + 1, Math.cos(a) * R], r: [a - Math.PI / 2, 0, 0] }, 0.4); }
-    b.sphere(R * 0.55, G, { p: [-2, R * 0.85 + 4, 0], s: [1.3, 0.8, 1] }, 18, 12);
-    b.box(10, 2.5, R * 0.9, G, { p: [6, R * 0.8 + 2, 0] }, 0.8);
+    // Oberkiefer als Gewölbe über der Fahrbahn, Unterkiefer als Wülste an den Seiten
+    for (let x = -6; x <= 6; x += 2) for (let k = 0; k <= 12; k++) { const a = (k / 12) * Math.PI; b.box(2.2, 2.4, 2.6, (k + x) % 2 ? G : G2, { p: [x, Math.sin(a) * R * 0.85 + 0.6, Math.cos(a) * R], r: [a - Math.PI / 2, 0, 0] }, 0.4); }
+    for (const s of [1, -1]) b.box(16, 2.2, 3, G2, { p: [0, 1.1, s * (R + 0.5)] }, 0.5);
+    // Schnauze nach vorn (den ankommenden Karts entgegen), Nasenlöcher
+    b.box(10, R * 0.5, R * 1.6, G, { p: [-9, R * 0.85, 0] }, 1.5);
+    for (const s of [1, -1]) b.sphere(0.8, 0x1a3a22, { p: [-14, R * 0.95, s * 2.2] }, 8, 6);
+    // Zähne am Rand des Mauls
+    for (let k = 1; k < 12; k++) { const a = (k / 12) * Math.PI; b.cone(0.5, 1.6, T, { p: [-7, Math.sin(a) * R * 0.85 - 0.6, Math.cos(a) * (R - 0.6)], r: [a - Math.PI / 2 + Math.PI, 0, 0] }, 6); }
+    // Kopf, Augen mit Brauen, Hörner nach hinten, rote Mähne
+    b.sphere(R * 0.62, G, { p: [2, R * 1.05, 0], s: [1.4, 0.75, 1] }, 20, 12);
     for (const s of [1, -1]) {
-      b.cone(1, 7, Y, { p: [-5, R * 0.85 + 9, s * 3], r: [s * 0.4, 0, 0.6] }, 8);
-      b.sphere(1.2, 0xff4a1a, { p: [2, R * 0.85 + 6, s * 4] }, 10, 8);
-      for (let k = 0; k < 5; k++) b.cone(0.6, 1.8, 0xfaf6ee, { p: [9 - k * 2, R * 0.8 + 0.2, s * (R * 0.4)], r: [Math.PI, 0, 0] }, 6);
+      b.sphere(1.5, Y, { p: [-3, R * 1.2, s * R * 0.42] }, 12, 8);
+      b.sphere(0.7, 0x1a1a1a, { p: [-4.2, R * 1.2, s * R * 0.42] }, 8, 6);
+      b.box(4, 0.8, 1.4, G2, { p: [-3, R * 1.2 + 1.8, s * R * 0.42], r: [s * 0.3, 0, 0.2] }, 0.2);
+      b.cone(1, 9, Y, { p: [8, R * 1.3 + 2, s * R * 0.35], r: [s * 0.3, 0, -1.2] }, 8);
+      b.cone(0.6, 5, RED, { p: [-12, R * 0.7, s * (R * 0.8 + 1)], r: [s * 1.2, 0, 0] }, 6);   // Barteln
     }
-    for (let k = 0; k < 4; k++) b.cone(0.8, 2.6, 0xd8281e, { p: [-6 - k * 2.5, R * 0.85 + 7 - k * 0.6, 0] }, 6);
+    for (let k = 0; k < 6; k++) b.cone(1.1, 3.4, RED, { p: [4 + k * 2.2, R * 1.45 - k * 0.3, 0], r: [0, 0, -0.5] }, 6);
     return b.geometry();
-  }), vcol(0.5), {}, true));
+  }), vcol(0.45), {}, true));
   return makeModel('dragon_head', root, () => {});
 }
 
@@ -604,7 +629,235 @@ function mineFrame(o = {}) {
   return makeModel('mine_frame', root, () => {});
 }
 
+function cheeseWedge() {
+  const root = new THREE.Group();
+  root.add(mesh(cached('rw2:wedge', () => {
+    const b = new Build();
+    const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(8, 0); sh.lineTo(0, 5); sh.lineTo(0, 0);
+    b.extrude(sh, 6, 0xffcf3a, { p: [-3, 0, 0] }, 0.3);
+    for (const [x, y, z, r] of [[-1, 1.5, 3.05, 0.8], [1.5, 1, 3.05, 0.5], [-2, 3, -3.05, 0.6], [0.5, 1.6, -3.05, 0.9], [-2.6, 1.2, 0, 0.7]]) b.sphere(r, 0xe8a82a, { p: [x, y, z], s: [1, 1, 0.3] }, 10, 6);
+    b.box(8.2, 0.3, 6.2, 0xffe08a, { p: [1, 0.15, 0] }, 0.05);
+    return b.geometry();
+  }), vcol(0.5), {}, true));
+  return makeModel('cheese_wedge', root, () => {});
+}
+
+function cheeseWheel() {
+  const root = new THREE.Group();
+  root.add(mesh(cached('rw2:wheel', () => {
+    const b = new Build();
+    b.cyl(1, 1, 0.9, (x, y, z) => (Math.abs(y) > 0.4 ? 0xffd85a : 0xf0a82a), { r: [0, 0, Math.PI / 2] }, 24);
+    for (let k = 0; k < 5; k++) b.sphere(0.12, 0xd89a2a, { p: [0.46, Math.cos(k * 1.3) * 0.6, Math.sin(k * 1.3) * 0.6], s: [0.3, 1, 1] }, 6, 4);
+    return b.geometry();
+  }), vcol(0.45), {}, true));
+  return makeModel('cheese_wheel', root, () => {});
+}
+
+function giantTree() {
+  const root = new THREE.Group();
+  root.add(mesh(cached('rw2:gtree', () => {
+    const b = new Build();
+    b.cyl(2.2, 3.4, 30, 0x7a5232, { p: [0, 15, 0] }, 12);
+    for (let k = 0; k < 5; k++) { const a = k * 1.26; b.cyl(0.5, 1.2, 4, 0x6a4428, { p: [Math.cos(a) * 3, 1, Math.sin(a) * 3], r: [Math.sin(a) * 0.6, 0, -Math.cos(a) * 0.6] }, 6); }
+    for (let k = 0; k < 7; k++) { const a = k * 0.9; b.sphere(7 + (k % 3), k % 2 ? 0x3f9a2a : 0x4fae34, { p: [Math.cos(a) * 6, 32 + (k % 3) * 2, Math.sin(a) * 6], s: [1, 0.6, 1] }, 12, 8); }
+    b.sphere(9, 0x4fb833, { p: [0, 37, 0], s: [1, 0.6, 1] }, 14, 8);
+    return b.geometry();
+  }), vcol(0.85), {}, true));
+  return makeModel('giant_tree', root, () => {});
+}
+
+function giantMushroom(o = {}) {
+  const C = o.color ?? 0xe8392d;
+  const root = new THREE.Group();
+  root.add(mesh(cached(`rw2:gmush:${C}`, () => {
+    const b = new Build();
+    b.cyl(1.4, 1.8, 10, 0xfaf0dc, { p: [0, 5, 0] }, 12);
+    b.dome(6, (x, y, z) => (Math.sin(x * 1.1) * Math.sin(z * 1.1) > 0.55 ? 0xffffff : C), { p: [0, 9.5, 0], s: [1, 0.6, 1] });
+    b.cyl(6, 6, 0.4, 0xf4e4c8, { p: [0, 9.5, 0] }, 24);
+    return b.geometry();
+  }), vcol(0.5), {}, true));
+  return makeModel('giant_mushroom', root, () => {});
+}
+
+function acacia() {
+  const root = new THREE.Group();
+  root.add(mesh(cached('rw2:acacia', () => {
+    const b = new Build();
+    b.cyl(0.35, 0.55, 6, 0x6a4a32, { p: [0, 3, 0], r: [0, 0, 0.12] }, 8);
+    for (const s of [1, -1]) b.cyl(0.2, 0.3, 3.4, 0x6a4a32, { p: [s * 1.2 + 0.4, 6.8, 0], r: [0, 0, -s * 0.7] }, 6);
+    b.sphere(5, 0x6a9a3a, { p: [0.4, 8.6, 0], s: [1, 0.25, 0.8] }, 16, 8);
+    b.sphere(3.4, 0x7aaa42, { p: [2.4, 8.9, 1], s: [1, 0.3, 1] }, 12, 6);
+    return b.geometry();
+  }), vcol(0.85), {}, true));
+  return makeModel('acacia', root, () => {});
+}
+
+function elephant() {
+  const root = new THREE.Group();
+  const body = joint([0, 0, 0]);
+  const G = 0x8a8a96;
+  body.add(mesh(cached('rw2:elephant', () => {
+    const b = new Build();
+    b.sphere(1, G, { p: [0, 2.4, 0], s: [2, 1.4, 1.3] }, 16, 10);
+    b.sphere(1, G, { p: [2.1, 3, 0], s: [0.9, 0.9, 0.85] }, 14, 10);
+    b.tube([[2.8, 2.8, 0], [3.4, 1.8, 0], [3.5, 0.8, 0], [3.8, 0.4, 0]], 0.25, G, {}, 12, 8);
+    for (const s of [1, -1]) {
+      b.sphere(1, 0x9a9aa8, { p: [1.8, 3.1, s * 0.95], s: [0.15, 1.1, 0.9] }, 10, 8);
+      b.cone(0.12, 1, 0xfaf6ee, { p: [2.9, 2.2, s * 0.35], r: [0, 0, -2] }, 6);
+      b.sphere(0.12, 0x1a1a1a, { p: [2.7, 3.3, s * 0.55] }, 6, 4);
+    }
+    b.cyl(0.05, 0.05, 1, G, { p: [-2.1, 2.2, 0], r: [0, 0, -0.5] }, 4);
+    return b.geometry();
+  }), vcol(0.8), {}, true));
+  const legG = cached('rw2:eleg', () => new Build().cyl(0.42, 0.45, 1.8, G, { p: [0, -0.9, 0] }, 10).geometry());
+  const legs = [[1.1, 0.6], [1.1, -0.6], [-1.1, 0.6], [-1.1, -0.6]].map(([x, z], i) => { const j = joint([x, 1.8, z], mesh(legG, vcol(0.8))); body.add(j); return [j, i]; });
+  root.add(body);
+  const clk = new Clock();
+  return makeModel('elephant', root, (dt, st) => {
+    const anim = st.anim ?? 'idle'; clk.tick(dt, anim);
+    if (anim === 'squashed') { body.scale.set(1.1, 0.6, 1.1); return; }
+    body.scale.setScalar(1);
+    const w = anim === 'walk' ? 1 : 0;
+    for (const [j, i] of legs) j.rotation.z = w * sin(clk.t * 3 + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.3;
+  });
+}
+
+function giraffe() {
+  const root = new THREE.Group();
+  root.add(mesh(cached('rw2:giraffe', () => {
+    const b = new Build();
+    const spot = (x, y, z) => (sin(x * 6) * sin(y * 6) * sin(z * 6 + 1) > 0.15 ? 0xa8642a : 0xf4c86a);
+    b.sphere(1, spot, { p: [0, 3.6, 0], s: [1.4, 0.8, 0.7] }, 14, 10);
+    b.cyl(0.25, 0.4, 4, spot, { p: [1.3, 5.8, 0], r: [0, 0, -0.35] }, 8);
+    b.box(1.3, 0.6, 0.55, 0xf4c86a, { p: [2.2, 7.8, 0] }, 0.2);
+    for (const s of [1, -1]) { b.cyl(0.06, 0.06, 0.5, 0x6a4a2a, { p: [2, 8.3, s * 0.15] }, 4); b.sphere(0.08, 0x1a1a1a, { p: [2.5, 7.95, s * 0.28] }, 6, 4); }
+    for (const [x, z] of [[0.8, 0.4], [0.8, -0.4], [-0.8, 0.4], [-0.8, -0.4]]) b.cyl(0.13, 0.13, 3.2, 0xf4c86a, { p: [x, 1.6, z] }, 6);
+    return b.geometry();
+  }), vcol(0.8), {}, true));
+  return makeModel('giraffe', root, () => {});
+}
+
+function bathtub() {
+  const root = new THREE.Group();
+  root.add(mesh(cached('rw2:tub', () => {
+    const b = new Build();
+    b.box(40, 14, 18, 0xfaf8f4, { p: [0, 9, 0] }, 4);
+    b.box(36, 2, 14, 0x8ad4f4, { p: [0, 15.2, 0] }, 1);
+    for (let k = 0; k < 14; k++) b.sphere(2 + (k % 3), 0xffffff, { p: [-16 + k * 2.6, 16.5, Math.sin(k * 1.7) * 4] }, 10, 8);
+    for (const [x, z] of [[-17, -7], [17, -7], [-17, 7], [17, 7]]) b.sphere(1.6, 0xd8b84a, { p: [x, 1.4, z], s: [1, 1.4, 1] }, 10, 8);
+    b.cyl(0.8, 0.8, 6, 0xc8c8d4, { p: [-21, 19, 0] }, 10);
+    b.cyl(0.6, 0.6, 5, 0xc8c8d4, { p: [-19, 22, 0], r: [0, 0, Math.PI / 2] }, 10);
+    return b.geometry();
+  }), vcol(0.2), {}, true));
+  return makeModel('bathtub', root, () => {});
+}
+
+function rubberDuck() {
+  const root = new THREE.Group();
+  const body = joint();
+  body.add(mesh(cached('rw2:duck', () => {
+    const b = new Build();
+    b.sphere(1, 0xffd21f, { p: [0, 0.7, 0], s: [1.2, 0.75, 0.9] }, 16, 10);
+    b.sphere(0.55, 0xffd21f, { p: [0.75, 1.5, 0] }, 14, 10);
+    b.sphere(0.3, 0xff8a1a, { p: [1.25, 1.42, 0], s: [1, 0.45, 0.9] }, 10, 6);
+    b.cone(0.3, 0.6, 0xffd21f, { p: [-1.2, 1.1, 0], r: [0, 0, 1.2] }, 8);
+    for (const s of [1, -1]) b.sphere(0.09, 0x1a1a1a, { p: [1.1, 1.68, s * 0.25] }, 6, 4);
+    return b.geometry();
+  }), vcol(0.25), {}, true));
+  root.add(body);
+  const clk = new Clock();
+  return makeModel('rubber_duck', root, (dt, st) => {
+    const anim = st.anim ?? 'idle'; clk.tick(dt, anim);
+    if (anim === 'squashed') { body.scale.set(1.2, 0.5, 1.2); return; }
+    body.scale.setScalar(1);
+    body.rotation.x = sin(clk.t * (anim === 'walk' ? 8 : 2)) * 0.15;
+  });
+}
+
+function soap(o = {}) {
+  const C = o.color ?? 0xff9ac8;
+  const root = new THREE.Group();
+  root.add(mesh(cached(`rw2:soap:${C}`, () => new Build().box(6, 2.2, 3.6, C, { p: [0, 1.1, 0] }, 1).geometry()), vcol(0.15), {}, true));
+  return makeModel('soap', root, () => {});
+}
+
+function toothbrush() {
+  const root = new THREE.Group();
+  root.add(mesh(cached('rw2:brush', () => {
+    const b = new Build();
+    b.cyl(2.2, 1.8, 6, 0x8ad4f4, { p: [0, 3, 0] }, 16, true);
+    b.cyl(0.35, 0.35, 14, 0x3a8ae8, { p: [0.6, 9, 0], r: [0, 0, -0.12] }, 8);
+    b.box(0.8, 2.6, 1, 0xfaf8f4, { p: [-0.2, 15.6, 0.6] }, 0.2);
+    b.cyl(0.35, 0.35, 12, 0xff5aa8, { p: [-0.6, 8.5, 0.6], r: [0.1, 0, 0.12] }, 8);
+    return b.geometry();
+  }), vcol(0.3), {}, true));
+  return makeModel('toothbrush', root, () => {});
+}
+
+/** Zahnrad (steht aufrecht, Achse entlang Z), dreht sich. */
+function gear(o = {}) {
+  const R = o.r ?? 6, C = o.color ?? 0xc8a03a, sp = o.speed ?? 0.4;
+  const root = new THREE.Group();
+  const g = mesh(cached(`rw2:gear:${R}:${C}`, () => {
+    const b = new Build();
+    const n = Math.max(8, Math.round(R * 2));
+    b.cyl(R, R, 1.2, C, { r: [Math.PI / 2, 0, 0] }, 32);
+    for (let k = 0; k < n; k++) { const a = (k / n) * Math.PI * 2; b.box(1.2, R * 0.25, 1.2, C, { p: [Math.cos(a) * R, Math.sin(a) * R, 0], r: [0, 0, a + Math.PI / 2] }, 0.05); }
+    b.cyl(R * 0.3, R * 0.3, 1.6, 0x6a5a3a, { r: [Math.PI / 2, 0, 0] }, 16);
+    for (let k = 0; k < 4; k++) b.box(R * 0.12, R * 1.3, 0.8, 0x8a7a4a, { r: [0, 0, (k * Math.PI) / 4] }, 0.05);
+    return b.geometry();
+  }), new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.7, roughness: 0.35 }), {}, true);
+  g.position.y = R + 0.5;
+  root.add(g);
+  return makeModel('gear', root, (dt) => { g.rotation.z += dt * sp; });
+}
+
+function clockFace(o = {}) {
+  const R = o.r ?? 10;
+  const root = new THREE.Group();
+  root.add(mesh(cached(`rw2:clock:${R}`, () => {
+    const b = new Build();
+    b.cyl(R, R, 1, 0xfaf4e4, { r: [Math.PI / 2, 0, 0] }, 40);
+    b.torus(R, 0.6, 0xc8a03a, {}, 8, 40);
+    for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; b.box(0.5, k % 3 ? 1.2 : 2.2, 0.3, 0x2a2a34, { p: [Math.sin(a) * R * 0.85, Math.cos(a) * R * 0.85, 0.6], r: [0, 0, -a] }, 0.02); }
+    return b.geometry();
+  }), vcol(0.4), {}, true));
+  const hand = (len, w, c) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, len, 0.3).translate(0, len / 2, 0), new THREE.MeshStandardMaterial({ color: c, metalness: 0.5, roughness: 0.4 })); m.position.z = 0.9; root.add(m); return m; };
+  const hh = hand(R * 0.5, 0.8, 0x2a2a34), mh = hand(R * 0.8, 0.5, 0x2a2a34);
+  let t = Math.random() * 10;
+  return makeModel('clock_face', root, (dt) => { t += dt; mh.rotation.z = -t * 0.6; hh.rotation.z = -t * 0.05; }, [hh.geometry, hh.material, mh.geometry, mh.material]);
+}
+
+function clockTower() {
+  const root = new THREE.Group();
+  root.add(mesh(cached('rw2:ctower', () => {
+    const b = new Build();
+    b.box(10, 44, 10, 0xc8b89a, { p: [0, 22, 0] }, 0.2);
+    for (let y = 8; y < 40; y += 6) b.box(10.4, 0.6, 10.4, 0xa89878, { p: [0, y, 0] }, 0.05);
+    b.box(11, 10, 11, 0xb8a888, { p: [0, 49, 0] }, 0.2);
+    b.cone(8, 16, 0x3a5a4a, { p: [0, 62, 0], r: [0, Math.PI / 4, 0] }, 4);
+    for (let k = 0; k < 4; k++) { const a = (k * Math.PI) / 2; b.cyl(3.6, 3.6, 0.4, 0xfaf4e4, { p: [Math.cos(a) * 5.6, 49, Math.sin(a) * 5.6], r: [Math.PI / 2, 0, -a + Math.PI / 2] }, 24); }
+    return b.geometry();
+  }), vcol(0.7), {}, true));
+  return makeModel('clock_tower', root, () => {});
+}
+
+function tvTower() {
+  const root = new THREE.Group();
+  root.add(mesh(cached('rw2:tvtower', () => {
+    const b = new Build();
+    b.cyl(2, 4, 80, 0xd8d8e0, { p: [0, 40, 0] }, 16);
+    b.sphere(8, 0xc0c4d0, { p: [0, 84, 0] }, 24, 16);
+    b.torus(8.05, 0.5, 0x3a8ae8, { p: [0, 84, 0], r: [Math.PI / 2, 0, 0] }, 6, 32);
+    b.cyl(0.6, 1, 26, 0xe8392d, { p: [0, 104, 0] }, 8);
+    return b.geometry();
+  }), vcol(0.3), {}, true));
+  return makeModel('tv_tower', root, () => {});
+}
+
 export const MODELS = {
+  cheese_wedge: cheeseWedge, cheese_wheel: cheeseWheel, giant_tree: giantTree, giant_mushroom: giantMushroom, acacia, elephant, giraffe,
+  bathtub, rubber_duck: rubberDuck, soap, toothbrush, gear, clock_face: clockFace, clock_tower: clockTower, tv_tower: tvTower,
   torii, pagoda, bamboo, stone_lantern: stoneLantern, great_wall: greatWall, wall_tower: wallTower, dragon_head: dragonHead,
   hover_car: hoverCar, sky_tower: skyTower, gold_pile: goldPile, mine_frame: mineFrame,
   rock_pillar: rockPillar, giant_egg: giantEgg, igloo, ice_arch: iceArch, giant_drum: giantDrum, trumpet, music_note: musicNote, guitar,
