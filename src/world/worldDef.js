@@ -150,6 +150,7 @@ export const WORLD_CUPS = [
   { id: 'glocke', name: 'Glocken-Cup', tracks: ['abendsteppe', 'badezimmer', 'uhrwerk', 'stadtrundfahrt'] },
   { id: 'turbo', name: 'Turbo-Cup', tracks: ['einkaufszentrum', 'schokoberg', 'pilzschlucht', 'flipperhalle'] },
   { id: 'pfote', name: 'Pfoten-Cup', tracks: ['zugwueste', 'spukteich', 'kreuzfahrt', 'weihnachtsberg'] },
+  { id: 'ruebe', name: 'Rüben-Cup', tracks: ['grachtenstadt', 'tempelstadt', 'saeulenstadt', 'spielzimmer'] },
   // Bonus: eigene Wünsche (Teneriffa, Loro Parque)
   { id: 'kanaren', name: 'Kanaren-Cup', tracks: ['loroparque', 'teneriffa', 'hafenstadt', 'palmenstrand'] },
 ];

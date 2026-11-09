@@ -37,6 +37,10 @@ import zugwueste from './zugwueste.js';
 import spukteich from './spukteich.js';
 import kreuzfahrt from './kreuzfahrt.js';
 import weihnachtsberg from './weihnachtsberg.js';
+import grachtenstadt from './grachtenstadt.js';
+import tempelstadt from './tempelstadt.js';
+import saeulenstadt from './saeulenstadt.js';
+import spielzimmer from './spielzimmer.js';
 import kuhweide from './kuhweide.js';
 import musikpark from './musikpark.js';
 import nachtautobahn from './nachtautobahn.js';
@@ -46,5 +50,5 @@ import arena from './arena.js';
 import schlossring from './schlossring.js';
 import schlucht from './schlucht.js';
 
-export const TRACKS = [kartstadion, seepark, zuckerschlucht, tempelruinen, blumenring, hafenstadt, spukvilla, schlucht, flughafen, delfinlagune, discohalle, gipfelabfahrt, kuhweide, palmenstrand, nachtautobahn, schlossring, arena, eissee, musikpark, felsental, wolkenstrasse, knochenduenen, lavafestung, sternenbahn, kirschbluete, drachenmauer, neonmetropole, goldmine, babypark, kaeseland, baumwipfel, jahreszeiten, abendsteppe, badezimmer, uhrwerk, stadtrundfahrt, einkaufszentrum, schokoberg, pilzschlucht, flipperhalle, zugwueste, spukteich, kreuzfahrt, weihnachtsberg, loroparque, teneriffa];
+export const TRACKS = [kartstadion, seepark, zuckerschlucht, tempelruinen, blumenring, hafenstadt, spukvilla, schlucht, flughafen, delfinlagune, discohalle, gipfelabfahrt, kuhweide, palmenstrand, nachtautobahn, schlossring, arena, eissee, musikpark, felsental, wolkenstrasse, knochenduenen, lavafestung, sternenbahn, kirschbluete, drachenmauer, neonmetropole, goldmine, babypark, kaeseland, baumwipfel, jahreszeiten, abendsteppe, badezimmer, uhrwerk, stadtrundfahrt, einkaufszentrum, schokoberg, pilzschlucht, flipperhalle, zugwueste, spukteich, kreuzfahrt, weihnachtsberg, grachtenstadt, tempelstadt, saeulenstadt, spielzimmer, loroparque, teneriffa];
 export const TRACK_BY_ID = Object.fromEntries(TRACKS.map((t) => [t.id, t]));

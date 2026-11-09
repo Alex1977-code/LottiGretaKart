@@ -697,5 +697,42 @@ const CRUISE = {
   bridge: 0xfaf8f4, bridgePillar: 0xe8e4dc, bridgeTop: 0xb8885a, bridgeTop2: 0xb08254,
 };
 
-export const THEMES = { western: WESTERN, boolake: BOOLAKE, cruise: CRUISE, mall: MALL, choco: CHOCO, shroom: SHROOM, pinball: PINBALL, cheese: CHEESE, treetop: TREETOP, savanna: SAVANNA, bathroom: BATHROOM, clockwork: CLOCKWORK, town: TOWN, blossom: BLOSSOM, greatwall: GREATWALL, future: FUTURE, mine: MINE, frozen: FROZEN, icesheet: ICESHEET, music: MUSIC, valley: VALLEY, farm: FARM, skyway: SKYWAY, dunes: DUNES, lavafort: LAVAFORT, space: SPACE, airport: AIRPORT, disco: DISCO, park: PARK, sweets: SWEETS, ruins: RUINS, stadium: STADIUM, canyon: CANYON, royal: ROYAL, arena: ARENA, harbor: HARBOR, tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
+// Grachtenstadt: Backsteinrot, Grachtengrün, Tulpenfarben.
+const CANAL = {
+  ...GRASS,
+  label: 'Grachtenstadt',
+  offroad: 0xb8a898, offroad2: 0xaea090,
+  road: 0x8a8088, road2: 0x847a82, line: 0xffffff, curbA: 0xe8392d, curbB: 0xfaf8f4,
+  wallA: 0x5a3a2a, wallB: 0x4a2e22, wallTop: 0xff8a1a, wallH: 0.8,
+  bridge: 0xb8482a, bridgePillar: 0x8a3a2a, bridgeTop: 0x8a8088, bridgeTop2: 0x847a82,
+};
+// Tempelstadt: Abendlicht, Tempelgold, Rot, Jadegrün.
+const TEMPLECITY = {
+  ...CITY,
+  label: 'Tempelstadt',
+  city: [0x8a7a6a, 0xa89a8a, 0x6a6a7a, 0xb8a888, 0x7a6a5a], cityWindow: 0xffd88a,
+  grass: 0x4fae3a, grass2: 0x46a234,
+  road: 0x6a6878, road2: 0x646272, curbA: 0xffc21a, curbB: 0xd8281e,
+  wallA: 0xd8dce4, wallB: 0xd8281e, wallTop: 0xffc21a, wallH: 0.9,
+};
+// Säulenstadt: Marmorweiß, Terrakotta, Olivgrün, Ägäisblau.
+const ANCIENT = {
+  ...BEACH,
+  label: 'Säulenstadt',
+  rock: 0xe8e0d0,
+  grass: 0x9aae5a, grass2: 0x8ea252, grassFar: 0x7e9248, offroad: 0xe0d4b8, offroad2: 0xd6caae,
+  road: 0xd8ccb4, road2: 0xd0c4ac, line: 0x3a7ae8, curbA: 0x3a7ae8, curbB: 0xfaf8f4,
+  wallA: 0xf2ece0, wallB: 0xc85a3a, wallTop: 0x3a7ae8, wallH: 0.9,
+};
+// Spielzimmer (Innenraum): Teppich, Holzboden, Pastell.
+const PLAYROOM = {
+  ...BATHROOM,
+  label: 'Spielzimmer',
+  rock: 0xd8b88a,
+  grass: 0xd8a870, grass2: 0xcc9c66, grassFar: 0xc8986a, offroad: 0x8acaf0, offroad2: 0x7ec0e8,
+  road: 0x5ab0e8, road2: 0x54a8e0, line: 0xffffff, curbA: 0xffd23a, curbB: 0xe8392d,
+  wallA: 0xe8392d, wallB: 0x3a8ae8, wallTop: 0xffd23a, wallH: 0.8,
+};
+
+export const THEMES = { canal: CANAL, templecity: TEMPLECITY, ancient: ANCIENT, playroom: PLAYROOM, western: WESTERN, boolake: BOOLAKE, cruise: CRUISE, mall: MALL, choco: CHOCO, shroom: SHROOM, pinball: PINBALL, cheese: CHEESE, treetop: TREETOP, savanna: SAVANNA, bathroom: BATHROOM, clockwork: CLOCKWORK, town: TOWN, blossom: BLOSSOM, greatwall: GREATWALL, future: FUTURE, mine: MINE, frozen: FROZEN, icesheet: ICESHEET, music: MUSIC, valley: VALLEY, farm: FARM, skyway: SKYWAY, dunes: DUNES, lavafort: LAVAFORT, space: SPACE, airport: AIRPORT, disco: DISCO, park: PARK, sweets: SWEETS, ruins: RUINS, stadium: STADIUM, canyon: CANYON, royal: ROYAL, arena: ARENA, harbor: HARBOR, tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
 export const getTheme = (n) => THEMES[n] ?? GRASS;
