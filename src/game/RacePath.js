@@ -32,6 +32,7 @@ export class RacePath {
     this.hw = new Float32Array(N); this.curv = new Float32Array(N); this.py = new Float32Array(N);
     this.lift = new Float32Array(N);   // > 0: Brücke (py = Deckhöhe)
     this.ag = new Uint8Array(N);       // 1: Anti-Gravitation
+    this.key = new Int16Array(N);      // Klaviertaste (−1: keine)
     const pts = curve.getSpacedPoints(N - 1);
     // Breite: vom nächsten Originalpunkt (gleicher Anteil entlang der Linie)
     const polyLen = points.reduce((a, p, k) => a + (k ? Math.hypot(p.x - points[k - 1].x, p.z - points[k - 1].z) : 0), 0);
@@ -47,6 +48,7 @@ export class RacePath {
       this.hw[i] = points[j].hw;
       this.lift[i] = points[j].lift ?? 0;
       this.ag[i] = points[j].ag ?? 0;
+      this.key[i] = points[j].key ?? -1;
       this.py[i] = this.lift[i] > 0.05 ? world.groundAt(p.x, p.z, points[j].y + 0.5) : world.heightAt(p.x, p.z);
     }
     for (let i = 0; i < N; i++) {
@@ -131,7 +133,7 @@ export class RacePath {
     const tr = course.track, N = tr.N;
     let i = a, guard = 0;
     while (guard++ < N * 2) {
-      pts.push({ x: tr.px[i], z: tr.pz[i], hw: tr.hw[i], y: tr.py[i], lift: tr.hasLift ? tr.lift[i] : 0, ag: tr.ag ? tr.ag[i] : 0 });
+      pts.push({ x: tr.px[i], z: tr.pz[i], hw: tr.hw[i], y: tr.py[i], lift: tr.hasLift ? tr.lift[i] : 0, ag: tr.ag ? tr.ag[i] : 0, key: tr.keys ? tr.keys[i] : -1 });
       if (i === b) break;
       i = (i + 1) % N;
       if (i === 0) onFinishLine?.(pts);

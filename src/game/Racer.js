@@ -185,6 +185,7 @@ export class Racer {
     let top = P.top * (1 + 0.006 * this.coins) * (this.race.rubber?.(this) ?? 1);
     if (offroad && this.boostT <= 0 && this.starT <= 0) top *= P.offroad;
     if (onWater && this.boostT <= 0) top *= 0.9;
+    if (surface === 'mud' && !this.air && this.boostT <= 0 && this.starT <= 0) top *= 0.5;   // Matsch, Treibsand
     if (this.boostT > 0) top *= 1.34;
     if (this.starT > 0) top *= 1.16;
     if (this.giantT > 0) top *= 1.1;
@@ -303,7 +304,9 @@ export class Racer {
     const rx = -fz, rz = fx; // rechts
     // Drift: Kart rutscht nach außen – weniger, wenn nach außen gelenkt wird (es fährt dann mehr dorthin, wohin es zeigt)
     const slide = d.on ? -d.dir * Math.abs(this.speed) * (0.08 + 0.025 * clamp(d.s ?? 0, -1, 1)) : 0;
-    this.vlat = damp(this.vlat, slide, d.on ? 4 : P.grip, dt);
+    // Eis (rutschig): das Kart schiebt lange seitlich weiter
+    const ice = this.race.ice && !this.air && surface === 'road' ? 0.3 : 1;
+    this.vlat = damp(this.vlat, slide, (d.on ? 4 : P.grip) * ice, dt);
     if (!this.grind) {
       this.pos.x += (fx * this.speed + rx * this.vlat) * dt;
       this.pos.z += (fz * this.speed + rz * this.vlat) * dt;

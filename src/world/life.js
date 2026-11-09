@@ -36,7 +36,7 @@ export class IslandLife {
     // Strecken-Welt: Boote kreisen um die Strecke (nur auf dem Wasser sichtbar)
     const c = world.def.center, is = c ? { cx: c.x, cz: c.z, rx: c.r, rz: c.r } : world.def.island;
     const sails = [[0xffffff, 0xe8392d], [0xfff4d8, 0x2a7ad8], [0xffffff, 0x3aa84a], [0xffe8a8, 0xff8a1a], [0xffffff, 0x8a3ab8]];
-    const nb = quality >= 2 ? 9 : 4;
+    const nb = world.def.noWater ? 0 : quality >= 2 ? 9 : 4;
     for (let k = 0; k < nb; k++) {
       const [sc, st] = sails[k % sails.length];
       const m = new THREE.Mesh(boatGeo(sc, st), vcol(0.5, { side: THREE.DoubleSide }, 'boat'));

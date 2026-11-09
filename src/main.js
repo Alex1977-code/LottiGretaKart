@@ -193,6 +193,12 @@ ctx.loadCourse = (id) => {
   const p = (async () => {
     if (pending) await pending.p.catch(() => {});
     if (ctx.courseId === id) return;
+    // Jahreszeiten-Strecke: bei jedem Laden eine zufällige Jahreszeit (Thema und Wetter wechseln)
+    const td = TRACK_BY_ID[id];
+    if (td?.seasons) {
+      const keys = Object.keys(td.seasons), season = keys[Math.floor(Math.random() * keys.length)];
+      Object.assign(td, { season, theme: td.seasons[season].theme, weather: td.seasons[season].weather ?? 'sun' });
+    }
     const def = courseWorldDef(id);
     loading.classList.remove('done');
     setProgress(0.03, `${def.name} wird geladen …`);

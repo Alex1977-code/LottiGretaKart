@@ -19,7 +19,7 @@ import { hostSnapshot, applyRemote, guestState, guestApply, guestPuppets } from 
 import { SPARK_COLORS } from './kartModel.js';
 import { getModel } from '../lgw/course/models/index.js';
 import { getTheme } from '../world/themes.js';
-import { resolveTime, nightTheme, duskTheme, applyNightGlow, GroundLights } from '../world/night.js';
+import { resolveTime, getTimeSetting, nightTheme, duskTheme, applyNightGlow, GroundLights } from '../world/night.js';
 import { resolveWeather, weatherTheme, WeatherFx, setRoadWetness } from '../world/weather.js';
 
 const SIDES = [-1, 1];
@@ -47,6 +47,8 @@ function mulberry(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+const PIANO = [523, 587, 659, 698, 784, 880, 988, 1047, 988, 880, 784, 698, 659, 587];
 
 export class Race {
   /**
@@ -86,7 +88,7 @@ export class Race {
 
     // Rennpfad
     const w = this.world;
-    this.track = RacePath.forCourse(w, o.courseId, o.laps ?? 3);
+    this.track = RacePath.forCourse(w, o.courseId, w.courseById[o.courseId]?.def.laps ?? o.laps ?? 3);
     this.laps = this.track?.laps ?? 1;
     this.course = w.courseById[o.courseId ?? this.track?.courseId] ?? w.courses[0];
     this.def = this.course.def;
@@ -94,7 +96,8 @@ export class Race {
     this.label = this.track.label;
     // Nacht: Strecke (oder Einstellung) bestimmt es; Laternen, Scheinwerfer, stärkeres Leuchten
     // Tageszeit: wie die Strecke es vorsieht (oder Einstellung); nachts Laternen, Scheinwerfer, stärkeres Leuchten
-    this.daytime = o.daytime ?? (o.night !== undefined ? (o.night ? 'night' : 'day') : resolveTime(this.def));
+    this.daytime = o.daytime ?? (o.night !== undefined ? (o.night ? 'night' : 'day') : this.def.timeByLap && getTimeSetting() === 'auto' ? this.def.timeByLap[0] : resolveTime(this.def));
+    this.ice = !!this.def.ice;
     this.night = this.daytime === 'night';
     this.dusk = this.daytime === 'dusk';
     app.post?.setNight(this.night ? 1 : this.dusk ? 0.3 : 0);
@@ -236,7 +239,7 @@ export class Race {
       const s = tr.startS - 5 - row * 4.2 - (k % 2) * 1.6;
       const p0 = tr.pointAtS(s, 0);
       const p = tr.pointAtS(s, side * Math.min(2.6, p0.hw * 0.4));
-      r.placeAt(p.x, p.z, p.yaw, p.i);
+      r.placeAt(p.x, p.z, p.yaw, p.i, p.y);   // (Höhe des Pfads: auf Brücken und Wolkenwegen das Deck)
       r.updateProgress(r.loc);
     });
   }
@@ -277,6 +280,11 @@ export class Race {
   }
 
   onLap(r) {
+    // Tageszeit wechselt mit den Runden (wie der Sonnenuntergang über die Runden): nach der vordersten Spielerin
+    if (r.isPlayer && this.def.timeByLap && getTimeSetting() === 'auto' && r.lap <= this.laps) {
+      const want = this.def.timeByLap[Math.min(this.def.timeByLap.length - 1, r.lap - 1)];
+      if (want !== this.daytime) this.setDaytime(want);
+    }
     if (!r.isPlayer || r.lap > this.laps) return;
     const hud = this.hudOf(r);
     if (r.lap === this.laps && this.laps > 1) {
@@ -287,6 +295,17 @@ export class Race {
       hud?.message(`${this.track.sections ? 'ABSCHNITT' : 'RUNDE'} ${r.lap}`, 1.4);
       this.audio.sfx('checkpoint');
     }
+  }
+
+  /** Tageszeit während des Rennens wechseln (Himmel, Licht, Leuchten, Laternen blenden über). */
+  setDaytime(t) {
+    this.daytime = t;
+    this.night = t === 'night';
+    this.dusk = t === 'dusk';
+    this.app.post?.setNight(this.night ? 1 : this.dusk ? 0.3 : 0);
+    applyNightGlow(this.night);
+    if (this.app.worldView?.nightLamps) this.app.worldView.nightLamps.visible = this.night;
+    this.ambT = 0;
   }
 
   finishRacer(r) {
@@ -415,6 +434,12 @@ export class Race {
       }
     }
     if (this.netGuest) guestPuppets(this, dt);
+    // Klaviertasten: die eigenen Karts spielen beim Überfahren Töne (Dur-Tonleiter)
+    for (const h of this.locals) {
+      const k = h.path?.key?.[h.loc.i] ?? -1;
+      if (k >= 0 && k !== h.lastKey && !h.air) this.audio.beep(PIANO[k % PIANO.length], 0.16, 0.12);
+      h.lastKey = k;
+    }
     if (running) {
       this.rescue(dt);
       this.collide();
@@ -528,6 +553,8 @@ export class Race {
       const rs = r.rescueState ?? (r.rescueState = { best: r.progress, t: 0, sea: 0 });
       rs.sea = r.surface === 'sea' || r.surface === 'lava' ? rs.sea + dt : 0;   // Meer oder Lava: zurücksetzen
       let need = rs.sea > 0.6;
+      // von der Bahn gefallen (ohne Leitplanken, Regenbogenbahn, Wolken): gleich zurück
+      if (!need && r.path && !r.cannon && r.path.py[r.loc.i] - r.pos.y > 9) { rs.fall = (rs.fall ?? 0) + dt; need = rs.fall > 0.4; } else rs.fall = 0;
       if (!need && r.path) {
         if (r.progress > rs.best + 4 || (r.isPlayer && !r.trying)) { rs.best = Math.max(rs.best, r.progress); rs.t = 0; continue; }
         rs.t += dt;

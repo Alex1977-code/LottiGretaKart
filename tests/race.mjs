@@ -30,7 +30,7 @@ const CASES = [
   { id: 'mp-4-gp', q: 'mode=gp&race=flughafen&laps=1&players=pflaume:pad0,bulle:pad1,kobold:kb1,baron:kb2', rows: 12 },
   { id: 'nacht-kartstadion', q: 'race=kartstadion&laps=1&racer=greta&night=1', rows: 12 },
   { id: 'regen-seepark', q: 'race=seepark&laps=1&racer=lotti&weather=rain', rows: 12 },
-  { id: 'calima-wueste', q: 'race=wueste&laps=1&racer=greta&weather=calima&night=1', rows: 12 },
+  { id: 'calima-knochenduenen', q: 'race=knochenduenen&laps=1&racer=greta&weather=calima&night=1', rows: 12 },
 ].filter((c) => !only || c.id === only);
 const browser = await pw.chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 let failed = 0;

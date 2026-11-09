@@ -25,6 +25,15 @@
 // speaker_tower Boxenturm mit pulsierenden Lautsprechern (Disco-Halle)
 // disco_ball    Discokugel, dreht sich und glitzert
 // light_beam    farbiger Scheinwerferkegel, schwenkt (opts.color)
+// cloud_puff    große Wolke aus weichen Kugeln (opts { r, dark: Gewitterwolke mit Blitzen })
+// airship       Luftschiff: Ballonhülle, Gondel, drehende Propeller
+// ribcage       riesiger Brustkorb aus Knochen als Bogen über der Fahrbahn (Durchfahrt entlang X)
+// skull         riesiger Schädel im Sand
+// fort_tower    Turm der Lavafestung mit Zinnen und Fackeln
+// fort_gate     Tor der Lavafestung zum Durchfahren (opts.width)
+// dragon_statue steinerne Drachenstatue mit glühenden Augen
+// planet        Planet mit Ring (opts { r, color, ring })
+// space_station Raumstation: Ring mit Modulen und Solarflügeln, dreht sich
 
 import * as THREE from 'three';
 import { Build, mesh, vcol, basic, cached, joint, makeModel, canvasTexture } from '../lib/kit.js';
@@ -596,6 +605,163 @@ function lightBeam(o = {}) {
   return makeModel('light_beam', root, (dt) => { t += dt; pivot.rotation.set(Math.sin(t * 0.7) * 0.5, 0, Math.cos(t * 0.53) * 0.5); });
 }
 
+/** Große Wolke aus weichen Kugeln; dark: dunkle Gewitterwolke, in der es ab und zu blitzt. */
+function cloudPuff(o = {}) {
+  const R = o.r ?? 10, dark = !!o.dark;
+  const root = new THREE.Group();
+  root.add(mesh(cached(`rw:cloud:${R}:${dark}`, () => {
+    const b = new Build();
+    const c = dark ? 0x5a5a72 : 0xffffff, c2 = dark ? 0x4a4a62 : 0xf0f4fa;
+    for (let k = 0; k < 9; k++) { const a = k * 0.7; b.sphere(R * (0.45 + (k % 3) * 0.15), k % 2 ? c : c2, { p: [Math.cos(a) * R * 0.7, (k % 3) * R * 0.15, Math.sin(a) * R * 0.5], s: [1.2, 0.75, 1] }, 14, 10); }
+    return b.geometry();
+  }), vcol(0.95, { emissive: dark ? 0x000000 : 0x3a3a44 }, dark ? 'cloud-dark' : 'cloud'), {}, false));
+  // Blitz: die Gewitterwolke leuchtet kurz auf (Leuchtfarbe statt Licht – sonst müssten alle Shader neu übersetzt werden)
+  const mat = root.children[0].material;
+  let t = Math.random() * 5;
+  return makeModel('cloud_puff', root, (dt) => { if (!dark) return; t += dt; const p = t % 4.3; mat.emissive.setHex(p < 0.08 || (p > 0.18 && p < 0.24) ? 0xb8c8ff : 0x000000); });
+}
+
+/** Luftschiff: Ballonhülle entlang X, Gondel, Leitwerk, Propeller drehen sich. */
+function airship(o = {}) {
+  const C = o.color ?? 0xe8392d;
+  const root = new THREE.Group();
+  root.add(mesh(cached(`rw:airship:${C}`, () => {
+    const b = new Build();
+    b.sphere(6, C, { p: [0, 10, 0], s: [3, 1, 1] }, 24, 14);
+    for (let k = -2; k <= 2; k++) b.add(new THREE.TorusGeometry(6.05, 0.2, 6, 32), 0xffc21a, { p: [k * 4, 10, 0], r: [0, Math.PI / 2, 0], s: [1, 1, 1] });
+    b.box(16, 3, 5, 0x8a5a32, { p: [0, 2.5, 0] }, 0.4);
+    b.box(14, 0.4, 5.6, 0xc8a070, { p: [0, 4.2, 0] }, 0.1);
+    for (const s of [-1, 1]) { b.box(3, 0.3, 4, C, { p: [-17, 10, s * 2.5] }, 0.1); b.box(0.3, 4, 0.3, 0x5a3a22, { p: [s * 5, 6, 0] }, 0.05); }
+    b.box(3, 4, 0.3, C, { p: [-17, 12, 0] }, 0.1);
+    return b.geometry();
+  }), vcol(0.55), {}, true));
+  const props = [];
+  for (const s of [-1, 1]) {
+    const p = new THREE.Group(); p.position.set(-8.5, 2.5, s * 3.2);
+    p.add(mesh(cached('rw:prop', () => new Build().box(0.2, 3.2, 0.5, 0x3a3a44, {}, 0.05).box(0.2, 0.5, 3.2, 0x3a3a44, {}, 0.05).geometry()), vcol(0.5)));
+    root.add(p); props.push(p);
+  }
+  let t = Math.random() * 10;
+  return makeModel('airship', root, (dt) => { t += dt; for (const p of props) p.rotation.x += dt * 12; root.children[0].position.y = Math.sin(t * 0.8) * 0.4; });
+}
+
+/** Brustkorb-Bogen aus Knochen (Durchfahrt entlang X). */
+function ribcage(o = {}) {
+  const W = o.width ?? 24;
+  const root = new THREE.Group();
+  root.add(mesh(cached(`rw:ribs:${W}`, () => {
+    const b = new Build();
+    const bone = 0xf2ead8;
+    b.cyl(1, 1, 30, bone, { p: [0, W * 0.55, 0], r: [0, 0, Math.PI / 2] }, 10);   // Wirbelsäule oben
+    for (let k = -3; k <= 3; k++) {
+      const x = k * 4;
+      for (const s of [-1, 1]) {
+        const pts = [];
+        for (let q = 0; q <= 10; q++) { const a = (q / 10) * Math.PI * 0.55; pts.push([x, W * 0.55 - Math.sin(a) * W * 0.55, s * Math.sin(a + 0.4) * (W / 2 + 1) * (q ? 1 : 0.1)]); }
+        b.tube(pts, 0.7, bone, {}, 16, 8);
+      }
+    }
+    return b.geometry();
+  }), vcol(0.6), {}, true));
+  return makeModel('ribcage', root, () => {});
+}
+
+/** Riesiger Schädel (blickt nach +X). */
+function skull() {
+  const root = new THREE.Group();
+  root.add(mesh(cached('rw:skull', () => {
+    const b = new Build();
+    const bone = 0xf2ead8;
+    b.sphere(6, bone, { p: [0, 6, 0], s: [1.1, 0.95, 1] }, 20, 14);
+    b.box(6, 3, 7, bone, { p: [3, 2, 0] }, 1);
+    for (const z of [-2.2, 2.2]) b.sphere(1.6, 0x2a1e1a, { p: [5.4, 6.2, z], s: [0.5, 1, 1] }, 12, 8);
+    b.cone(0.9, 1.4, 0x2a1e1a, { p: [6.4, 3.8, 0], r: [0, 0, -Math.PI / 2 - 0.2] }, 6);
+    for (let k = -3; k <= 3; k++) b.box(0.7, 1.4, 0.8, 0xffffff, { p: [5.8, 1.2, k * 0.95] }, 0.1);
+    return b.geometry();
+  }), vcol(0.6), {}, true));
+  return makeModel('skull', root, () => {});
+}
+
+/** Festungsturm aus dunklem Stein mit Zinnen, Spitzdach und Fackeln (leuchten). */
+function fortTower(o = {}) {
+  const H = o.h ?? 22;
+  const root = new THREE.Group();
+  root.add(mesh(cached(`rw:ftower:${H}`, () => {
+    const b = new Build();
+    b.cyl(4.2, 4.8, H, 0x3a3238, { p: [0, H / 2, 0] }, 12);
+    for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2; b.box(1.4, 1.6, 1.2, 0x2a2428, { p: [Math.cos(a) * 4.2, H + 0.8, Math.sin(a) * 4.2], r: [0, -a, 0] }, 0.05); }
+    b.cone(4.6, 7, 0x8a1a1a, { p: [0, H + 4.6, 0] }, 12);
+    for (const y of [H * 0.4, H * 0.7]) b.box(0.4, 2, 1.2, 0xffa030, { p: [4.5, y, 0] }, 0.1);
+    return b.geometry();
+  }), vcol(0.85), {}, true));
+  const fire = basic('rw:fire', { color: new THREE.Color(3, 1.2, 0.3) });
+  for (const s of [-1, 1]) { const f = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 6), fire); f.position.set(5, 4, s * 2.2); root.add(f); }
+  return makeModel('fort_tower', root, () => {});
+}
+
+/** Festungstor zum Durchfahren: zwei Türme, Sturz mit Fallgitter, Feuerschalen (Durchfahrt entlang X). */
+function fortGate(o = {}) {
+  const W = o.width ?? 22;
+  const root = new THREE.Group();
+  root.add(mesh(cached(`rw:fgate:${W}`, () => {
+    const b = new Build();
+    for (const s of [-1, 1]) { b.box(6, 16, 6, 0x3a3238, { p: [0, 8, s * (W / 2 + 3)] }, 0.2); b.cone(4.4, 6, 0x8a1a1a, { p: [0, 19, s * (W / 2 + 3)] }, 4); }
+    b.box(6, 5, W + 12, 0x2e282c, { p: [0, 14, 0] }, 0.2);
+    for (let k = -5; k <= 5; k++) b.box(0.3, 3, 0.3, 0x1a1a1e, { p: [3.1, 10.6, k * (W / 11)] }, 0.02);
+    b.box(0.6, 3, 4, 0x8a1a1a, { p: [3.2, 14, 0] }, 0.1);
+    return b.geometry();
+  }), vcol(0.85), {}, true));
+  return makeModel('fort_gate', root, () => {});
+}
+
+/** Steinerne Drachenstatue: Kopf mit Hörnern, glühende Augen und Maul (blickt nach +X). */
+function dragonStatue() {
+  const root = new THREE.Group();
+  root.add(mesh(cached('rw:dstatue', () => {
+    const b = new Build();
+    const st = 0x5a5258;
+    b.box(10, 6, 10, 0x3a3238, { p: [0, 3, 0] }, 0.3);
+    b.sphere(6, st, { p: [0, 13, 0], s: [1.1, 1.3, 1] }, 16, 12);
+    b.box(7, 4, 6, st, { p: [5, 13, 0] }, 1);
+    for (const z of [-3, 3]) b.cone(1.2, 6, 0xd8c8a0, { p: [-2, 20, z], r: [z * 0.08, 0, 0.5] }, 8);
+    b.box(1, 1, 6.2, 0x2a1e1a, { p: [8.6, 11.6, 0] }, 0.2);
+    return b.geometry();
+  }), vcol(0.8), {}, true));
+  const glow = basic('rw:dragon:eye', { color: new THREE.Color(4, 1, 0.2) });
+  for (const z of [-2.2, 2.2]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.7, 10, 8), glow); e.position.set(7.4, 15, z); root.add(e); }
+  return makeModel('dragon_statue', root, () => {});
+}
+
+/** Planet mit Ring. */
+function planet(o = {}) {
+  const R = o.r ?? 40, C = o.color ?? 0xd8a060;
+  const root = new THREE.Group();
+  root.add(new THREE.Mesh(new THREE.SphereGeometry(R, 32, 20), new THREE.MeshStandardMaterial({ color: C, roughness: 0.9, emissive: C, emissiveIntensity: 0.25 })));
+  if (o.ring !== false) {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(R * 1.35, R * 2, 48), new THREE.MeshBasicMaterial({ color: 0xe8d8b8, side: THREE.DoubleSide, transparent: true, opacity: 0.6 }));
+    ring.rotation.x = -Math.PI / 2 + 0.4;
+    root.add(ring);
+  }
+  return makeModel('planet', root, () => {});
+}
+
+/** Raumstation: großer Ring mit Modulen und Solarflügeln, dreht sich langsam. */
+function spaceStation() {
+  const root = new THREE.Group();
+  const spin = new THREE.Group();
+  root.add(spin);
+  spin.add(mesh(cached('rw:station', () => {
+    const b = new Build();
+    b.add(new THREE.TorusGeometry(30, 2.4, 10, 48), 0xe8ecf4, { r: [Math.PI / 2, 0, 0] });
+    for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; b.box(5, 4, 4, k % 2 ? 0xc8ccd8 : 0x8ac0ff, { p: [Math.cos(a) * 30, 0, Math.sin(a) * 30], r: [0, -a, 0] }, 0.3); b.box(28, 0.6, 0.6, 0xa8acb8, { p: [Math.cos(a) * 15, 0, Math.sin(a) * 15], r: [0, -a, 0] }, 0.05); }
+    b.sphere(6, 0xe8ecf4, {}, 16, 12);
+    for (const s of [-1, 1]) b.box(2, 0.3, 26, 0x2a4a9a, { p: [0, 0, s * 16], r: [Math.PI / 2, 0, 0] }, 0.05);
+    return b.geometry();
+  }), vcol(0.35, { emissive: 0x1a2a4a }), {}, false));
+  return makeModel('space_station', root, (dt) => { spin.rotation.y += dt * 0.08; });
+}
+
 export const MODELS = { tram, grandstand, palace, waterfall, mine_cart: mineCart, jumbotron, balloons, ferris_wheel: ferrisWheel, carousel, water_slide: waterSlide, cake, temple_pillar: templePillar, stone_face: stoneFace, step_pyramid: stepPyramid, temple_gate: templeGate, mansion_hall: mansionHall,
   barrel_cannon: barrelCannon, slalom_gate: slalomGate, airplane, control_tower: controlTower, baggage_cart: baggageCart, dolphin,
-  speaker_tower: speakerTower, disco_ball: discoBall, light_beam: lightBeam };
+  speaker_tower: speakerTower, disco_ball: discoBall, light_beam: lightBeam,
+  cloud_puff: cloudPuff, airship, ribcage, skull, fort_tower: fortTower, fort_gate: fortGate, dragon_statue: dragonStatue, planet, space_station: spaceStation };

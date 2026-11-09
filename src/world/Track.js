@@ -103,6 +103,20 @@ export class Track {
         if (a >= 0) for (const side of [-1, 1]) this.gaps.push({ side, s: ((a + b) / 2) * this.ds, half: ((b - a) / 2) * this.ds + 1 });
       }
     }
+    // ohne Leitplanken (noWalls: true oder [[von, bis]]): hier fällt man hinunter (Regenbogenbahn, Wolken, Lava)
+    if (def.noWalls) {
+      const spans = def.noWalls === true ? [[0, nC]] : def.noWalls;
+      for (const [c0, c1] of spans) {
+        let a = -1, b = -1;
+        for (let i = 0; i < N; i++) if (this.ctrlT[i] >= c0 && this.ctrlT[i] <= c1) { if (a < 0) a = i; b = i; }
+        if (a >= 0) for (const side of [-1, 1]) this.gaps.push({ side, s: ((a + b) / 2) * this.ds, half: ((b - a) / 2) * this.ds + 1 });
+      }
+    }
+    // Klaviertasten auf der Fahrbahn ([[von, bis]]): jeder Abschnitt von 2,5 m ist eine Taste
+    if (def.piano) {
+      this.keys = new Int16Array(N).fill(-1);
+      for (const [c0, c1] of def.piano) for (let i = 0; i < N; i++) if (this.ctrlT[i] >= c0 && this.ctrlT[i] <= c1) this.keys[i] = Math.floor((i * this.ds) / 2.5);
+    }
     this.hasLift = this.lift.some((v) => v > 0.05);
     // negatives lift: die Straße taucht ab (unter den Meeresspiegel) – das Gelände wird bis dorthin abgesenkt
     this.hasDive = this.lift.some((v) => v < -0.05);
@@ -375,8 +389,19 @@ export class Track {
     };
     const hw = (i) => this.hw[i];
     const F = this.flight, sk = F ? (i) => F[i] || F[(i + 1) % this.N] : null;   // Flugstrecken auslassen
-    // Fahrbahn (leichte Querbänder für das Tempogefühl)
-    add(this.ribbon((i) => -hw(i), (i) => hw(i), () => 0.06, (i) => (Math.floor(i / 6) % 2 ? cR : cR2), 1, sk), 'fahrbahn');
+    // Fahrbahn (leichte Querbänder für das Tempogefühl); Regenbogenbahn: leuchtende Farbstreifen längs
+    if (this.def.rainbow) {
+      const rb = [0xff3a5a, 0xff9a2a, 0xffe23a, 0x4ae86a, 0x3ac8ff, 0x5a6aff, 0xc05aff].map((c) => lin(c));
+      const glowMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
+      for (let k = 0; k < 7; k++) {
+        const g = this.ribbon((i) => -hw(i) + (2 * hw(i) * k) / 7, (i) => -hw(i) + (2 * hw(i) * (k + 1)) / 7, () => 0.06, (i) => (Math.floor(i / 4) % 2 ? rb[k] : rb[k].map((v) => v * 0.75)), 1, sk);
+        const m = new THREE.Mesh(g, glowMat); m.name = 'regenbogen'; this.group.add(m);
+      }
+    } else add(this.ribbon((i) => -hw(i), (i) => hw(i), () => 0.06, (i) => (Math.floor(i / 6) % 2 ? cR : cR2), 1, sk), 'fahrbahn');
+    if (this.keys) {
+      const white = lin(0xfaf8f2), black = lin(0x1a1a22), K = this.keys;
+      add(this.ribbon((i) => -hw(i), (i) => hw(i), () => 0.075, (i) => (K[i] < 0 ? null : K[i] % 2 ? black : white), 1, sk), 'klaviertasten');
+    }
     // Curbs: rot-weiß, außen abgeschrägt
     add(this.ribbon((i) => -hw(i) - 1.0, (i) => -hw(i), (i, s) => (s ? 0.1 : 0.04), (i) => (Math.floor(i / 2) % 2 ? cA : cB), 1, sk), 'curb-l');
     add(this.ribbon((i) => hw(i), (i) => hw(i) + 1.0, (i, s) => (s ? 0.04 : 0.1), (i) => (Math.floor(i / 2) % 2 ? cA : cB), 1, sk), 'curb-r');
@@ -471,6 +496,7 @@ export class Track {
     for (let i = 0; i < this.N; i += 4) {
       if (!(this.lift[i] > 1)) continue;
       for (const side of [-1, 1]) {
+        if (this.inGap(side, i)) continue;   // ohne Leitplanken auch kein Geländer
         const lat = side * (this.wallAt(i) + 0.2), x = this.px[i] - this.tz[i] * lat, z = this.pz[i] + this.tx[i] * lat;
         posts.push([x, this.roadY(i, x, z), z]);
       }

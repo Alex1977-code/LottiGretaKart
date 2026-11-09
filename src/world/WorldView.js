@@ -30,9 +30,9 @@ export class WorldView {
   async build(progress = () => {}) {
     const steps = [
       ['Gelände', () => this.buildTerrain()],
-      ['Fernsicht', () => { if (this.world.def.center) { const bd = buildBackdrop(this.group, this.scene, this.world, this.world.courses[0].theme, this.quality); this.decors.push(bd.decor); } }],
-      ['Wasser', () => this.buildWater()],
-      ['Lava', () => this.buildLava()],
+      ['Fernsicht', () => { if (this.world.def.center && !this.world.def.noBackdrop) { const bd = buildBackdrop(this.group, this.scene, this.world, this.world.courses[0].theme, this.quality); this.decors.push(bd.decor); } }],
+      ['Wasser', () => { if (!this.world.def.noWater) this.buildWater(); }],
+      ['Lava', () => { this.buildLava(); this.buildMud(); }],
       ['Strecken', () => this.buildRoads()],
       ['Höhlenberg und Zirkuszelt', () => this.buildStructures()],
       ['Kulisse', () => this.buildDecor()],
@@ -230,6 +230,29 @@ export class WorldView {
       this.lavaPools.push({ m, l, cols, P });
     }
     this.lavaLight = this.world.lava.length ? 1 : 0;
+  }
+
+  /** Matsch, Sand, Treibsand: flache, dem Gelände angeschmiegte Scheiben mit Wirbel-Muster. */
+  buildMud() {
+    const COL = { mud: [0x5a3a22, 0x6e4a2c], sand: [0xd8b070, 0xc89e5e], snow: [0xffffff, 0xe8f0fa] };
+    for (const m of this.world.mud ?? []) {
+      const g = new THREE.CircleGeometry(m.r, 40, 4);
+      g.rotateX(-Math.PI / 2);
+      const P = g.attributes.position, cols = new Float32Array(P.count * 3);
+      const [c0, c1] = (COL[m.kind] ?? COL.mud).map((c) => lin(c));
+      for (let i = 0; i < P.count; i++) {
+        const x = P.getX(i) + m.x, z = P.getZ(i) + m.z, a = Math.atan2(P.getZ(i), P.getX(i)), r = Math.hypot(P.getX(i), P.getZ(i));
+        P.setY(i, this.world.heightAt(x, z) + 0.11);
+        P.setX(i, x); P.setZ(i, z);
+        const k = 0.5 + 0.5 * Math.sin(a * 3 + r * 0.6);
+        for (let q = 0; q < 3; q++) cols[i * 3 + q] = c0[q] + (c1[q] - c0[q]) * k;
+      }
+      g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+      g.computeVertexNormals();
+      const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: m.kind === 'mud' ? 0.35 : 1, polygonOffset: true, polygonOffsetFactor: -2 }));
+      mesh.receiveShadow = true; mesh.name = `matsch:${m.kind}`;
+      this.group.add(mesh);
+    }
   }
 
   updateLava(t) {

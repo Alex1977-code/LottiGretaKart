@@ -438,5 +438,57 @@ const DISCO = {
   wallA: 0x3ae0ff, wallB: 0xff3ab8, wallTop: 0xffd23a, wallH: 0.9,
 };
 
-export const THEMES = { airport: AIRPORT, disco: DISCO, park: PARK, sweets: SWEETS, ruins: RUINS, stadium: STADIUM, canyon: CANYON, royal: ROYAL, arena: ARENA, harbor: HARBOR, tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
+// Wolkenstraße (Archetyp Himmelsstrecke): Wolkenweiß, Himmelblau, Rankengrün, Messing.
+const SKYWAY = {
+  ...GRASS,
+  label: 'Wolkenstraße',
+  sky: [[1, 0x1a6ae8], [0.45, 0x4a9af6], [0.15, 0x9ad0fc], [0.03, 0xe0f2ff], [0, 0xf4faff], [-0.1, 0xdcecfa], [-1, 0xb8d8f4]],
+  background: 0xe0f0fc, fog: { color: 0xe4f2fc, near: 150, far: 560 },
+  road: 0xd8e2f0, road2: 0xd0dbea, line: 0xffc21a, curbA: 0xffc21a, curbB: 0xffffff,
+  wallA: 0xffffff, wallB: 0x8ac8ff, wallTop: 0xffc21a, wallH: 0.8,
+  bridge: 0xf4f8fc, bridgePillar: 0xe8eef6, bridgeTop: 0xffffff, bridgeTop2: 0xf2f6fc,
+};
+
+// Knochendünen (Archetyp Wüste mit Riesenskeletten): Ocker, Knochenweiß, Terrakotta, Türkis-Oase.
+const DUNES = {
+  ...DESERT,
+  rock: 0xc8784a,
+  label: 'Knochendünen',
+  road: 0xc89a62, road2: 0xc0925c, line: 0xfff4e0, curbA: 0xf2ead8, curbB: 0xb8642a,
+  wallA: 0xf2ead8, wallB: 0xc8784a, wallTop: 0x3ac0b8, wallH: 0.8,
+};
+
+// Lavafestung (Archetyp Vulkanburg): Lavarot-Orange, Basaltschwarz, Steingrau, Gold.
+const LAVAFORT = {
+  ...VOLCANO,
+  rock: 0x3a3034,
+  label: 'Lavafestung',
+  road: 0x4a4248, road2: 0x443c42, line: 0xffa030, curbA: 0xe8401a, curbB: 0x2a2428,
+  wallA: 0x3a3238, wallB: 0x8a1a1a, wallTop: 0xffc21a, wallH: 1.0,
+  bridge: 0x3a3034, bridgePillar: 0x2a2428, bridgeTop: 0x4a4248, bridgeTop2: 0x443c42,
+};
+
+// Sternenbahn (Archetyp Regenbogenbahn im All): Regenbogen-Neon auf Schwarz-Violett.
+const SPACE = {
+  ...NIGHTCITY,
+  rock: 0x2a2440,
+  label: 'Sternenbahn',
+  sky: [[1, 0x02020a], [0.45, 0x06061a], [0.15, 0x120a30], [0.03, 0x2a1450], [0, 0x30145a], [-0.1, 0x0a0620], [-1, 0x020208]],
+  background: 0x0a0620, fog: { color: 0x0a0620, near: 300, far: 900 },
+  hemi: { sky: 0x8a7ad8, ground: 0x2a1e4a, intensity: 0.9 },
+  grass: 0x1a1430, grass2: 0x161028, grassFar: 0x100a20, offroad: 0x241a3a, offroad2: 0x201634,
+  curbA: 0xffffff, curbB: 0xff4ad8, wallA: 0xffffff, wallB: 0x3ae0ff, wallTop: 0xff4ad8,
+  bridge: 0x2a2450, bridgePillar: 0x1a1430, bridgeTop: 0x3a2a6a, bridgeTop2: 0x34265e,
+};
+
+// Kuhweide (Archetyp Bauernhof-Wiese): sattes Grün, Scheunenrot, Heugelb (Abendlicht über die Tageszeit 'dusk').
+const FARM = {
+  ...GRASS,
+  label: 'Kuhweide',
+  grass: 0x6ed544, grass2: 0x62c93c, grassFar: 0x58b838, offroad: 0x8a6a42, offroad2: 0x7e603c,
+  road: 0x9a9088, road2: 0x948a82, line: 0xfffaf0, curbA: 0xb8282a, curbB: 0xfaf6ee,
+  wallA: 0xfaf6ee, wallB: 0xb8282a, wallTop: 0xffc21a, wallH: 0.7,
+};
+
+export const THEMES = { farm: FARM, skyway: SKYWAY, dunes: DUNES, lavafort: LAVAFORT, space: SPACE, airport: AIRPORT, disco: DISCO, park: PARK, sweets: SWEETS, ruins: RUINS, stadium: STADIUM, canyon: CANYON, royal: ROYAL, arena: ARENA, harbor: HARBOR, tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
 export const getTheme = (n) => THEMES[n] ?? GRASS;

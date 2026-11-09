@@ -28,6 +28,13 @@ export class World {
     this.courseById = Object.fromEntries(this.courses.map((c) => [c.id, c]));
     // Lava-Seen der Strecken (Strecken-Koordinaten → Welt)
     this.lava = this.courses.flatMap((c) => (c.def.lava ?? []).map(([x, z, r]) => ({ x: x + c.ox, z: z + c.oz, r })));
+    // Lava-Seen neben der Fahrbahn: lavaAt [[Kontrollpunkt-Stelle, Seite, Radius]] – knapp hinter dem Fahrbahnrand
+    for (const c of this.courses) for (const [cc, side, r] of c.def.lavaAt ?? []) {
+      const tr = c.track, p = tr.pointAt(tr.uCtrl(cc), side * (tr.hw[Math.round(tr.uCtrl(cc) * tr.N) % tr.N] + 2 + r));
+      this.lava.push({ x: p.x, z: p.z, r });
+    }
+    // bremsende Flächen: Matsch, Treibsand, Puderschnee ([x, z, r, Art])
+    this.mud = this.courses.flatMap((c) => (c.def.mud ?? []).map(([x, z, r, kind = 'mud']) => ({ x: x + c.ox, z: z + c.oz, r, kind })));
     // Banden-Lücken der Strecken selbst (z. B. Hotel-Auffahrt): { at: [x, z] (Strecken-Koordinaten), side, half }
     for (const c of this.courses) for (const g of c.def.wallGaps ?? []) {
       const tr = c.track, X = c.ox + g.at[0], Z = c.oz + g.at[1];
@@ -258,6 +265,7 @@ export class World {
   surfaceAt(x, z, y = undefined) {
     if (y !== undefined && this.liftTracks?.length) { const d = this.deckAt(x, z, y); if (d !== null && d > this.heightAt(x, z) + 0.3) return 'road'; }
     for (const l of this.lava) if ((x - l.x) ** 2 + (z - l.z) ** 2 < l.r * l.r) return 'lava';
+    for (const m of this.mud) if ((x - m.x) ** 2 + (z - m.z) ** 2 < m.r * m.r) return 'mud';
     if (this.hasUnderwater && this.heightAt(x, z) < -0.05 && this.underwaterAt(x, z)) {
       // auf dem Meeresgrund: Straße oder Sand (kein Schwimmen, kein offenes Meer)
       const r = this.nearestRoad(x, z, 1, this._nr ?? (this._nr = {}));

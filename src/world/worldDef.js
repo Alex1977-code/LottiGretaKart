@@ -8,10 +8,6 @@
 // flats       ebene Flächen (Stadion, Zelt, Höhle, Stadt), damit Bauten und Strecken nicht auf Hügeln stehen.
 // rails       Grind-Schienen (Polylinie, Höhe über Boden bzw. über dem Wasser).
 
-import laternengrotte from '../tracks/laternengrotte.js';
-import burg from '../tracks/burg.js';
-import wueste from '../tracks/wueste.js';
-import vulkan from '../tracks/vulkan.js';
 import loroparque from '../tracks/loroparque.js';
 import piratenbucht from '../tracks/piratenbucht.js';
 import katzeninsel from '../tracks/katzeninsel.js';
@@ -43,10 +39,6 @@ export const WORLD = {
     { name: 'Schluchtinsel', x: -490, z: -1090, rx: 270, rz: 160 },
   ],
   courses: [
-    { def: laternengrotte, ox: -414, oz: 18 },
-    { def: burg, ox: -200, oz: -515 },
-    { def: wueste, ox: 880, oz: 60 },
-    { def: vulkan, ox: -700, oz: 380 },
     { def: loroparque, ox: 600, oz: 410 },
     { def: piratenbucht, ox: -320, oz: 590 },
     { def: katzeninsel, ox: -1040, oz: 720 },
@@ -162,8 +154,8 @@ export const WORLD_CUPS = [
   { id: 'sternen', name: 'Sternen-Cup', tracks: ['flughafen', 'delfinlagune', 'discohalle', 'gipfelabfahrt'] },
   // bisherige Strecken (werden Etappe für Etappe ersetzt)
   { id: 'muschel', name: 'Muschel-Cup', tracks: ['hasenhuegel', 'piratenbucht', 'mitternacht', 'schlossring'] },
-  { id: 'blatt', name: 'Blatt-Cup', tracks: ['arena', 'katzeninsel', 'palmencity', 'laternengrotte'] },
-  { id: 'krone', name: 'Kronen-Cup', tracks: ['laternengrotte', 'wueste', 'burg', 'vulkan'] },
+  { id: 'krone', name: 'Kronen-Cup', tracks: ['wolkenstrasse', 'knochenduenen', 'lavafestung', 'sternenbahn'] },
+  { id: 'blatt', name: 'Blatt-Cup', tracks: ['arena', 'katzeninsel', 'palmencity', 'teneriffa'] },
   { id: 'kanaren', name: 'Kanaren-Cup', tracks: ['loroparque', 'teneriffa', 'hafenstadt', 'palmencity'] },
 ];
 
@@ -198,7 +190,7 @@ export function courseWorldDef(id) {
 /**
  * Welt einer Strecke mit eigener Landschaft (def.land, Koordinaten der Strecke) – für die Strecken nach den
  * Archetypen von Mario Kart 8 Deluxe, unabhängig vom Inselplan:
- *   land: { sea (Insel im Meer statt Land bis zum Horizont), island: { cx, cz, rx, rz } (Küste bei sea),
+ *   land: { sea (Insel im Meer statt Land bis zum Horizont), island: { cx, cz, rx, rz } (Küste bei sea), noWater, backdrop: false (Himmel/All),
  *           hills: [[x, z, r, h]], flats: [{ x, z, r, h }], lakes: [{ x, z, r, depth }], rails, structures }
  */
 function landWorldDef(def) {
@@ -223,5 +215,8 @@ function landWorldDef(def) {
     structures: (L.structures ?? []).map((st) => ({ ...st, doors: [] })),
     rails: L.rails ?? [],
     regions: [{ theme: def.theme, x: cx, z: cz, r: 4000, base: true }, ...(L.regions ?? [])],
+    // Himmels- und Weltraumstrecken: kein Meer und keine Berge darunter
+    noWater: !!L.noWater,
+    noBackdrop: L.backdrop === false,
   };
 }

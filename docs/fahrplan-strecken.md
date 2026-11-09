@@ -23,8 +23,15 @@ leicht und hell, Strecke 2–3 je eine neue Mechanik, Strecke 4 dunkler und gef�
 
 Erledigt: **Etappe 2 – Sonnen-Cup** (Kart-Stadion, Seepark, Zuckerschlucht, Tempelruinen), **Etappe 3 –
 Blüten-Cup** (Blumenring, Hafenstadt, Spukvilla, Wasserfall-Schlucht) und **Etappe 4 – Sternen-Cup**
-(Ferienflughafen, Delfinlagune, Disco-Halle, Gipfelabfahrt mit Abschnitten, Fass-Kanone und Schneefall). Die übrigen
-bisherigen Strecken fahren bis zu ihrem Ersatz im Muschel-, Blatt-, Kronen- und Kanaren-Cup.
+(Ferienflughafen, Delfinlagune, Disco-Halle, Gipfelabfahrt mit Abschnitten, Fass-Kanone und Schneefall) und
+**Etappe 5 – Kronen-Cup** (Wolkenstraße, Knochendünen, Lavafestung, Sternenbahn). Die übrigen bisherigen Strecken
+fahren bis zu ihrem Ersatz im Muschel-, Blatt- und Kanaren-Cup.
+
+Neue Technik für Etappe 5 ff.: Abschnitte ohne Leitplanken (`noWalls`, Herunterfallen = zurückgesetzt),
+Regenbogen-Fahrbahn (`rainbow`), Klaviertasten mit Tönen (`piano`), Matsch, Sand und Schnee neben der Fahrbahn
+(`mud`), Glatteis (`ice`), Lava neben der Strecke (`lavaAt`), feste Rundenzahl (`laps`), Tageszeit je Runde
+(`timeByLap`), Jahreszeit bei jedem Start neu (`seasons`), Welt ohne Meer und Berge (`land.noWater`,
+`land.backdrop: false`).
 
 | Etappe | Cup | Strecke (eigener Name) | Archetyp / Vorbild | ersetzt |
 | --- | --- | --- | --- | --- |
@@ -52,6 +59,18 @@ bisherigen Strecken fahren bis zu ihrem Ersatz im Muschel-, Blatt-, Kronen- und 
 | 7 | Blatt-Cup | Eissee | zugefrorener See, Eishöhle, rutschig | Katzeninsel |
 | 7 | Blatt-Cup | Musikpark | Riesen-Instrumente, Tasten mit Tönen | Palmen-City |
 | 7 | Blatt-Cup | Felsental | Labyrinth mehrerer Wege, rollendes Riesen-Ei | – |
+| 8 | Blitz-Cup | Kirschblüteninsel | Tempel, Kirschbäume, Bambus, Anti-Grav über den Teich | Teneriffa (bleibt Bonus) |
+| 8 | Blitz-Cup | Drachenmauer | lange Mauer über die Berge, Drachenkopf-Tunnel | – |
+| 8 | Blitz-Cup | Neonmetropole | Zukunftsstadt bei Nacht, Anti-Grav-Röhren | – |
+| 8 | Blitz-Cup | Goldmine | Bergwerk, Loren, Holzbrücken, Höhle | – |
+| 9 | Ei-Cup | Babypark | kleines Oval, sieben Runden, viel Gedränge | – |
+| 9 | Ei-Cup | Käseland | Käselöcher, Käse-Buckel, Mäuse | – |
+| 9 | Ei-Cup | Baumwipfelweg | Holzstege in den Baumkronen, Pilzbrücken | – |
+| 9 | Ei-Cup | Jahreszeitendorf | Dorf, bei jedem Start eine andere Jahreszeit | – |
+| 10 | Glocken-Cup | Abendsteppe | Savanne, je Runde andere Tageszeit (Tag → Abend → Nacht) | – |
+| 10 | Glocken-Cup | Badezimmer | Miniaturwelt: Karts klein im riesigen Bad | – |
+| 10 | Glocken-Cup | Uhrwerk | Zahnräder, Pendel, Uhrzeiger | – |
+| 10 | Glocken-Cup | Stadtrundfahrt | Großstadt mit Sehenswürdigkeiten | – |
 
 Teneriffa und Loro Parque waren eigene Wünsche – sie bleiben vorerst als Bonus-Strecken erhalten, bis anders
 gewünscht. Danach folgen Archetypen aus den Booster-Strecken (Städte mit wechselnder Route je Runde,
