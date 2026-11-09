@@ -333,24 +333,31 @@ function igloo() {
   return makeModel('igloo', root, () => {});
 }
 
-/** Eishöhle: Bogen aus blauen Eisblöcken über der Fahrbahn, Eiszapfen an der Decke. */
+/** Eishöhle: Gewölbe aus blauem Eis über der Fahrbahn (Halbröhre entlang X), Eisrippen, Eiszapfen an der Decke. */
 function iceArch(o = {}) {
   const W = o.width ?? 20, L = o.length ?? 30;
+  const R = W / 2 + 1.5;
   const root = new THREE.Group();
-  root.add(mesh(cached(`rw2:icearch:${W}:${L}`, () => {
+  const shell = mesh(cached(`rw2:iceshell:${W}:${L}`, () => {
+    const g = new THREE.CylinderGeometry(R, R, L, 28, 6, true, -Math.PI / 2, Math.PI);
+    g.rotateZ(Math.PI / 2);
+    g.scale(1, 0.8, 1);
+    const P = g.attributes.position;
+    for (let i = 0; i < P.count; i++) { const x = P.getX(i), y = P.getY(i), z = P.getZ(i); const n = 1 + 0.05 * Math.sin(x * 0.7 + z * 0.9); P.setY(i, y * n); P.setZ(i, z * n); }
+    g.computeVertexNormals();
+    return g;
+  }), cachedIce(), {}, false);
+  root.add(shell);
+  root.add(mesh(cached(`rw2:icerib:${W}:${L}`, () => {
     const b = new Build();
-    const R = W / 2 + 1.5;
-    for (let x = -L / 2; x <= L / 2; x += 3) {
-      for (let k = 0; k <= 10; k++) {
-        const a = (k / 10) * Math.PI;
-        b.box(3.1, 2.2, 2.6, k % 2 ? 0x9ad4f4 : 0xbfe6fa, { p: [x, Math.sin(a) * R * 0.75, Math.cos(a) * R], r: [a - Math.PI / 2, 0, 0] }, 0.3);
-      }
-      for (let k = 0; k < 3; k++) b.cone(0.35, 1.8 + (k % 2), 0xe4f6ff, { p: [x + 0.8, R * 0.75 - 1.6, (k - 1) * W * 0.25], r: [Math.PI, 0, 0] }, 6);
-    }
+    for (let x = -L / 2; x <= L / 2 + 0.01; x += L / 4) b.torus(R, 0.7, 0x9ad4f4, { p: [x, 0, 0], r: [0, Math.PI / 2, 0], s: [1, 0.8, 1] }, 6, 20, Math.PI);
+    for (let x = -L / 2 + 2; x < L / 2; x += 3.3) for (let k = 0; k < 3; k++) b.cone(0.35, 1.6 + ((x + k) % 2 ? 0.8 : 0), 0xe4f6ff, { p: [x, R * 0.8 - 1, (k - 1) * W * 0.25], r: [Math.PI, 0, 0] }, 6);
     return b.geometry();
-  }), vcol(0.15, { emissive: 0x1a3a5a, transparent: true, opacity: 0.92 }, 'ice'), {}, false));
+  }), vcol(0.2, { emissive: 0x1a3a5a }, 'icerib'), {}, false));
   return makeModel('ice_arch', root, () => {});
 }
+let ICE_MAT = null;
+const cachedIce = () => (ICE_MAT ??= new THREE.MeshStandardMaterial({ color: 0xa8dcf8, emissive: 0x1a4a6a, roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false }));
 
 function giantDrum(o = {}) {
   const C = o.color ?? 0xe8392d;

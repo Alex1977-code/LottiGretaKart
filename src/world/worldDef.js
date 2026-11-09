@@ -9,8 +9,6 @@
 // rails       Grind-Schienen (Polylinie, Höhe über Boden bzw. über dem Wasser).
 
 import loroparque from '../tracks/loroparque.js';
-import katzeninsel from '../tracks/katzeninsel.js';
-import palmencity from '../tracks/palmencity.js';
 import teneriffa from '../tracks/teneriffa.js';
 import hafenstadt from '../tracks/hafenstadt.js';
 import { TRACK_BY_ID } from '../tracks/index.js';
@@ -37,8 +35,6 @@ export const WORLD = {
   ],
   courses: [
     { def: loroparque, ox: 600, oz: 410 },
-    { def: katzeninsel, ox: -1040, oz: 720 },
-    { def: palmencity, ox: 1470, oz: 300 },
     { def: teneriffa, ox: 1180, oz: 820 },
     { def: hafenstadt, ox: -480, oz: 1060 },
     { def: arena, ox: 70, oz: 1050 },
@@ -146,11 +142,11 @@ export const WORLD_CUPS = [
   { id: 'sonnen', name: 'Sonnen-Cup', tracks: ['kartstadion', 'seepark', 'zuckerschlucht', 'tempelruinen'] },
   { id: 'blueten', name: 'Blüten-Cup', tracks: ['blumenring', 'hafenstadt', 'spukvilla', 'schlucht'] },
   { id: 'sternen', name: 'Sternen-Cup', tracks: ['flughafen', 'delfinlagune', 'discohalle', 'gipfelabfahrt'] },
-  // bisherige Strecken (werden Etappe für Etappe ersetzt)
   { id: 'muschel', name: 'Muschel-Cup', tracks: ['kuhweide', 'palmenstrand', 'nachtautobahn', 'schlossring'] },
+  { id: 'blatt', name: 'Blatt-Cup', tracks: ['arena', 'eissee', 'musikpark', 'felsental'] },
   { id: 'krone', name: 'Kronen-Cup', tracks: ['wolkenstrasse', 'knochenduenen', 'lavafestung', 'sternenbahn'] },
-  { id: 'blatt', name: 'Blatt-Cup', tracks: ['arena', 'katzeninsel', 'palmencity', 'teneriffa'] },
-  { id: 'kanaren', name: 'Kanaren-Cup', tracks: ['loroparque', 'teneriffa', 'hafenstadt', 'palmencity'] },
+  // Bonus: eigene Wünsche (Teneriffa, Loro Parque)
+  { id: 'kanaren', name: 'Kanaren-Cup', tracks: ['loroparque', 'teneriffa', 'hafenstadt', 'palmenstrand'] },
 ];
 
 /** Rand rund um eine Strecke, der zur Strecken-Welt gehört (Gelände, Kulisse); dahinter beginnt die Fernsicht. */
