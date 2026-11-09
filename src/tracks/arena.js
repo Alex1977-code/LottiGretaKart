@@ -42,6 +42,8 @@ export default {
     [13.2, 14.8, 1.3, 15],    // Nordgerade
     [18.8, 20.8, 2.2, 22],    // Gegengerade: große Sprunghügel
   ],
+  // Leveldesign (G5): Felswände als Rahmen, Tunnel durch den Berg, Abkürzung
+  shortcuts: [{ pts: [[60, 54], [68, 25], [75, -4]], w: 3.5, kind: 'dirt' }],
   items: [0.13, 0.4, 0.62, 0.84],
   boosts: [[0.21, 0], [0.47, 0.35], [0.66, -0.35], [0.9, 0]],
   ramps: [[0.58, 0, 8]],

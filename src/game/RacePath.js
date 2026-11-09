@@ -110,6 +110,16 @@ export class RacePath {
         const dx = x - this.px[j], dz = z - this.pz[j], d = dx * dx + dz * dz;
         if (d < bd) { bd = d; i = j; }
       }
+      // weit neben dem Pfad (Abkürzung, Abzweigung): ein Stück voraus suchen – die Abkürzung führt dorthin
+      // (nur, wenn man dort wieder auf der Fahrbahn ist – sonst bliebe man beim alten Punkt)
+      if (bd > (this.hw[i] + 14) ** 2) {
+        let bj = -1, bdj = Infinity;
+        for (let j = Math.max(0, hint - 40); j < Math.min(this.N, hint + 450); j += 2) {
+          const dx = x - this.px[j], dz = z - this.pz[j], d = dx * dx + dz * dz;
+          if (d < bdj) { bdj = d; bj = j; }
+        }
+        if (bj >= 0 && bdj < (this.hw[bj] + 3) ** 2) { i = bj; bd = bdj; }
+      }
     }
     const dx = x - this.px[i], dz = z - this.pz[i];
     const tx = this.tx[i], tz = this.tz[i];

@@ -155,7 +155,8 @@ export class Build {
   cone(r, h, color, o, rs = 12) { return this.add(new THREE.ConeGeometry(r, h, rs), color, o); }
   torus(R, t, color, o, rs = 10, ts = 24, arc = TAU) { return this.add(new THREE.TorusGeometry(R, t, rs, ts, arc), color, o); }
   /** Quader mit runden Kanten (Mitte im Ursprung). */
-  box(w, h, d, color, o, r = 0.05, seg = 2) { return this.add(r > 0 ? roundedBox(w, h, d, r, SIDE.ALL, 0, seg) : new THREE.BoxGeometry(w, h, d), color, o); }
+  // (dünne Teile – Leisten, Läden, Sprossen – ohne Rundung: die sieht man nicht, sie kostet aber ~100 Dreiecke je Teil)
+  box(w, h, d, color, o, r = 0.05, seg = 2) { return this.add(r > 0 && Math.min(w, h, d) > 0.3 ? roundedBox(w, h, d, Math.min(r, Math.min(w, h, d) / 2), SIDE.ALL, 0, seg) : new THREE.BoxGeometry(w, h, d), color, o); }
   /** Drehkörper aus [r, y]-Punkten um die Y-Achse (smooth > 0: Profil per Catmull-Rom verfeinern). */
   lathe(pts, color, o, seg = 24, smooth = 0) {
     const pp = smooth > 0 ? smoothProfile(pts, smooth) : pts;

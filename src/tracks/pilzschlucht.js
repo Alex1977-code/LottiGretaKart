@@ -23,6 +23,8 @@ export default {
     [40, -50], [-10, -90], [-70, -110], [-130, -80], [-180, -40], [-195, 20],
   ],
   heights: [3, 3, 5, 7, 9, 12, 5, 6, 9, 6, 4, 3, 3],
+  // Leveldesign (G5): Felswände als Rahmen, Tunnel durch den Berg, Abkürzung
+  cliffs: [{ c: [8, 10.5], side: 0, h: 18 }],
   glides: [{ c: 5.05, w: 12 }],
   flights: [[5.25, 5.85]],
   bouncers: [{ c: 2.4, lat: 0, w: 8 }, { c: 7.25, lat: -0.35, w: 7, color: 0xffa02a }, { c: 7.6, lat: 0.35, w: 7 }, { c: 10.4, lat: 0, w: 8, color: 0x3a8ae8 }],

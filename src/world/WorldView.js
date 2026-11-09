@@ -13,6 +13,7 @@ import { IslandLife } from './life.js';
 import { buildTrackDetails } from './trackDetail.js';
 import { buildNightLamps } from './night.js';
 import { buildBackdrop } from './backdrop.js';
+import { buildLevelMeshes } from './levelkit.js';
 
 const TILE = 60; // Kachelgröße in Höhenfeld-Zellen (3 m → 180 m)
 
@@ -35,6 +36,7 @@ export class WorldView {
       ['Wasser', () => { if (!this.world.def.noWater) this.buildWater(); }],
       ['Lava', () => { this.buildLava(); this.buildMud(); }],
       ['Strecken', () => this.buildRoads()],
+      ['Tunnel und Abkürzungen', () => { if (this.world.paths.length || this.world.tunnelSpans.length) this.group.add(buildLevelMeshes(this)); }],
       ['Höhlenberg und Zirkuszelt', () => this.buildStructures()],
       ['Kulisse', () => this.buildDecor()],
       ['Kurvenschilder und Wimpel', () => buildTrackDetails(this.group, this.world, this.quality)],
@@ -101,6 +103,18 @@ export class WorldView {
             const volc = regions.reduce((a, r) => (r.theme === 'volcano' ? Math.max(a, 1 - smooth(r.r, r.r + 260, Math.hypot(x - r.x, z - r.z))) : a), 0);
             if (hh > 40) { const f = smooth(40, 48, hh) * (1 - volc); for (let q = 0; q < 3; q++) tmp[q] += (snow[q] - tmp[q]) * f; }
             if (volc > 0 && hh > 20) { const f = smooth(20, 45, hh) * volc; for (let q = 0; q < 3; q++) tmp[q] += ((hh > 52 ? lavaRim[q] : ash[q]) - tmp[q]) * f; }
+            // Felswände (Leveldesign) und steile Hänge: Felsfarbe der Region, mit hellen und dunklen Bändern
+            {
+              const cw = hf.cl ? hf.cl[gi] : 0;
+              const gxp = Math.min(hf.nx - 1, gx + 1), gxm = Math.max(0, gx - 1), gzp = Math.min(hf.nz - 1, gz + 1), gzm = Math.max(0, gz - 1);
+              const slope = Math.hypot(hf.h[gz * hf.nx + gxp] - hf.h[gz * hf.nx + gxm], hf.h[gzp * hf.nx + gx] - hf.h[gzm * hf.nx + gx]) / (2 * C);
+              // (an Felswänden auch nah an der Strecke – dort ist der Randstreifen-Anteil roadW noch groß)
+              const f = Math.max(cw >= 0.99 ? 0.92 : cw * 0.35, smooth(0.75, 1.4, slope) * (cw > 0 ? 1 : 1 - roadW));
+              if (f > 0) {
+                const band = 0.86 + 0.14 * Math.sin(hh * 0.9 + Math.sin(x * 0.05 + z * 0.04) * 2);
+                for (let q = 0; q < 3; q++) tmp[q] += ((rk[q] / (sum || 1)) * band - tmp[q]) * f;
+              }
+            }
             // feine Helligkeits-Flecken, damit Wiesen nicht flach wirken
             const nz2 = 0.93 + 0.07 * Math.sin(x * 0.11 + Math.sin(z * 0.07) * 2) * Math.cos(z * 0.13 - x * 0.03) + 0.05 * Math.sin(x * 0.53 + z * 0.41);
             cols[k * 3] = tmp[0] * nz2; cols[k * 3 + 1] = tmp[1] * nz2; cols[k * 3 + 2] = tmp[2] * nz2;

@@ -9,6 +9,8 @@ import * as THREE from 'three';
 import { surfaceTexture } from './surfaces.js';
 
 export const SHADER_TIME = { value: 0 };
+// Richtung zur Sonne (Sky.update) – für das Glitzern auf dem Wasser
+export const SUN_DIR = { value: new THREE.Vector3(0.4, 0.8, 0.3).normalize() };
 /** Nässe durch Regen (0 … 1, vom Wetter gesetzt): Fahrbahn dunkler und spiegelnd mit Pfützen, Gelände dunkler. */
 export const RAIN_WET = { value: 0 };
 
@@ -144,16 +146,18 @@ export function makeWaterMaterial(hf) {
   tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter;
   tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
   tex.needsUpdate = true;
-  const mat = new THREE.MeshStandardMaterial({ color: 0x2f9be8, roughness: 0.18, metalness: 0.1, transparent: true, opacity: 0.84, emissive: 0x0a3a6a, emissiveIntensity: 0.35, side: THREE.DoubleSide });
+  // (glatter als früher: der Himmel spiegelt sich klarer, die Sonne gibt einen kleinen, hellen Glanzpunkt)
+  const mat = new THREE.MeshStandardMaterial({ color: 0x2f9be8, roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.84, emissive: 0x0a3a6a, emissiveIntensity: 0.35, side: THREE.DoubleSide });
   // die Höhenfeld-Textur hängt nur als Uniform im Shader – beim Abbau des Materials mit freigeben
   const baseDispose = mat.dispose.bind(mat);
   mat.dispose = () => { tex.dispose(); baseDispose(); };
   mat.onBeforeCompile = (shader) => {
     addVarying(shader);
     shader.uniforms.uLgkDepth = { value: tex };
+    shader.uniforms.uLgkSun = SUN_DIR;
     shader.uniforms.uLgkHf = { value: new THREE.Vector4(hf.x0, hf.z0, (hf.nx - 1) * hf.cell, (hf.nz - 1) * hf.cell) };
     shader.fragmentShader = shader.fragmentShader
-      .replace('uniform float uLgkTime;', 'uniform float uLgkTime;\nuniform sampler2D uLgkDepth;\nuniform vec4 uLgkHf;\nfloat lgkGround;\nvec2 lgkWave(vec2 p, float t) {\n  vec2 g = vec2(0.0);\n  g += vec2(0.8, 0.6) * cos(dot(p, vec2(0.8, 0.6)) * 0.35 + t * 1.3) * 0.35;\n  g += vec2(-0.5, 0.86) * cos(dot(p, vec2(-0.5, 0.86)) * 0.62 + t * 1.9) * 0.22;\n  g += vec2(0.2, -0.98) * cos(dot(p, vec2(0.2, -0.98)) * 1.3 + t * 2.6) * 0.12;\n  g += vec2(0.95, -0.3) * cos(dot(p, vec2(0.95, -0.3)) * 2.7 + t * 3.4) * 0.07;\n  return g;\n}')
+      .replace('uniform float uLgkTime;', 'uniform float uLgkTime;\nuniform sampler2D uLgkDepth;\nuniform vec4 uLgkHf;\nuniform vec3 uLgkSun;\nfloat lgkGround;\nvec3 lgkNW = vec3(0.0, 1.0, 0.0);\nvec2 lgkWave(vec2 p, float t) {\n  vec2 g = vec2(0.0);\n  g += vec2(0.8, 0.6) * cos(dot(p, vec2(0.8, 0.6)) * 0.35 + t * 1.3) * 0.35;\n  g += vec2(-0.5, 0.86) * cos(dot(p, vec2(-0.5, 0.86)) * 0.62 + t * 1.9) * 0.22;\n  g += vec2(0.2, -0.98) * cos(dot(p, vec2(0.2, -0.98)) * 1.3 + t * 2.6) * 0.12;\n  g += vec2(0.95, -0.3) * cos(dot(p, vec2(0.95, -0.3)) * 2.7 + t * 3.4) * 0.07;\n  return g;\n}')
       .replace('#include <color_fragment>', `#include <color_fragment>
   {
     vec2 uv = (vLgkW.xz - uLgkHf.xy) / uLgkHf.zw;
@@ -178,11 +182,22 @@ export function makeWaterMaterial(hf) {
     float fadeN = 1.0 - smoothstep(80.0, 260.0, vLgkD);
     vec2 g = lgkWave(vLgkW.xz, uLgkTime) * fadeN + (vec2(lgkNoise(vLgkW.xz * 0.9 + uLgkTime * 0.6), lgkNoise(vLgkW.zx * 0.9 - uLgkTime * 0.5)) - 0.5) * 0.25 * fadeN;
     vec3 nW = normalize(vec3(-g.x, 1.0, -g.y));
+    // feine, schnelle Kräuselwellen nah an der Kamera (für das Glitzern)
+    float fadeR = 1.0 - smoothstep(20.0, 90.0, vLgkD);
+    nW = normalize(nW + vec3(lgkNoise(vLgkW.xz * 3.1 + uLgkTime * 1.7) - 0.5, 0.0, lgkNoise(vLgkW.zx * 3.3 - uLgkTime * 1.4) - 0.5) * 0.35 * fadeR);
+    lgkNW = nW;
     normal = normalize((viewMatrix * vec4(nW, 0.0)).xyz);
     if (!gl_FrontFacing) normal = -normal;
   }`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-  if (!gl_FrontFacing) totalEmissiveRadiance += vec3(0.25, 0.55, 0.65) * (0.4 + 0.6 * lgkCaustic(vLgkW.xz * 1.5, uLgkTime * 1.3));`);
+  if (!gl_FrontFacing) totalEmissiveRadiance += vec3(0.25, 0.55, 0.65) * (0.4 + 0.6 * lgkCaustic(vLgkW.xz * 1.5, uLgkTime * 1.3));
+  else {
+    // Sonnenglitzern: einzelne Wellenflanken spiegeln die Sonne genau zur Kamera (hell, leuchtet im Bloom)
+    vec3 V = normalize(cameraPosition - vLgkW);
+    float s = max(dot(reflect(-V, lgkNW), normalize(uLgkSun)), 0.0);
+    float spark = pow(s, 380.0) * smoothstep(0.55, 0.8, lgkNoise(vLgkW.xz * 2.4 + uLgkTime * 1.1));
+    totalEmissiveRadiance += vec3(1.0, 0.94, 0.78) * spark * 7.0 * (1.0 - smoothstep(60.0, 220.0, vLgkD)) * step(0.05, uLgkSun.y);
+  }`);
   };
   mat.customProgramCacheKey = () => 'lgk-water';
   return mat;

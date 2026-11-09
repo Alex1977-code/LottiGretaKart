@@ -570,7 +570,8 @@ export class Race {
       rs.sea = r.surface === 'sea' || r.surface === 'lava' ? rs.sea + dt : 0;   // Meer oder Lava: zurücksetzen
       let need = rs.sea > 0.6;
       // von der Bahn gefallen (ohne Leitplanken, Regenbogenbahn, Wolken): gleich zurück
-      if (!need && r.path && !r.cannon && r.path.py[r.loc.i] - r.pos.y > 9) { rs.fall = (rs.fall ?? 0) + dt; need = rs.fall > 0.4; } else rs.fall = 0;
+      // (nicht auf einer Steilwand: dort liegt der Rand tief unter der Mitte)
+      if (!need && r.path && !r.cannon && !r.path.ag?.[r.loc.i] && r.path.py[r.loc.i] - r.pos.y > 9) { rs.fall = (rs.fall ?? 0) + dt; need = rs.fall > 0.4; } else rs.fall = 0;
       if (!need && r.path) {
         if (r.progress > rs.best + 4 || (r.isPlayer && !r.trying)) { rs.best = Math.max(rs.best, r.progress); rs.t = 0; continue; }
         rs.t += dt;
@@ -826,6 +827,8 @@ export class Race {
     const sc = this.app.scene, p = cam.position;
     const under = p.y < -0.15 && this.world.hasUnderwater && this.world.underwaterAt(p.x, p.z);
     const post = !this.split ? this.app.post : null;
+    // Lichtstrahlen: nur mit sichtbarer Sonne (nicht nachts, nicht in Hallen, nicht unter Wasser)
+    if (post?.setSun) { const sky = this.app.sky; post.setSun(sky?.sunDiscDir ?? sky?.sunDir, sky?.sun.color, !!(sky?.sunParts?.[0]?.visible && !sky.nightOn && !this.night && !under)); }
     const draw = () => (post ? post.render(sc, cam) : renderer.render(sc, cam));
     if (!under) { draw(); return; }
     const sky = this.app.sky, fog = sc.fog;

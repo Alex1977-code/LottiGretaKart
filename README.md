@@ -176,6 +176,11 @@ per HDMI oder Chrome „Streamen“, oder den Link direkt im Browser von Smart-T
 geradeaus halten und loslassen), **Grind-Schienen** (draufspringen und entlanggleiten – eine führt quer über den
 See), **auf dem Wasser fahren**.
 
+**Leveldesign**: Viele Strecken haben **Felswände** als Rahmen (Schlucht, Felsental, Gipfelabfahrt, Zugwüste …),
+**Tunnel** durch den Berg mit Lampenband (Schlucht, Felsental, Goldmine, Kirschblüte, Schokoberg …) und
+**Abkürzungen**: ein schmaler Weg durch eine Lücke in der Bande (befestigt auf Eissee, Weihnachtsberg, Tempelstadt,
+Käseland und Neonmetropole; Schotter, der bremst, auf Arena, Goldmine und Abendsteppe – mit einem Turbo lohnt er sich).
+
 ## Gegenstände (aus den Funkel-Kisten)
 
 Turbo-Beere (×1 oder ×3) · Panzer (prallt von Banden ab) · Goldpanzer (sucht sich die Fahrerin davor) ·
@@ -226,7 +231,8 @@ src/
                       (Figuren im Kart), kartModel.js, effects.js (Partikel), audio.js (Motor, Musik), Ceremony.js
   world/              worldDef.js (Landschaftsplan: Strecken, See, Berge, Regionen, Schienen; courseWorldDef),
                       World (Höhenfeld, Oberflächen, Kollisionen), WorldView (Darstellung), backdrop.js
-                      (Fernsicht), Track, Sky, decor.js
+                      (Fernsicht), Track, Sky, decor.js, levelkit.js (Felswände, Tunnel, Abkürzungen),
+                      post.js (Nachbearbeitung: Umgebungsverdeckung, Lichtstrahlen, Leuchten, Farben)
   game/RacePath.js    Rennpfad (Startaufstellung, Runden, Auslauf)
   tracks/             Streckendefinitionen (Kontrollpunkte, Kisten, Turbo-Felder, Schanzen, Gefahren, Kulisse)
   ui/                 Menüs, HUD mit Minikarte, Touch-Steuerung, Eingabe, Symbole aus den 3D-Modellen

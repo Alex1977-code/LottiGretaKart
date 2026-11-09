@@ -35,6 +35,9 @@ export default {
   bumps: [[9.3, 10.7, 1.1, 14]],      // holprige Minengleise auf dem Plateau
   glides: [{ c: 12.1, w: 12 }],
   flights: [[12.3, 13.9]],
+  // Leveldesign (G5): Felswände als Rahmen, Tunnel durch den Berg, Abkürzung
+  cliffs: [{ c: [2.5, 6.5], side: 0, h: 22 }, { c: [8, 11.5], side: 1, h: 18 }],
+  tunnels: [{ c: [0.4, 1.5] }],
   items: [0.1, 0.35, 0.58, 0.88],
   boosts: [[0.2, 0], [0.3, 0.3], [0.62, -0.3], [0.95, 0]],
   coins: [[0.03, 0.07, -0.4, 0.4, 6], [0.24, 0.28, 0.3, -0.3, 5], [0.48, 0.52, 0, 0, 5], [0.63, 0.66, 0.3, -0.3, 4]],

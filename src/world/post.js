@@ -44,6 +44,40 @@ const GradeShader = {
 };
 
 /**
+ * Lichtstrahlen (Sonnenstrahlen durch Bäume, Wolkenränder, Felskanten): helle Bildteile rund um die Sonne werden
+ * radial zur Sonne hin verwischt und dazugegeben – wo etwas Dunkles davor steht, entstehen Strahlen und Schatten-
+ * bahnen. Im HDR-Zwischenbild vor dem Leuchten (Bloom).
+ */
+const ShaftShader = {
+  uniforms: { tDiffuse: { value: null }, uSun: { value: new THREE.Vector2(0.5, 0.5) }, uK: { value: 0 }, uAspect: { value: 1.6 }, uColor: { value: new THREE.Color(1, 0.95, 0.8) } },
+  vertexShader: /* glsl */ `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse; uniform vec2 uSun; uniform float uK, uAspect; uniform vec3 uColor; varying vec2 vUv;
+    ${SAFE}
+    void main() {
+      vec4 base = texture2D(tDiffuse, vUv);
+      if (uK <= 0.0) { gl_FragColor = base; return; }
+      vec2 d = (uSun - vUv);
+      float fall = 1.0 - smoothstep(0.0, 0.75, length(d * vec2(uAspect, 1.0)));
+      if (fall <= 0.0) { gl_FragColor = base; return; }
+      vec2 st = d / float(SAMPLES) * 0.85;
+      vec2 uv = vUv;
+      float w = 1.0, acc = 0.0, ws = 0.0;
+      for (int i = 0; i < SAMPLES; i++) {
+        uv += st;
+        vec3 s = lgkSafe(texture2D(tDiffuse, uv), 4.0).rgb;
+        float l = dot(s, vec3(0.299, 0.587, 0.114));
+        // (nur Licht nahe der Sonne strahlt – sonst zögen helle Wolken Schlieren)
+        acc += smoothstep(0.42, 1.0, l) * (1.0 - smoothstep(0.06, 0.28, length((uv - uSun) * vec2(uAspect, 1.0)))) * w;
+        ws += w;
+        w *= 0.96;
+      }
+      acc /= ws;   // 0 … 1: wie frei der Blick zur Sonne entlang dieses Strahls ist
+      gl_FragColor = vec4(base.rgb + uColor * pow(acc, 1.4) * uK * fall * fall, base.a);
+    }`,
+};
+
+/**
  * GTAO, das nur sichtbare, deckende Flächen kennt: unsichtbare Teile (eingeklappter Gleiter, ausgeblendete
  * Materialien), durchsichtige Effekte (Leuchten, Funken, Rauch, Wasser, Glas), Sprites und Punkte zählen nicht –
  * sonst lägen sie im Normalen-Durchgang als „Wand“ vor der Kamera und färbten die Stelle schwarz.
@@ -88,6 +122,11 @@ export class Post {
       this.gtao.blendIntensity = 0.95;
       this.composer.addPass(this.gtao);
     }
+    // Sonnenstrahlen (ab Stufe 2; am Handy mit weniger Proben)
+    this.shafts = new ShaderPass({ ...ShaftShader, uniforms: THREE.UniformsUtils.clone(ShaftShader.uniforms), defines: { SAMPLES: quality >= 3 ? 36 : 20 } });
+    this.shafts.enabled = false;
+    this.composer.addPass(this.shafts);
+    this._sp = new THREE.Vector3(); this._fw = new THREE.Vector3();
     // Bloom in halber Auflösung (spart Leistung, weicher)
     this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.3, 0.35, 1.7);
     // weiche Schwelle: sonst springen Glanzpunkte an der Grenze von Bild zu Bild an und aus (Flackern)
@@ -134,7 +173,31 @@ export class Post {
     u.tint.value.setRGB(...(w === 'rain' ? [0.95, 0.98, 1.03] : w === 'calima' ? [1.06, 0.98, 0.86] : [1, 1, 1]));
   }
 
+  /** Sonne für die Lichtstrahlen: Richtung (zur Sonne), Farbe, sichtbar? (nachts, in Hallen, unter Wasser nicht) */
+  setSun(dir, color, on) { this.sunDir = dir; this.sunColor = color; this.sunOn = on; }
+
+  updateShafts(camera) {
+    const u = this.shafts.uniforms;
+    let k = 0;
+    if (this.sunOn && this.sunDir && !this.noRays) {
+      const fw = camera.getWorldDirection(this._fw);
+      const facing = fw.dot(this.sunDir);
+      if (facing > 0.05) {
+        const p = this._sp.copy(camera.position).addScaledVector(this.sunDir, 1000).project(camera);
+        u.uSun.value.set(p.x * 0.5 + 0.5, p.y * 0.5 + 0.5);
+        // stärker, je mehr man zur Sonne blickt; außerhalb des Bildes ausblenden
+        const off = Math.max(Math.abs(p.x), Math.abs(p.y));
+        k = Math.min(1, (facing - 0.05) * 2.5) * (1 - Math.min(1, Math.max(0, off - 1) / 0.6)) * (this.weather === 'rain' ? 0.3 : this.weather === 'calima' ? 1.4 : 1);
+        if (this.sunColor) u.uColor.value.copy(this.sunColor).multiplyScalar(0.9);
+      }
+    }
+    u.uK.value = k * 1.6;
+    u.uAspect.value = camera.aspect ?? 1.6;
+    this.shafts.enabled = k > 0.01;
+  }
+
   render(scene, camera) {
+    this.updateShafts(camera);
     this.renderPass.scene = scene;
     this.renderPass.camera = camera;
     if (this.gtao) { this.gtao.scene = scene; this.gtao.camera = camera; }

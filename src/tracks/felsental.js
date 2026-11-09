@@ -26,6 +26,9 @@ export default {
     [-170, -50], [-200, 0], [-190, 50],
   ],
   heights: [3, 3, 4, 6, 10, 13, 6, 4, 4, 5, 6, 5, 3],
+  // Leveldesign (G5): Felswände als Rahmen, Tunnel durch den Berg, Abkürzung
+  cliffs: [{ c: [7.5, 11], side: 0, h: 20 }, { c: [2, 4.5], side: 1, h: 24 }],
+  tunnels: [{ c: [0.3, 1.0] }],
   ramps: [{ c: 5.25, w: 10 }],
   land: {
     hills: [[0, -10, 80, 14], [-260, -160, 120, 40], [250, -150, 120, 44], [40, -290, 150, 50], [-230, 220, 120, 30], [230, 210, 120, 32]],

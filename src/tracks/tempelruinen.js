@@ -34,6 +34,9 @@ export default {
   ],
   antigrav: [[10.4, 13.3, 50]],
   bumps: [[13.6, 14.2, 1.6, 20]],
+  // Leveldesign (G5): Felswände als Rahmen, Tunnel durch den Berg, Abkürzung
+  cliffs: [{ c: [4, 6.5], side: 1, h: 16 }],
+  tunnels: [{ c: [1.2, 2.0] }],
   land: {
     lakes: [{ x: -20, z: -100, r: 48, depth: 9 }],
     flats: [{ x: 0, z: 0, r: 120, h: 4 }],

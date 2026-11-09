@@ -45,7 +45,7 @@ const decorMat = (rough, extra = {}, key = '') => {
 const HI = { roundTree: treeGeo, pineTree: pineGeo, bush: bushGeo, rock: rockGeo, mesa: mesaGeo, cactus: cactusGeo, palm: palmGeo };
 const HI_GEO = {};
 const hiGeo = (kind) => HI_GEO[kind] ?? (HI_GEO[kind] = HI[kind]());
-const LOD_DIST = 150;
+const LOD_DIST = 120;   // (näher als zuvor: spart Dreiecke, die Fernform ist inzwischen gut genug)
 
 // ------------------------------------------------------------------ Geometrien der Massenware (Ursprung = Fuß)
 const GEO = {};
@@ -69,9 +69,13 @@ const bush = () => g('bush', () => new Build()
   .sphere(0.65, 0xffffff, { p: [-0.6, 0.45, -0.25] }, 8, 6)
   .geometry());
 const flower = () => g('flower', () => {
-  const b = new Build().cyl(0.03, 0.03, 0.5, 0x3f9a2a, { p: [0, 0.25, 0] }, 5);
-  for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; b.sphere(0.1, 0xffffff, { p: [Math.cos(a) * 0.12, 0.55, Math.sin(a) * 0.12], s: [1, 0.5, 1] }, 5, 3); }
-  return b.sphere(0.08, 0xffd21f, { p: [0, 0.57, 0] }, 5, 3).geometry();
+  // Stiel, fünf leicht gewölbte Blütenblätter (flach, schräg gestellt) und eine Mitte – sparsam an Dreiecken
+  const b = new Build().cyl(0.03, 0.03, 0.5, 0x3f9a2a, { p: [0, 0.25, 0] }, 4);
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    b.add(new THREE.CircleGeometry(0.1, 6).rotateX(-Math.PI / 2 + 0.35).rotateY(-a + Math.PI / 2).translate(Math.cos(a) * 0.12, 0.56, Math.sin(a) * 0.12), 0xffffff);
+  }
+  return b.sphere(0.07, 0xffd21f, { p: [0, 0.58, 0] }, 5, 3).geometry();
 });
 const mushroom = () => g('mushroom', () => {
   const b = new Build()
@@ -170,11 +174,13 @@ const fern = () => g('fern', () => {
 });
 // Gänseblümchen-Tupfer: flache weiße Blüten mit gelber Mitte, im Gras verstreut
 const daisy = () => g('daisy', () => {
+  // (flache Scheiben statt Zylinder: ~60 statt ~300 Dreiecke – die Tupfer stehen zu Tausenden im Gras)
   const b = new Build();
+  const disc = (r, seg) => new THREE.CircleGeometry(r, seg).rotateX(-Math.PI / 2);
   for (let i = 0; i < 6; i++) {
-    const a = i * 2.1, r = 0.25 + (i % 3) * 0.3;
-    b.cyl(0.07, 0.07, 0.03, 0xffffff, { p: [Math.cos(a) * r, 0.08 + (i % 2) * 0.03, Math.sin(a) * r] }, 7);
-    b.cyl(0.03, 0.03, 0.035, 0xffd21f, { p: [Math.cos(a) * r, 0.1 + (i % 2) * 0.03, Math.sin(a) * r] }, 5);
+    const a = i * 2.1, r = 0.25 + (i % 3) * 0.3, y = 0.09 + (i % 2) * 0.03;
+    b.add(disc(0.075, 6).translate(Math.cos(a) * r, y, Math.sin(a) * r), 0xffffff);
+    b.add(disc(0.032, 4).translate(Math.cos(a) * r, y + 0.006, Math.sin(a) * r), 0xffd21f);
   }
   return b.geometry();
 });

@@ -5,6 +5,7 @@
 
 import { Track } from './Track.js';
 import { getTheme } from './themes.js';
+import { prepareLevel, applyLevelHeights, pathAt, pathDist } from './levelkit.js';
 
 /** Schlüssel einer Rasterzelle als kleine Ganzzahl (keine Zeichenkette – erzeugt keinen Speichermüll). */
 const ck = (a, b) => (a + 2048) * 4096 + (b + 2048);
@@ -42,6 +43,8 @@ export class World {
       for (let i = 0; i < tr.N; i++) { const d = (tr.px[i] - X) ** 2 + (tr.pz[i] - Z) ** 2; if (d < bd) { bd = d; best = i; } }
       tr.gaps.push({ side: g.side, s: best * tr.ds, half: g.half });
     }
+    // Leveldesign: Felswände, Tunnel, Abkürzungen (schneidet Banden-Lücken, siehe levelkit.js)
+    prepareLevel(this);
     // 2. Höhenfeld mit eingeebneten Straßen
     this.buildHeightfield();
     for (const c of this.courses) c.track.heightFn = this.heightAt;
@@ -167,7 +170,9 @@ export class World {
       }
     }
     for (let k = 0; k < h.length; k++) if (w[k] > 0) h[k] += (t[k] - h[k]) * w[k];
-    this.hf = { x0: b.minX, z0: b.minZ, nx, nz, h, rw: w, uw, cell: CELL };
+    // Abkürzungswege und Felswände (Felsmaske cl: 1 = steile Wand, 0.2 = Krone)
+    const cl = applyLevelHeights(this, { x0: b.minX, z0: b.minZ, nx, nz, h, rw: w, cell: CELL });
+    this.hf = { x0: b.minX, z0: b.minZ, nx, nz, h, rw: w, uw, cell: CELL, cl };
     this.hasUnderwater = uw.some((v) => v);
   }
 
@@ -276,6 +281,8 @@ export class World {
     if (h < -0.05) return 'water';
     const r = this.nearestRoad(x, z, 1, this._nr ?? (this._nr = {}));
     if (r.road && !r.water && r.d <= r.hw + 1.0) return 'road';
+    const p = pathAt(this, x, z);   // Abkürzung: befestigt wie Straße, Schotter wie Gelände
+    if (p) return p.kind === 'dirt' ? 'off' : 'road';
     return 'off';
   }
 
@@ -293,6 +300,10 @@ export class World {
   /** Freier Platz für Kulisse: weit genug von allen Straßen und nicht im Wasser. */
   isFree(x, z, clearance = 4) {
     if (this.heightAt(x, z) < 0.3) return false;
+    if (pathDist(this, x, z) < clearance) return false;
+    // nicht in steile Felswände (auf der Krone darf etwas wachsen)
+    const g = this.hf;
+    if (g?.cl) { const ix = Math.round((x - g.x0) / g.cell), iz = Math.round((z - g.z0) / g.cell); if (ix >= 0 && iz >= 0 && ix < g.nx && iz < g.nz && g.cl[iz * g.nx + ix] > 0.5) return false; }
     for (const l of this.lava) if ((x - l.x) ** 2 + (z - l.z) ** 2 < (l.r + clearance) ** 2) return false;
     const r = this.nearestRoad(x, z, 2, this._nr2 ?? (this._nr2 = {}));
     if (!r.road) return true;

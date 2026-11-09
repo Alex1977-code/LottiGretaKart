@@ -58,6 +58,7 @@ const ctx = {
 // Nachbearbeitung wie bei Mario Kart 8 (Leuchten, Farben, Kontrast) ab Grafikstufe „Hoch“
 setSurfaceQuality(quality);
 if (usePost) ctx.post = new Post(renderer, quality, { ao: params.has('ao') ? params.get('ao') !== '0' : quality >= 3 });
+if (ctx.post && params.get('rays') === '0') ctx.post.noRays = true;   // Fehlersuche: ?rays=0 ohne Lichtstrahlen
 if (quality >= 2) installRimLight();
 window.__kart = ctx; // Tests/Fehlersuche
 ctx.ai = { aiInput, initAI }; // Tests: Spielerin von der KI fahren lassen

@@ -31,6 +31,9 @@ export default {
   seed: 996,
   ctrl,
   heights,
+  // Leveldesign (G5): Felswände als Rahmen, Tunnel durch den Berg, Abkürzung
+  cliffs: [{ c: [2, 5], side: -1, h: 20 }],
+  tunnels: [{ c: [10.3, 11.2] }],
   bumps: [[3.3, 4.7, 1.2, 15], [8.3, 9.7, 1.4, 17]],
   flights: [[16.15, 18.85]],
   cannons: [{ c0: 16.05, c1: 19, h: 40 }],

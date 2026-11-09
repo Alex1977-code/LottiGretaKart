@@ -24,6 +24,9 @@ export default {
     [-10, -80], [-60, -40, 7.5, 2.5], [-110, -60], [-170, -50], [-200, 0],
   ],
   heights: [3, 3, 3, 4, 8, 13, 16, 16, 3, 2, 2, 3, 3],
+  // Leveldesign (G5): Felswände als Rahmen, Tunnel durch den Berg, Abkürzung
+  cliffs: [{ c: [4, 6.5], side: 1, h: 16 }],
+  tunnels: [{ c: [1.3, 2.2] }],
   glides: [{ c: 7.3, w: 12 }],
   flights: [[7.5, 8.15]],
   antigrav: [[8.6, 10.4, 0]],
