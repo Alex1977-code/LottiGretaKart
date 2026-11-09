@@ -9,7 +9,7 @@ import { audio } from './game/audio.js';
 import { Hud } from './ui/hud.js';
 import { Menus } from './ui/menus.js';
 import { TouchControls } from './ui/touch.js';
-import { readMeta, isTouch, endFrame } from './ui/input.js';
+import { readMeta, isTouch, endFrame, onPadChange, keepAwake } from './ui/input.js';
 import { Race } from './game/Race.js';
 import { aiInput, initAI } from './game/ai.js';
 import { RACERS, RACER_BY_ID } from './game/racers.js';
@@ -127,6 +127,7 @@ ctx.startRace = (o) => {
   document.body.classList.toggle('touch-on', touchOn && !race.split);
   ctx.touch.onStartTap = () => race.startTap();
   ctx.sky?.updateEnv();   // Umgebungslicht der neuen Strecke schon vor dem Übersetzen der Shader
+  keepAwake();   // Bildschirm bleibt an (Controller, Übertragung aufs TV: niemand berührt das Gerät)
   warmShaders(race);
   graceUntil = performance.now() + 6000;   // Anlaufzeit: Bildrate noch nicht bewerten
   return race;
@@ -171,6 +172,21 @@ const menus = new Menus(ctx);
 if (params.has('night')) setTimeSetting(params.get('night') === '1' ? 'night' : 'day');
 if (params.has('weather')) setWeatherSetting(params.get('weather'));
 ctx.menus = menus;
+// Kurze Meldung oben im Bild (Controller verbunden/getrennt)
+const toastEl = document.createElement('div');
+toastEl.id = 'toast';
+document.body.appendChild(toastEl);
+let toastT = 0;
+ctx.toast = (text, ms = 2600) => { toastEl.textContent = text; toastEl.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('show'), ms); };
+// Controller (Bluetooth/USB): Verbinden melden; fällt mitten im Rennen der Controller eines Spielers aus
+// (Akku leer, Schlafmodus, außer Reichweite), das Rennen anhalten statt das Kart führerlos weiterfahren zu lassen
+onPadChange((e) => {
+  if (e.type === 'connected') { ctx.toast(`🎮 ${e.name} ${e.index + 1} verbunden`); keepAwake(); return; }
+  const race = ctx.race;
+  const used = !!race && !race.demo && race.humans.some((h) => !h.remote && (h.src === `pad${e.index}` || (h.src === 'auto' && e.active)));
+  if (used && !ctx.paused && race.state !== 'done') { menus.pause(); ctx.toast(`🎮 ${e.name} ${e.index + 1} getrennt – Pause`, 5000); }
+  else ctx.toast(`🎮 ${e.name} ${e.index + 1} getrennt`);
+});
 // App im Hintergrund (Tab gewechselt, Handy gesperrt): Rennen anhalten
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && ctx.race && !ctx.race.demo && !ctx.paused && ctx.race.state !== 'done') menus.pause();

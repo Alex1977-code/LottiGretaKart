@@ -674,7 +674,8 @@ export class Menus {
               <h3>📺 Smart-TV, Fire TV, Konsole mit Browser</h3>
               <p>Direkt öffnen: <b>${url}</b> und Controller verbinden.</p>
               <h3>🎮 Controller</h3>
-              <p>Xbox-, PlayStation- oder Switch-Controller per <b>Bluetooth</b> mit dem Gerät koppeln, auf dem das Spiel läuft. Bis zu vier Spieler.</p>
+              <p>Xbox-, PlayStation- oder Switch-Controller per <b>Bluetooth</b> mit dem Gerät koppeln, auf dem das Spiel läuft, dann <b>eine Taste drücken</b> – oben erscheint „Controller verbunden“. Bis zu vier Spieler.</p>
+              <p><b>A</b> / <b>RT</b> Gas · <b>B</b> / <b>X</b> Bremse · <b>R</b> Driften · <b>L</b> / <b>Y</b> Gegenstand · <b>Start</b> Pause. Der Bildschirm bleibt beim Spielen an; die Touch-Knöpfe verschwinden, sobald ein Controller benutzt wird.</p>
               <h3>✈️ Im Flugzeug</h3>
               <p>Spiel vorher einmal online öffnen – danach läuft es ohne Internet. Mehrspieler auf einem iPad/Laptop mit Controllern (Bluetooth darf im Flugmodus an sein) oder geteilter Tastatur. Mehrere iPhones: mit der iPhone-App direkt in der Nähe.</p>
             </div>

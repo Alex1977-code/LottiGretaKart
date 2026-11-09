@@ -29,6 +29,11 @@ html, body {
 #touch { position: absolute; inset: 0; pointer-events: none; display: none; }
 #touch.visible { display: block; }
 body.menu-open #touch { display: none !important; }
+/* mit Controller gefahren: Touch-Knöpfe weg (ein Fingertipp holt sie zurück) */
+body.pad-active #touch { display: none !important; }
+/* kurze Meldung (Controller verbunden/getrennt) */
+#toast { position: fixed; left: 50%; top: max(14px, env(safe-area-inset-top)); transform: translate(-50%, -140%); z-index: 60; padding: 10px 18px; border-radius: 16px; font: 700 17px/1.2 var(--font, 'Lilita One', 'Trebuchet MS', sans-serif); color: #fff; background: rgba(20, 28, 70, 0.92); border: 2px solid #fff; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); transition: transform 0.28s ease; pointer-events: none; white-space: nowrap; }
+#toast.show { transform: translate(-50%, 0); }
 
 /* ---------------------------------------------------------------- HUD */
 .hud { position: absolute; inset: 0; display: none; pointer-events: none; color: #fff; text-shadow: 0 3px 0 rgba(42, 30, 62, 0.55); }
