@@ -95,8 +95,8 @@ export class Sky {
   buildClouds() {
     const rnd = new Rnd(77);
     const puff = cloudPuffGeo();
-    // (kaum Umgebungslicht: sonst färbt der grüne Boden die Wolken-Unterseiten)
-    const mat = new THREE.MeshStandardMaterial({ roughness: 1, color: 0xf4f6fa, envMapIntensity: 0.05, emissive: 0xe4ecf6, emissiveIntensity: 0.62, fog: false });
+    // unbeleuchtet mit eingebackenem Verlauf (sonst färbt das Bodenlicht die Wolken-Unterseiten grün)
+    const mat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false });
     const n = 30, per = 7;
     const im = new THREE.InstancedMesh(puff, mat, n * per);
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3();
@@ -217,8 +217,8 @@ export class Sky {
     else if (this.stars) this.stars.visible = night;
     if (this.clouds) {
       const rain = kind === 'rain';
-      this.clouds.material.color.setHex(rain ? 0xaab2bc : 0xffffff);
-      this.clouds.material.emissive.setHex(rain ? 0x5a626c : 0x9fb8d0);
+      this.clouds.material.color.setHex(rain ? 0x8a929c : 0xffffff);
+      this.clouds.material.emissive?.setHex(rain ? 0x5a626c : 0x9fb8d0);
       this.clouds.scale.set(rain ? 1.25 : 1, rain ? 0.7 : 1, rain ? 1.25 : 1);
     }
     if (this.sunParts) {

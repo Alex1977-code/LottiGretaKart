@@ -206,5 +206,9 @@ export function palmGeo() {
 /** Wolkenbausch: weich verformte Kugel mit flacherer Unterseite (für Himmelswolken). */
 export function cloudPuffGeo() {
   const g = blob(1, 2, 0.32, 1.6, 7.7, { flat: -0.35 });
+  // oben strahlend weiß, unten kühl-grau (die Wolke wirft ihren eigenen Schatten nach unten)
+  const N = g.attributes.normal, col = new Float32Array(N.count * 3);
+  for (let i = 0; i < N.count; i++) { const k = Math.min(1, Math.max(0, N.getY(i) * 0.5 + 0.55)); col[i * 3] = 0.78 + 0.22 * k; col[i * 3 + 1] = 0.82 + 0.18 * k; col[i * 3 + 2] = 0.9 + 0.1 * k; }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   return g;
 }
