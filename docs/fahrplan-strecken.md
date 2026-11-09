@@ -30,6 +30,7 @@ Glatteis, Musikpark mit Klaviertasten, Felsental mit Felssäulen auf der Fahrbah
 ersetzt; Teneriffa und Loro Parque fahren als Bonus im Kanaren-Cup (mit Hafenstadt und Palmenstrand).
 
 **Etappe 8 – Blitz-Cup** (neu): Kirschblüteninsel, Drachenmauer, Neonmetropole, Goldmine (fertig).
+**Etappe 9 – Ei-Cup** (neu): Babypark (sieben Runden), Käseland, Baumwipfelweg, Jahreszeitendorf (fertig).
 
 Neue Technik für Etappe 5 ff.: Abschnitte ohne Leitplanken (`noWalls`, Herunterfallen = zurückgesetzt),
 Regenbogen-Fahrbahn (`rainbow`), Klaviertasten mit Tönen (`piano`), Matsch, Sand und Schnee neben der Fahrbahn

@@ -146,6 +146,7 @@ export const WORLD_CUPS = [
   { id: 'blatt', name: 'Blatt-Cup', tracks: ['arena', 'eissee', 'musikpark', 'felsental'] },
   { id: 'krone', name: 'Kronen-Cup', tracks: ['wolkenstrasse', 'knochenduenen', 'lavafestung', 'sternenbahn'] },
   { id: 'blitz', name: 'Blitz-Cup', tracks: ['kirschbluete', 'drachenmauer', 'neonmetropole', 'goldmine'] },
+  { id: 'ei', name: 'Ei-Cup', tracks: ['babypark', 'kaeseland', 'baumwipfel', 'jahreszeiten'] },
   // Bonus: eigene Wünsche (Teneriffa, Loro Parque)
   { id: 'kanaren', name: 'Kanaren-Cup', tracks: ['loroparque', 'teneriffa', 'hafenstadt', 'palmenstrand'] },
 ];
