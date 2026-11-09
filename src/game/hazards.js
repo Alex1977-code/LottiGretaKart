@@ -233,7 +233,7 @@ export class Hazards {
           const cap = new THREE.Mesh(new THREE.SphereGeometry(0.64, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xffc21a, emissive: 0x6a4a00, emissiveIntensity: 0.6, roughness: 0.3 }));
           cap.position.y = 1.68;
           root.add(cap);
-          h.model = { root, update() {} };
+          h.model = { root, update() {}, dispose() { root.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } }); } };
           h.holder = new THREE.Group();
           h.holder.add(root);
           const p = track.pointAt(d.u, (d.lat ?? 0) * base.hw);
@@ -627,7 +627,7 @@ export class Hazards {
   }
 
   dispose() {
-    for (const h of this.list) { h.model.dispose(); h.holder.removeFromParent(); }
+    for (const h of this.list) { h.model.dispose?.(); h.holder.removeFromParent(); }
     for (const b of this.bombs) { b.model.dispose(); b.holder.removeFromParent(); b.marker.dispose(); }
     this.list.length = 0; this.bombs.length = 0;
   }
