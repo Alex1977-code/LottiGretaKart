@@ -185,7 +185,10 @@ export class Sky {
     // Sonne als heller Fleck (HDR) in Richtung des Sonnenlichts – gibt Glanzpunkte auf Lack und Wasser
     const d = this.sunDir;
     this.envSun.position.set(d.x, Math.max(0.15, d.y), d.z).normalize().multiplyScalar(SKY_R * 0.7);
-    this.envSun.material.color.copy(this.sun.color).multiplyScalar(this.nightOn ? 0.6 : 6);
+    // ohne sichtbare Sonne (Halle, Höhle) kein Sonnenfleck; bei Regen nur ein matter Schimmer
+    this.envSun.visible = !this.sunParts || this.sunParts[0].visible;
+    const wk = this.weatherKey?.startsWith('rain') ? 0.25 : 1;
+    this.envSun.material.color.copy(this.sun.color).multiplyScalar((this.nightOn ? 0.6 : 6) * wk * Math.min(1.5, Math.max(0.2, this.sun.intensity / 2.4)));
     const rt = this.pmrem.fromScene(this.envScene, 0, 1, SKY_R * 2, { size: 128 });
     this.envRT?.dispose();
     this.envRT = rt;
@@ -197,6 +200,7 @@ export class Sky {
     const on = k > 0.5;
     if (on === this.nightOn) return;
     this.nightOn = on;
+    this.envDirty = true;
     if (on && !this.stars) this.buildStars();
     if (this.stars) this.stars.visible = on;
     if (this.sunParts) {
@@ -213,6 +217,7 @@ export class Sky {
     const key = `${kind}:${night}`;
     if (key === this.weatherKey) return;
     this.weatherKey = key;
+    this.envDirty = true;
     if (this.stars && kind) this.stars.visible = false;
     else if (this.stars) this.stars.visible = night;
     if (this.clouds) {
@@ -273,11 +278,12 @@ export class Sky {
 
   dispose() {
     this.envRT?.dispose(); this.pmrem?.dispose(); this.envGround?.geometry.dispose(); this.envSun?.geometry.dispose();
+    this.envGround?.material.dispose(); this.envSun?.material.dispose();
     this.group.removeFromParent();
     this.hemi.removeFromParent();
     this.sun.removeFromParent();
     this.sun.target.removeFromParent();
-    this.group.traverse((o) => { o.geometry?.dispose?.(); o.material?.dispose?.(); });
+    this.group.traverse((o) => { o.geometry?.dispose?.(); o.material?.map?.dispose?.(); o.material?.dispose?.(); });
     this.sun.shadow.map?.dispose?.();
   }
 }

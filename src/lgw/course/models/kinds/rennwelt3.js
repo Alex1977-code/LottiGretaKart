@@ -47,6 +47,14 @@ import { Build, mesh, vcol, cached, joint, makeModel, Clock } from '../lib/kit.j
 
 const { sin } = Math;
 
+// gemeinsame Materialien (einmal pro Spiel, werden nicht pro Modell neu angelegt)
+let _mats = null;
+const MAT = () => _mats || (_mats = {
+  rails: new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.3, roughness: 0.6 }),
+  chrome: new THREE.MeshStandardMaterial({ color: 0xe8eef6, metalness: 1, roughness: 0.12 }),
+  gold: new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.6, roughness: 0.3 }),
+});
+
 function bouncePad(o = {}) {
   const R = o.r ?? 3, C = o.color ?? 0xe8392d;
   const root = new THREE.Group();
@@ -69,7 +77,7 @@ function railTrack(o = {}) {
     for (const z of [-0.75, 0.75]) b.box(L, 0.16, 0.14, 0x9a9aa6, { p: [0, 0.26, z] }, 0.02);
     b.box(L, 0.08, 4.2, 0x8a8278, { p: [0, 0.02, 0] }, 0);
     return b.geometry();
-  }), new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.3, roughness: 0.6 }), {}, false));
+  }), MAT().rails, {}, false));
   return makeModel('rail_track', root, () => {});
 }
 
@@ -83,7 +91,7 @@ function trainLoco(o = {}) {
     b.box(4, 4, 3.2, C, { p: [-3.6, 3.3, 0] }, 0.2);
     b.box(4.4, 0.4, 3.6, 0x1a1a1a, { p: [-3.6, 5.5, 0] }, 0.1);
     b.cyl(0.5, 0.7, 2.2, 0x1a1a1a, { p: [4.8, 5, 0] }, 10);
-    b.cone(1.6, 1.6, 0xd8281e, { p: [6.6, 1.3, 0], r: [0, 0, Math.PI / 2] }, 4);
+    b.cone(1.2, 1.6, 0xd8281e, { p: [6.6, 1.3, 0], r: [0, 0, -Math.PI / 2] }, 4);   // Schienenräumer nach vorn
     b.sphere(0.4, 0xfff4c8, { p: [6.1, 3.2, 0] }, 8, 6);
     for (const x of [-4, -1.5, 1.5, 4]) for (const s of [-1, 1]) b.cyl(0.8, 0.8, 0.3, 0x1a1a1a, { p: [x, 0.8, s * 1.3], r: [Math.PI / 2, 0, 0] }, 14);
     return b.geometry();
@@ -141,7 +149,7 @@ function pinballBumper() {
 
 function pinball() {
   const root = new THREE.Group();
-  root.add(mesh(cached('rw3:pinball', () => new THREE.SphereGeometry(1, 28, 20)), new THREE.MeshStandardMaterial({ color: 0xe8eef6, metalness: 1, roughness: 0.12 }), {}, true));
+  root.add(mesh(cached('rw3:pinball', () => new THREE.SphereGeometry(1, 28, 20)), MAT().chrome, {}, true));
   return makeModel('pinball', root, () => {});
 }
 
@@ -204,6 +212,8 @@ function shopFront(o = {}) {
   }), vcol(0.4), {}, true));
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(8, 2), new THREE.MeshBasicMaterial({ map: signTexture(text, '#' + C.toString(16).padStart(6, '0')) }));
   sign.position.set(0, 7.8, 0.05); root.add(sign);
+  // Vorderseite nach +X (zur Fahrbahn, wie alle Modelle)
+  for (const c of [...root.children]) { const g = new THREE.Group(); g.rotation.y = Math.PI / 2; root.remove(c); g.add(c); root.add(g); }
   return makeModel('shop_front', root, () => {}, [sign.geometry, sign.material]);
 }
 
@@ -328,10 +338,11 @@ function shipHull(o = {}) {
     b.box(L, 14, 40, (x, y) => (y < 2 ? 0xd8281e : 0xfaf8f4), { p: [0, 5, 0] }, 2);
     b.sphere(20, 0xfaf8f4, { p: [L / 2, 5, 0], s: [1.6, 0.35, 1] }, 18, 8);
     for (const s of [1, -1]) for (let x = -L / 2 + 6; x < L / 2; x += 4) b.box(2, 1.2, 0.2, 0x2a4a6a, { p: [x, 8, s * 20.05] }, 0.05);
-    b.box(L * 0.3, 10, 26, 0xfaf8f4, { p: [-L * 0.3, 17, 0] }, 1);
-    for (const s of [1, -1]) for (let x = -L * 0.44; x < -L * 0.16; x += 3) for (const y of [15, 19]) b.box(2, 1.2, 0.2, 0x2a4a6a, { p: [x, y, s * 13.05] }, 0.05);
-    b.cyl(4, 5, 10, 0x2a5ae8, { p: [-L * 0.3, 27, 0] }, 16);
-    b.cyl(4.1, 4.1, 2, 0x1a1a22, { p: [-L * 0.3, 31, 0] }, 16);
+    // Aufbauten und Schornstein an der Bordseite (−Z): die Fahrbahn (Kreuzfahrt) läuft leicht zur +Z-Seite versetzt über das Deck
+    b.box(L * 0.3, 10, 9, 0xfaf8f4, { p: [-L * 0.3, 17, -15] }, 1);
+    for (const s of [1, -1]) for (let x = -L * 0.44; x < -L * 0.16; x += 3) for (const y of [15, 19]) b.box(2, 1.2, 0.2, 0x2a4a6a, { p: [x, y, -15 + s * 4.55] }, 0.05);
+    b.cyl(3.4, 4, 10, 0x2a5ae8, { p: [-L * 0.3, 27, -15] }, 16);
+    b.cyl(3.5, 3.5, 2, 0x1a1a22, { p: [-L * 0.3, 31, -15] }, 16);
     return b.geometry();
   }), vcol(0.4), {}, true));
   return makeModel('ship_hull', root, () => {});
@@ -421,7 +432,7 @@ function goldenStupa() {
     for (let k = 0; k < 6; k++) b.torus(1.8 - k * 0.15, 0.2, 0xffd85a, { p: [0, 20 + k * 1.5, 0], r: [Math.PI / 2, 0, 0] }, 6, 20);
     for (const [x, z] of [[11, 11], [-11, 11], [11, -11], [-11, -11]]) b.cone(1.2, 8, G, { p: [x, 10, z] }, 10);
     return b.geometry();
-  }), new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.6, roughness: 0.3 }), {}, true));
+  }), MAT().gold, {}, true));
   return makeModel('golden_stupa', root, () => {});
 }
 
@@ -671,6 +682,8 @@ function subwayStation(o = {}) {
   }), vcol(0.4), {}, true));
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(8, 1.6), new THREE.MeshBasicMaterial({ map: signTexture(text, '#' + C.toString(16).padStart(6, '0')) }));
   sign.position.set(0, 6, -0.4); root.add(sign);
+  // Bahnsteigkante nach +X (zur Fahrbahn)
+  for (const c of [...root.children]) { const g = new THREE.Group(); g.rotation.y = Math.PI / 2; root.remove(c); g.add(c); root.add(g); }
   return makeModel('subway_station', root, () => {}, [sign.geometry, sign.material]);
 }
 
@@ -690,7 +703,7 @@ function glassTube(o = {}) {
   const W = o.width ?? 20, L = o.length ?? 8;
   const R = W / 2 + 1;
   const root = new THREE.Group();
-  const g = cached(`rw3:tube:${W}:${L}`, () => { const c = new THREE.CylinderGeometry(R, R, L + 0.2, 28, 1, true, -Math.PI / 2, Math.PI); c.rotateZ(Math.PI / 2); c.scale(1, 0.7, 1); return c; });
+  const g = cached(`rw3:tube:${W}:${L}`, () => { const c = new THREE.CylinderGeometry(R, R, L + 0.2, 28, 1, true, 0, Math.PI); c.rotateZ(Math.PI / 2); c.scale(1, 0.7, 1); return c; });
   const m = new THREE.Mesh(g, (GLASS ??= new THREE.MeshStandardMaterial({ color: 0xcfefff, transparent: true, opacity: 0.28, roughness: 0.05, metalness: 0.2, side: THREE.DoubleSide, depthWrite: false })));
   m.renderOrder = 3;
   root.add(m);

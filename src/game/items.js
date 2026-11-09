@@ -99,9 +99,9 @@ export class Items {
     const boxPos = [], coinList = [];
     for (const { tr, def } of roads) {
       // Kisten-Reihen
-      if (boxes) for (const u of def.items ?? []) {
+      if (boxes) for (const u0 of def.items ?? []) {
+        const u = tr.outOfFlight(u0);
         const p = tr.pointAt(u, 0);
-        if (tr.water && tr.water[p.i]) continue;
         const n = p.hw > 8 ? 5 : 4;
         for (let k = 0; k < n; k++) {
           const lat = (k - (n - 1) / 2) * (p.hw * 1.5 / (n - 1));
@@ -118,7 +118,8 @@ export class Items {
         }
       }
       // Turbo-Felder (Pfeile) und Sprungschanzen
-      for (const [u, lat = 0, len = 3] of def.boosts ?? []) {
+      for (const [u0, lat = 0, len = 3] of def.boosts ?? []) {
+        const u = tr.outOfFlight(u0);
         const p = tr.pointAt(u, lat * tr.hw[tr.wrap(Math.round(u * tr.N))]);
         const m = getModel('boost_arrow', { length: len, width: 2.2 });
         m.root.position.set(p.x, p.y + 0.07, p.z);
@@ -136,7 +137,7 @@ export class Items {
         g.position.set(p.x, p.y + 0.05, p.z);
         g.rotation.y = p.yaw;
         this.scene.add(g);
-        this.ramps.push({ g, x: p.x, z: p.z, yaw: p.yaw, w, len: 2.6 });
+        this.ramps.push({ g, x: p.x, y: p.y, z: p.z, yaw: p.yaw, w, len: 2.6 });
       }
       // Trampoline (Pilzschlucht): federnde Pilzhüte auf der Fahrbahn schleudern das Kart hoch in die Luft
       for (const b0 of def.bouncers ?? []) {
@@ -158,7 +159,7 @@ export class Items {
         g.position.set(p.x, p.y + 0.05, p.z);
         g.rotation.y = p.yaw;
         this.scene.add(g);
-        this.ramps.push({ g, x: p.x, z: p.z, yaw: p.yaw, w, len: 4.2, glide: true });
+        this.ramps.push({ g, x: p.x, y: p.y, z: p.z, yaw: p.yaw, w, len: 4.2, glide: true });
       }
     }
     // Kisten als eine Instanz-Wolke (ein Zeichenaufruf für alle)
@@ -480,7 +481,8 @@ export class Items {
           if (!r.air && r.speed > 3 && (r.pos.x - p.x) ** 2 + (r.pos.z - p.z) ** 2 < p.r * p.r) { r.launch(12); p.squash = 1; }
           continue;
         }
-        if (inRect(r.pos.x, r.pos.z, p.x, p.z, p.yaw, p.len / 2, p.w / 2) && r.speed > 5) {
+        // nur Karts auf der Schanze (nicht hoch darüber hinwegfliegende)
+        if (inRect(r.pos.x, r.pos.z, p.x, p.z, p.yaw, p.len / 2, p.w / 2) && r.speed > 5 && Math.abs(r.pos.y - p.y) < 1.5) {
           if (p.glide) r.launch(11, true); else r.launch(8.5 + Math.min(3, r.speed * 0.08));
         }
       }
@@ -632,7 +634,11 @@ export class Items {
     if (this.boxMesh) { this.boxMesh.removeFromParent(); this.boxMesh.dispose(); }
     for (const p of this.projectiles) if (!p.dead) this.remove(p);
     for (const p of this.pads) p.model.dispose();
-    for (const r of this.ramps) { r.g.removeFromParent(); r.model?.dispose?.(); }
+    for (const r of this.ramps) {
+      r.g.removeFromParent();
+      // Schanzen sind eigene Meshes (rampModel), Trampoline Modelle mit eigenem Abbau
+      if (r.model) r.model.dispose?.(); else r.g.traverse((o) => { if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose(); for (const m of [o.material].flat()) if (m && !m.userData?.shared) { m.map?.dispose(); m.dispose(); } });
+    }
     this.coinBody?.removeFromParent(); this.coinFace?.removeFromParent();
     this.coinBody?.dispose(); this.coinFace?.dispose();
   }

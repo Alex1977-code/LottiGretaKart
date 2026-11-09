@@ -46,6 +46,8 @@ function addVarying(shader) {
 export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patches = false, wet = false, rain = 0.35, surf = null } = {}) {
   const S = surf ? { topScale: 1 / 3, sideScale: 1 / 9, strength: 1, detail: 0.32, side: 'rock', slope: true, ...surf } : null;
   const size = S?.size ?? 512;
+  // Texturen gleich beim Anlegen des Materials rechnen (im Ladebildschirm), nicht erst beim Übersetzen des Shaders
+  const T = S ? { off: S.off ? surfaceTexture(S.off, size) : null, top: surfaceTexture(S.top, size), side: S.slope ? surfaceTexture(S.side, size) : null } : null;
   mat.onBeforeCompile = (shader) => {
     addVarying(shader);
     shader.fragmentShader = shader.fragmentShader
@@ -85,12 +87,12 @@ export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patche
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', `#include <common>\nvarying vec3 vLgkN;${S.off ? '\nattribute float lgkOff;\nvarying float vLgkOff;' : ''}`)
         .replace('#include <project_vertex>', `#include <project_vertex>\n  vLgkN = normalize(mat3(modelMatrix) * objectNormal);${S.off ? '\n  vLgkOff = lgkOff;' : ''}`);
-      if (S.off) shader.uniforms.uSurfOff = { value: surfaceTexture(S.off, size) };
-      shader.uniforms.uSurfTop = { value: surfaceTexture(S.top, size) };
-      shader.uniforms.uSurfSide = { value: surfaceTexture(S.side, size) };
+      if (S.off) shader.uniforms.uSurfOff = { value: T.off };
+      shader.uniforms.uSurfTop = { value: T.top };
+      if (S.slope) shader.uniforms.uSurfSide = { value: T.side };
       shader.uniforms.uSurfP = { value: new THREE.Vector4(S.topScale, S.sideScale, S.strength, S.detail) };
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', `#include <common>\nvarying vec3 vLgkN;${S.off ? '\nvarying float vLgkOff;\nuniform sampler2D uSurfOff;' : ''}\nuniform sampler2D uSurfTop;\nuniform sampler2D uSurfSide;\nuniform vec4 uSurfP;\nvec3 lgkSurfN;\nfloat lgkSurfRough;`)
+        .replace('#include <common>', `#include <common>\nvarying vec3 vLgkN;${S.off ? '\nvarying float vLgkOff;\nuniform sampler2D uSurfOff;' : ''}\nuniform sampler2D uSurfTop;${S.slope ? '\nuniform sampler2D uSurfSide;' : ''}\nuniform vec4 uSurfP;\nvec3 lgkSurfN;\nfloat lgkSurfRough;`)
         .replace('#include <color_fragment>', `#include <color_fragment>
   {
     // Oberflächen-Textur: oben Boden (zwei Maßstäbe gegen sichtbare Wiederholung), an Hängen Fels (triplanar)
@@ -103,9 +105,9 @@ export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patche
     tT = mix(tT, tO, ko); tT2 = mix(tT2, tO, ko);` : ''}
     float k = ${S.slope ? '1.0 - smoothstep(0.6, 0.86, Nw.y)' : '0.0'};
     vec3 bw = pow(abs(Nw), vec3(4.0)); bw /= (bw.x + bw.y + bw.z);
-    vec4 sx = texture2D(uSurfSide, vLgkW.zy * uSurfP.y);
+    ${S.slope ? `vec4 sx = texture2D(uSurfSide, vLgkW.zy * uSurfP.y);
     vec4 sy = texture2D(uSurfSide, vLgkW.xz * uSurfP.y);
-    vec4 sz = texture2D(uSurfSide, vLgkW.xy * uSurfP.y);
+    vec4 sz = texture2D(uSurfSide, vLgkW.xy * uSurfP.y);` : 'vec4 sx = vec4(0.5), sy = sx, sz = sx;   // ohne Hänge: keine Fels-Textur abtasten'}
     vec4 tS = sx * bw.x + sy * bw.y + sz * bw.z;
     float det = mix(mix(tT.b, tT2.b, 0.4), tS.b, k);
     diffuseColor.rgb *= 1.0 + (det - 0.5) * 2.0 * uSurfP.w * (0.45 + 0.55 * fadeS);
@@ -143,6 +145,9 @@ export function makeWaterMaterial(hf) {
   tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
   tex.needsUpdate = true;
   const mat = new THREE.MeshStandardMaterial({ color: 0x2f9be8, roughness: 0.18, metalness: 0.1, transparent: true, opacity: 0.84, emissive: 0x0a3a6a, emissiveIntensity: 0.35, side: THREE.DoubleSide });
+  // die Höhenfeld-Textur hängt nur als Uniform im Shader – beim Abbau des Materials mit freigeben
+  const baseDispose = mat.dispose.bind(mat);
+  mat.dispose = () => { tex.dispose(); baseDispose(); };
   mat.onBeforeCompile = (shader) => {
     addVarying(shader);
     shader.uniforms.uLgkDepth = { value: tex };

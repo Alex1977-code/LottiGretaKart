@@ -33,6 +33,8 @@ export class RacePath {
     this.lift = new Float32Array(N);   // > 0: Brücke (py = Deckhöhe)
     this.ag = new Uint8Array(N);       // 1: Anti-Gravitation
     this.key = new Int16Array(N);      // Klaviertaste (−1: keine)
+    this.iceMask = new Uint8Array(N);  // 1: Glatteis (das Kart rutscht)
+    this.flight = new Uint8Array(N);   // 1: Flugstrecke (keine Fahrbahn, man gleitet auf Streckenhöhe)
     const pts = curve.getSpacedPoints(N - 1);
     // Breite: vom nächsten Originalpunkt (gleicher Anteil entlang der Linie)
     const polyLen = points.reduce((a, p, k) => a + (k ? Math.hypot(p.x - points[k - 1].x, p.z - points[k - 1].z) : 0), 0);
@@ -49,7 +51,17 @@ export class RacePath {
       this.lift[i] = points[j].lift ?? 0;
       this.ag[i] = points[j].ag ?? 0;
       this.key[i] = points[j].key ?? -1;
+      this.iceMask[i] = points[j].ice ?? 0;
+      this.flight[i] = points[j].flight ?? 0;
       this.py[i] = this.lift[i] > 0.05 ? world.groundAt(p.x, p.z, points[j].y + 0.5) : world.heightAt(p.x, p.z);
+    }
+    // Flugstrecken: keine Fahrbahn – die Pfadhöhe ist die Gleitlinie vom Absprung zur Landung (für Gleiter, Rettung, KI)
+    for (let i = 0; i < N; i++) {
+      if (!this.flight[i] || this.flight[i - 1]) continue;
+      let e = i; while (e + 1 < N && this.flight[e + 1]) e++;
+      const a = Math.max(0, i - 1), b = Math.min(N - 1, e + 1), ya = this.py[a], yb = this.py[b];
+      for (let k = i; k <= e; k++) this.py[k] = ya + (yb - ya) * (k - a) / Math.max(1, b - a);
+      i = e;
     }
     for (let i = 0; i < N; i++) {
       const a = Math.max(0, i - 1), b = Math.min(N - 1, i + 1);
@@ -133,7 +145,7 @@ export class RacePath {
     const tr = course.track, N = tr.N;
     let i = a, guard = 0;
     while (guard++ < N * 2) {
-      pts.push({ x: tr.px[i], z: tr.pz[i], hw: tr.hw[i], y: tr.py[i], lift: tr.hasLift ? tr.lift[i] : 0, ag: tr.ag ? tr.ag[i] : 0, key: tr.keys ? tr.keys[i] : -1 });
+      pts.push({ x: tr.px[i], z: tr.pz[i], hw: tr.hw[i], y: tr.py[i], lift: tr.hasLift ? tr.lift[i] : 0, ag: tr.ag ? tr.ag[i] : 0, key: tr.keys ? tr.keys[i] : -1, ice: tr.iceMask ? tr.iceMask[i] : 0, flight: tr.flight ? tr.flight[i] : 0 });
       if (i === b) break;
       i = (i + 1) % N;
       if (i === 0) onFinishLine?.(pts);

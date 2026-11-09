@@ -49,6 +49,14 @@ const GradeShader = {
  * sonst lägen sie im Normalen-Durchgang als „Wand“ vor der Kamera und färbten die Stelle schwarz.
  */
 class CleanGTAOPass extends GTAOPass {
+  // Die Schattenkarte zeichnet schon der eigentliche Bild-Durchgang; die Hilfs-Durchgänge (Tiefe/Normalen)
+  // brauchen sie nicht – sonst würde sie in jedem Bild doppelt gerechnet
+  render(renderer, writeBuffer, readBuffer, deltaTime, maskActive) {
+    const sm = renderer.shadowMap, au = sm.autoUpdate;
+    sm.autoUpdate = false;
+    try { super.render(renderer, writeBuffer, readBuffer, deltaTime, maskActive); } finally { sm.autoUpdate = au; }
+  }
+
   _overrideVisibility() {
     const cache = this._visibilityCache;
     this.scene.traverse((o) => {

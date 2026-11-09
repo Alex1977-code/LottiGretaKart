@@ -21,7 +21,7 @@
 // airplane      großes Passagierflugzeug (Ferienflughafen); opts { color }
 // control_tower Kontrollturm mit verglaster Kanzel
 // baggage_cart  Gepäckschlepper mit zwei Anhängern (fährt im Verkehr mit)
-// dolphin       Delfin (springt in der Delfinlagune)
+// dolphin_simple einfacher Delfin (der Name „dolphin“ gehört dem schwimmenden Delfin aus zoo.js)
 // speaker_tower Boxenturm mit pulsierenden Lautsprechern (Disco-Halle)
 // disco_ball    Discokugel, dreht sich und glitzert
 // light_beam    farbiger Scheinwerferkegel, schwenkt (opts.color)
@@ -555,7 +555,7 @@ function dolphin() {
     for (const z of [-0.45, 0.45]) b.sphere(0.1, 0x1a1a22, { p: [2, 0.2, z] }, 6, 4);
     return b.geometry();
   }), vcol(0.3), {}, true));
-  return makeModel('dolphin', root, () => {});
+  return makeModel('dolphin_simple', root, () => {});
 }
 
 /** Boxenturm: Stapel großer Lautsprecher, die im Takt pumpen (Membranen leuchten). */
@@ -762,6 +762,6 @@ function spaceStation() {
 }
 
 export const MODELS = { tram, grandstand, palace, waterfall, mine_cart: mineCart, jumbotron, balloons, ferris_wheel: ferrisWheel, carousel, water_slide: waterSlide, cake, temple_pillar: templePillar, stone_face: stoneFace, step_pyramid: stepPyramid, temple_gate: templeGate, mansion_hall: mansionHall,
-  barrel_cannon: barrelCannon, slalom_gate: slalomGate, airplane, control_tower: controlTower, baggage_cart: baggageCart, dolphin,
+  barrel_cannon: barrelCannon, slalom_gate: slalomGate, airplane, control_tower: controlTower, baggage_cart: baggageCart, dolphin_simple: dolphin,
   speaker_tower: speakerTower, disco_ball: discoBall, light_beam: lightBeam,
   cloud_puff: cloudPuff, airship, ribcage, skull, fort_tower: fortTower, fort_gate: fortGate, dragon_statue: dragonStatue, planet, space_station: spaceStation };

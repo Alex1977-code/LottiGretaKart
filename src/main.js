@@ -5,7 +5,6 @@
 
 import * as THREE from 'three';
 import { getRenderer } from './lgw/three/renderer.js';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { audio } from './game/audio.js';
 import { Hud } from './ui/hud.js';
 import { Menus } from './ui/menus.js';
@@ -126,6 +125,7 @@ ctx.startRace = (o) => {
   ctx.touch.show(touchOn);
   document.body.classList.toggle('touch-on', touchOn && !race.split);
   ctx.touch.onStartTap = () => race.startTap();
+  ctx.sky?.updateEnv();   // Umgebungslicht der neuen Strecke schon vor dem Übersetzen der Shader
   warmShaders(race);
   graceUntil = performance.now() + 6000;   // Anlaufzeit: Bildrate noch nicht bewerten
   return race;
@@ -229,14 +229,13 @@ async function boot() {
   await nextFrame();
   ctx.scene = new THREE.Scene();
   // Umgebungslicht (Studio-Reflexionen): Figuren und Karts glänzen wie Spielzeug-Plastik, Chrom spiegelt
+  // (ab Stufe 2 kommt es vom Himmel selbst – siehe Sky.updateEnv)
+  ctx.sky = new Sky(ctx.scene, getTheme('grass'), { quality, sunDisc: true, envLight: quality >= 2, renderer });
   if (quality >= 2) {
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    ctx.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    ctx.sky.updateEnv();
     ctx.scene.environmentIntensity = ENV_INTENSITY;
     ctx.envIntensity = ENV_INTENSITY;
-    pmrem.dispose();
   }
-  ctx.sky = new Sky(ctx.scene, getTheme('grass'), { quality, sunDisc: true, envLight: quality >= 2, renderer });
   // Fehlersuche: ?shadows=0 schaltet die Schatten ab
   if (params.get('shadows') === '0') ctx.sky.sun.castShadow = false;
   // Licht an der Spielerin (Höhle, Zelt, Nacht) – immer in der Szene, Stärke setzt das Rennen

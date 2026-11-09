@@ -117,7 +117,9 @@ export class Race {
     this.weatherFx = new WeatherFx(this.scene, this.weather, app.quality ?? 2);
     // Scheinwerfer-Kegel auf der Straße (nachts und bei Regen), dem Boden angelegt
     this.lightsOn = this.night || this.weather === 'rain';
-    this.groundLights = this.lightsOn ? new GroundLights(this.scene, this.world) : null;
+    // wird es im Rennen Nacht (Tageszeit nach Runden)? Dann Lichter von Anfang an anlegen und nur einschalten
+    this.mayNight = this.night || (!!this.def.timeByLap?.includes('night') && getTimeSetting() === 'auto' && o.daytime === undefined && o.night === undefined);
+    this.groundLights = this.lightsOn || this.mayNight ? new GroundLights(this.scene, this.world) : null;
     // Kanonen der Strecke: { c0 (Kontrollpunkt-Stelle der Kanone), c1 (Landestelle), h (Scheitelhöhe über der Geraden) }
     {
       const tr = this.course.track;
@@ -162,11 +164,13 @@ export class Race {
     this.player = this.locals[0] ?? null;
     this.split = this.locals.length > 1;
     // nachts: echter Scheinwerfer an den Karts der Spieler an diesem Gerät
-    if (this.night) for (const h of this.locals) {
-      const sp = new THREE.SpotLight(0xe6ecff, 45, 46, 0.52, 0.6, 1.3);
+    this.spots = [];
+    if (this.mayNight) for (const h of this.locals) {
+      const sp = new THREE.SpotLight(0xe6ecff, this.night ? 45 : 0, 46, 0.52, 0.6, 1.3);
       sp.position.set(0.9, 1.1, 0);
       sp.target.position.set(14, -1, 0);
       h.root.add(sp, sp.target);
+      this.spots.push(sp);
     }
     this.grid();
     if (this.trial) for (const h of this.humans) h.item = { id: 'beere3', charges: 3 };
@@ -281,9 +285,15 @@ export class Race {
 
   onLap(r) {
     // Tageszeit wechselt mit den Runden (wie der Sonnenuntergang über die Runden): nach der vordersten Spielerin
+    // – nur vorwärts (wer zurückliegt, dreht die Zeit nicht zurück)
     if (r.isPlayer && this.def.timeByLap && getTimeSetting() === 'auto' && r.lap <= this.laps) {
-      const want = this.def.timeByLap[Math.min(this.def.timeByLap.length - 1, r.lap - 1)];
-      if (want !== this.daytime) this.setDaytime(want);
+      const lead = Math.min(this.laps, Math.max(r.lap, ...this.humans.map((h) => h.lap ?? 1)));
+      const k = Math.min(this.def.timeByLap.length - 1, lead - 1);
+      if (k > (this.timeIdx ?? 0)) {
+        this.timeIdx = k;
+        const want = this.def.timeByLap[k];
+        if (want !== this.daytime) this.setDaytime(want);
+      }
     }
     if (!r.isPlayer || r.lap > this.laps) return;
     const hud = this.hudOf(r);
@@ -305,6 +315,10 @@ export class Race {
     this.app.post?.setNight(this.night ? 1 : this.dusk ? 0.3 : 0);
     applyNightGlow(this.night);
     if (this.app.worldView?.nightLamps) this.app.worldView.nightLamps.visible = this.night;
+    // Scheinwerfer und Lichtkegel auf der Straße (wurden mit mayNight schon angelegt)
+    this.lightsOn = this.night || this.weather === 'rain';
+    for (const sp of this.spots ?? []) sp.intensity = this.night ? 45 : 0;
+    for (const r of this.racers) if (r.headlights) r.headlights.visible = this.lightsOn;
     this.ambT = 0;
   }
 
@@ -313,7 +327,9 @@ export class Race {
     r.finishTime = this.time;
     this.finishOrder.push(r);
     r.cancelDrift();
-    if (r.isPlayer) this.playerFinished(r);
+    // Mitspieler an einem anderen Gerät: dort gibt es Jubel und Ergebnis; hier nur prüfen, ob alle im Ziel sind
+    if (r.isPlayer && !r.remote) this.playerFinished(r);
+    else if (r.isPlayer) this.checkHumansDone();
   }
 
   /** Sind alle Menschen im Ziel oder ausgeschieden? Dann endet das Rennen bald. */
@@ -451,7 +467,7 @@ export class Race {
     this.emit(dt, t);
     for (const r of this.racers) if (!r.out && !r.parked) r.syncVisual(dt, t);
     if (this.groundLights) {
-      for (const r of this.racers) {
+      if (this.lightsOn) for (const r of this.racers) {
         if (r.out || !r.headlights || !r.root.visible || this.focusDist2(r.pos.x, r.pos.z) > 90 * 90) continue;
         this.groundLights.add(r.pos.x, r.pos.y, r.pos.z, r.root.rotation.y, 1.0, 10, 5, 0xd8e4ff, 0.55);
       }
@@ -564,7 +580,10 @@ export class Race {
       if ((this.rescueLog ??= []).length < 30) this.rescueLog.push(`${r.id}@${r.loc.i}/${r.loc.lat?.toFixed(1)} x=${r.pos.x.toFixed(0)} z=${r.pos.z.toFixed(0)} sp=${r.speed.toFixed(1)} surf=${r.surface} sea=${rs.sea.toFixed(1)}`);
       this.effects.sparkle(r.pos, 0xffffff, 16, 3);
       if (r.path) {
-        const tr = r.path, i = tr.wrap(r.loc.i + 6);
+        const tr = r.path;
+        let i = tr.wrap(r.loc.i + 6);
+        // nie mitten in eine Flugstrecke (dort ist keine Fahrbahn): hinter deren Ende absetzen
+        if (tr.flight?.[i]) { for (let k = 0; tr.flight[i] && k < tr.N; k++) i = tr.wrap(i + 1); i = tr.wrap(i + 6); }
         const q = tr.pointAt(i / (tr.N - 1), 0);
         r.placeAt(q.x, q.z, q.yaw, i, q.y);
       } else {
@@ -788,6 +807,7 @@ export class Race {
     initAI(r, 0.6, this.rnd);
     this.humans = this.humans.filter((h) => h !== r);
     r.isPlayer = false;
+    this.checkHumansDone();   // alle Übrigen schon im Ziel? Dann nicht auf den Weggegangenen warten
   }
 
   /** Gast: Ergebnis vom Gastgeber – Rennen beenden und Ergebnisse zeigen. */
@@ -842,6 +862,7 @@ export class Race {
       renderer.setViewport(x, H - y - h, w, h);
       renderer.setScissor(x, H - y - h, w, h);
       this.app.sky.update(0, v.cam, this.foci?.[i] ?? this.focus);
+      this.weatherFx.update(0, v.cam);   // Regen/Schnee um die Kamera dieses Bildausschnitts
       this.drawView(renderer, v.cam);
     });
     renderer.setScissorTest(false);

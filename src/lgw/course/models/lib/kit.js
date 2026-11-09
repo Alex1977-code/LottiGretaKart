@@ -42,7 +42,7 @@ export const mix = (a, b, t) => col(a).clone().lerp(col(b), clamp(t, 0, 1));
 const MATS = new Map();
 function cachedMat(key, make) {
   let m = MATS.get(key);
-  if (!m) { m = make(); m.name = key; MATS.set(key, m); }
+  if (!m) { m = make(); m.name = key; m.userData.shared = true; MATS.set(key, m); }
   return m;
 }
 /** Geteiltes MeshStandardMaterial (Spielzeug-Look: glatt, leicht glänzend). */
@@ -79,7 +79,7 @@ const GEOS = new Map();
 /** Geometrie je Schlüssel einmal bauen und teilen. */
 export function cached(key, make) {
   let g = GEOS.get(key);
-  if (!g) { g = make(); g.computeBoundingSphere(); GEOS.set(key, g); }
+  if (!g) { g = make(); g.computeBoundingSphere(); g.userData.shared = true; GEOS.set(key, g); }
   return g;
 }
 

@@ -259,12 +259,14 @@ function mergeTwo(a, b) {
 }
 
 /** Scheinwerfer für ein Kart: zwei leuchtende Lampen vorn (der Lichtkegel auf der Straße kommt von GroundLights). */
+let BULB_GEO = null, BULB_MAT = null;   // einmal für alle Karts (wird nie freigegeben)
 export function addHeadlights(kart) {
   const g = new THREE.Group();
   g.name = 'scheinwerfer';
-  const bulb = new THREE.MeshBasicMaterial({ color: 0xfff6dc });
+  const bulb = (BULB_MAT ??= new THREE.MeshBasicMaterial({ color: 0xfff6dc }));
+  const geo = (BULB_GEO ??= new THREE.SphereGeometry(0.075, 10, 8));
   for (const z of [-0.32, 0.32]) {
-    const b = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 8), bulb);
+    const b = new THREE.Mesh(geo, bulb);
     b.position.set(0.86, 0.36, z);
     b.userData.noShadow = true;
     g.add(b);

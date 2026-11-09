@@ -220,6 +220,7 @@ export function buildKart(style) {
         w.hub.rotation.x = w.side * hover * Math.PI / 2;   // Anti-Gravitation: Räder waagerecht
       }
       hoverGlow.material.opacity = hover * (0.55 + 0.15 * Math.sin((k.t ?? 0) * 9));
+      hoverGlow.visible = hover > 0.01;   // (Sprites mit Deckkraft 0 gar nicht erst zeichnen)
       steering.rotation.x = -(k.steer ?? 0) * 0.9;
       // Federung: leichtes Rütteln mit dem Tempo, Neigung in der Kurve/beim Driften
       const t = k.t ?? 0;
@@ -234,8 +235,10 @@ export function buildKart(style) {
         f.scale.set(s * 1.4, s, 1);
         f.material.color.setHex(k.boostColor ?? 0xff8a2a);
         f.material.opacity = b > 0 ? 1 : 0;
+        f.visible = b > 0;
       }
       glow.material.opacity = b > 0 ? 0.5 * b : 0;
+      glow.visible = b > 0;
       // Drift-Funken: Farbe je Ladestufe
       const lv = k.sparkLevel ?? 0;
       for (const sp of sparks) {
@@ -244,6 +247,7 @@ export function buildKart(style) {
         sp.scale.setScalar(s);
         sp.material.color.setHex(SPARK_COLORS[lv] ?? 0xffffff);
         sp.material.opacity = on ? 1 : 0;
+        sp.visible = on;
       }
     },
   };

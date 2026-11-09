@@ -47,7 +47,7 @@ export default {
     { kind: 'walker', u: 0.44, model: 'jellyfish', speed: 1.3, scale: 1.5, radius: 1.0, anim: 'swim' },
     { kind: 'walker', u: 0.5, model: 'jellyfish', opts: { color: 'pink' }, speed: 1.1, scale: 1.3, radius: 0.9, anim: 'swim' },
     // Spin-Pfosten in der Kurve um das Riesenrad
-    { kind: 'spinpost', u: 0.75, lat: -0.35 },
+    { kind: 'spinpost', u: 0.76, lat: -0.35 },
     { kind: 'spinpost', u: 0.82, lat: 0.35 },
     { kind: 'walker', u: 0.13, model: 'krabbelkaefer', opts: { color: 'yellow' }, speed: 3, scale: 1.5, radius: 0.6 },
   ],

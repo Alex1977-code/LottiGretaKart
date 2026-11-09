@@ -548,6 +548,7 @@ export class HeroAvatar extends Avatar3D {
     this.head.add(this.hairMesh);
     const eyes = buildEyes({ center: HEAD_C, r: HEAD_R, az: 0.5, el: 0.02, look: 0.1, white: 0.082, iris: 0.054, pupil: 0.032, hl: 0.017, irisColor: st.iris });
     this.eyes = eyes.eyes; this.eyeHl = eyes.hl;
+    this.track(this.eyes.geometry, this.eyeHl.geometry);   // eigene Augen-Geometrien (Materialien sind geteilt)
     this.head.add(this.eyes, this.eyeHl);
     const mouthDir = V(Math.cos(-0.42), Math.sin(-0.42), 0);
     const mouthC = HEAD_C.clone().addScaledVector(mouthDir, HEAD_R - 0.005);
@@ -1410,6 +1411,8 @@ export class HeroAvatar extends Avatar3D {
 
   dispose() {
     this.glow?.dispose();
+    // Knochen-Texturen der Kurs-Arme (die Geometrien sind geteilt und bleiben)
+    for (const sh of [this.armN, this.armF]) sh?.carm?.skeleton?.dispose();
     super.dispose();
   }
 }
@@ -1579,6 +1582,7 @@ export class PflaumeAvatar extends Avatar3D {
     this.head.add(this.nose);
     const eyes = buildEyes({ center: HC, r: 0.285, az: 0.95, el: 0.16, look: 0.14, white: 0.1, iris: 0.07, pupil: 0.046, hl: 0.022, irisColor: '#4a2a1a', pupilColor: '#0d0608' });
     this.eyes = eyes.eyes; this.eyeHl = eyes.hl;
+    this.track(this.eyes.geometry, this.eyeHl.geometry);   // eigene Augen-Geometrien (Materialien sind geteilt)
     this.head.add(this.eyes, this.eyeHl);
     this.mouthO = mesh(unitSphere(), mat('mouth', { color: 0x7a2230, roughness: 0.5 }), { x: 0.46, y: 0.06 });
     this.mouthO.scale.setScalar(0.001);

@@ -17,9 +17,9 @@ export function setWeatherSetting(v) { setting = ['auto', 'sun', 'rain', 'calima
 export function resolveWeather(def, rnd = Math.random) {
   if (setting === 'auto') return def?.weather ?? 'sun';
   if (setting !== 'random') return setting;
-  const [pr, pc] = def?.weatherOdds ?? [0.3, 0.15];
+  const [pr, pc, ps = 0.1] = def?.weatherOdds ?? [0.3, 0.15];
   const r = rnd();
-  return r < pr ? 'rain' : r < pr + pc ? 'calima' : 'sun';
+  return r < pr ? 'rain' : r < pr + pc ? 'calima' : r < pr + pc + ps ? 'snow' : 'sun';
 }
 
 const _a = new THREE.Color(), _b = new THREE.Color();

@@ -37,7 +37,7 @@ export default {
   boosts: [[0.22, 0], [0.42, 0.3], [0.66, -0.3], [0.95, 0]],
   coins: [[0.03, 0.07, -0.4, 0.4, 6], [0.3, 0.34, 0.3, -0.3, 5], [0.52, 0.56, 0, 0, 6], [0.76, 0.8, 0.4, 0.4, 5], [0.9, 0.93, 0, 0, 4]],
   hazards: [
-    { kind: 'spinpost', u: 0.36, lat: 0.35 },
+    { kind: 'spinpost', u: 0.37, lat: 0.35 },
     { kind: 'spinpost', u: 0.42, lat: -0.35 },
     { kind: 'brummer', u: 0.15, model: 'flatterkaefer', speed: 5 },
     { kind: 'walker', u: 0.82, model: 'pilzling', speed: 2.4, scale: 1.5, radius: 0.6 },

@@ -6,7 +6,7 @@
 // police_heli    Polizeihubschrauber mit Rotor und Suchscheinwerfer.
 // neon_sign      Neon-Schild auf Stelzen, flackert.  opts { text, color ('#ff3a8a') }
 // street_lamp    Straßenlaterne mit Licht (≈ 7 m).
-// traffic_light  Ampel, schaltet um.
+// street_signal  Straßenampel, schaltet um.
 // gas_station    Tankstelle mit Dach, Zapfsäulen und Schild.
 // barricade      rot-weiße Absperrung mit Blinklicht.
 // traffic_cone   Leitkegel.
@@ -136,16 +136,17 @@ function neonSign(opts = {}) {
     x.shadowColor = color; x.shadowBlur = 40; x.fillStyle = color; x.fillText(text, 512, 165);
     x.shadowBlur = 0; x.lineWidth = 6; x.strokeStyle = '#ffffff'; x.strokeText(text, 512, 165);
   });
-  const mats = [];
+  const mats = [], own = [];
   for (const s of [1, -1]) {
     const m = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
     mats.push(m);
     const pl = new THREE.Mesh(new THREE.PlaneGeometry(7.6, 2.4), m);
+    own.push(pl.geometry);
     pl.position.set(s * 0.17, 7, 0); pl.rotation.y = s * Math.PI / 2;
     root.add(pl);
   }
   const clk = new Clock();
-  return makeModel('neon_sign', root, (dt) => { clk.tick(dt, 'idle'); const f = sin(clk.t * 23) > 0.97 ? 0.4 : 1; for (const m of mats) m.opacity = f; }, mats);
+  return makeModel('neon_sign', root, (dt) => { clk.tick(dt, 'idle'); const f = sin(clk.t * 23) > 0.97 ? 0.4 : 1; for (const m of mats) m.opacity = f; }, [...mats, ...own]);
 }
 
 function streetLamp() {
@@ -171,7 +172,7 @@ function trafficLight() {
     root.add(m); return m;
   });
   const clk = new Clock();
-  return makeModel('traffic_light', root, (dt) => {
+  return makeModel('street_signal', root, (dt) => {
     clk.tick(dt, 'idle');
     const ph = (clk.t % 8) / 8, on = ph < 0.45 ? 2 : ph < 0.55 ? 1 : 0;
     lights.forEach((m, k) => { m.visible = k === on; });
@@ -358,6 +359,6 @@ function containerStack(opts = {}) {
 
 export const MODELS = {
   police_car: policeCar, city_car: cityCar, police_heli: policeHeli, neon_sign: neonSign, street_lamp: streetLamp,
-  traffic_light: trafficLight, gas_station: gasStation, barricade, traffic_cone: trafficCone, neon_tower: neonTower, hydrant,
+  street_signal: trafficLight, gas_station: gasStation, barricade, traffic_cone: trafficCone, neon_tower: neonTower, hydrant,
   road_tunnel: roadTunnel, highway_sign: highwaySign, container_stack: containerStack,
 };

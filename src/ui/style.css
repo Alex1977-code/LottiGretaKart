@@ -257,7 +257,7 @@ body.touch-ui .mscreen { padding-bottom: 14px; }
 .glass { background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(232, 240, 252, 0.93)); border: 3px solid #fff; border-radius: 22px; padding: 16px 20px;
   box-shadow: 0 6px 0 rgba(6, 20, 70, 0.45), 0 18px 40px rgba(0, 0, 0, 0.25); }
 .mbody { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; }
-.mbody.center { align-items: center; justify-content: center; }
+.mbody.center { align-items: center; justify-content: safe center; }   /* safe: bei Überlänge oben nicht abgeschnitten */
 .split { flex-direction: row; gap: 18px; align-items: stretch; }
 
 /* Karten (Fahrer, Strecken, Cups, Touren) */

@@ -68,7 +68,10 @@ export class Racer {
     this.root.add(this.kart.root);
     this.driver = createDriver(race.view, def, this.kart);
     this.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-    if (race.night || race.weather === 'rain') this.headlights = addHeadlights(this.kart);
+    if (race.night || race.weather === 'rain' || race.mayNight) {
+      this.headlights = addHeadlights(this.kart);
+      this.headlights.visible = !!(race.night || race.weather === 'rain');
+    }
     // Funkelstern-Schein (eigenes Material: Farbe läuft durch den Regenbogen)
     this.starGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffffff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
     this.starGlow.scale.setScalar(3.4);
@@ -342,9 +345,18 @@ export class Racer {
     } else if (this.air) {
       // Gleiter (nach großen Schanzen): sinkt langsam, Tempo bleibt
       const gl = this.glide && this.vy < 0 ? 0.25 : 1;
+      // (wer im Gleitflug getroffen wird, verliert Tempo und den Gleiter)
+      if (this.glide && (this.spinT > 0 || this.tumbleT > 0)) { this.glide = false; this.setGlider(false); }
       if (this.glide) { this.vy = Math.max(this.vy, -6.5); this.speed = Math.max(this.speed, this.phys.top * 0.95); }
       this.vy -= GRAVITY * gl * (d.hop ? 1.15 : 1) * (this.underwater ? 0.5 : 1) * dt;
       this.pos.y += this.vy * dt;
+      // über einer Flugstrecke trägt der Gleiter auf Höhe der Strecke (sie liegt oft hoch über Tal, Wolken, All);
+      // wer neben der Schanze hineinfährt oder springt, bekommt ihn auch (sobald er nicht gerade getroffen ist)
+      if (!this.glide && track?.flight?.[this.loc.i] && this.spinT <= 0 && this.tumbleT <= 0 && this.pos.y > track.py[this.loc.i] - 6) { this.glide = true; this.setGlider(true); }
+      if (this.glide && track?.flight?.[this.loc.i]) {
+        const fl = track.py[this.loc.i] - 1.5;
+        if (this.pos.y < fl) { this.pos.y += (fl - this.pos.y) * Math.min(1, dt * 4); this.vy = Math.max(this.vy, 0); }
+      }
       if (this.vy < 3 && this.tryRail()) { /* auf eine Schiene gesprungen */ }
       if (this.trick.ready && driftPressed && !this.trick.done) { this.trick.done = true; this.trick.t = 0; if (this.isPlayer) this.race.audio.sfx('backflip'); }
       if (!this.grind && this.pos.y <= ground) {
@@ -365,6 +377,10 @@ export class Racer {
         }
         if (hard) { this.landSquash = 1; if (this.isPlayer) this.race.audio.sfx('land'); }
       }
+    } else if (track?.flight?.[this.loc.i] && ground < this.pos.y - 1.5) {
+      // über die Kante einer Flugstrecke gerollt (neben der Schanze): Gleiter auf, nicht aufs Wasser plumpsen
+      this.air = true; this.vy = 0;
+      if (this.spinT <= 0 && this.tumbleT <= 0) { this.glide = true; this.setGlider(true); }
     } else {
       this.pos.y = ground;
       // Kuppe: ist die Fahrbahn stärker gewölbt, als die Schwerkraft das Kart bei diesem Tempo herumbiegen kann
@@ -616,6 +632,7 @@ export class Racer {
       this.starGlow.material.opacity = 0.55 + 0.2 * Math.sin(t * 20);
       this.starGlow.material.color.setHSL((t * 1.6) % 1, 1, 0.6);
     } else this.starGlow.material.opacity = 0;
+    this.starGlow.visible = this.starGlow.material.opacity > 0;
   }
 
   dispose() {

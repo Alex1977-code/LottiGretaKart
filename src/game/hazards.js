@@ -40,7 +40,9 @@ export class Hazards {
   }
 
   buildFor(track, defs) {
-    for (const d of defs) {
+    for (const d0 of defs) {
+      // Gefahren auf der Fahrbahn nie in eine Flugstrecke legen (dort ist keine Fahrbahn)
+      const d = ['orca', 'cannon', 'brummer'].includes(d0.kind) ? d0 : { ...d0, u: track.outOfFlight(d0.u) };
       const base = track.pointAt(d.u, 0);
       const h = { ...d, base, track, t: Math.random() * 3 };
       switch (d.kind) {
@@ -138,7 +140,7 @@ export class Hazards {
             bit.lookAt(0, 0, 0);
             ball.add(bit);
           }
-          h.model = { root: ball, update() {}, dispose() { ball.geometry.dispose(); } };
+          h.model = { root: ball, update() {}, dispose() { ball.traverse((o) => { o.geometry?.dispose(); o.material?.dispose(); }); } };
           h.holder = new THREE.Group();
           h.holder.add(ball);
           h.R = R; h.radius = R * 0.85;
@@ -244,6 +246,7 @@ export class Hazards {
           h.pos = new THREE.Vector3(p.x, p.y, p.z);
           h.holder.position.copy(h.pos);
           h.r = 0.66;
+          h.top = 1.9;
           break;
         }
         case 'train': {
@@ -269,12 +272,14 @@ export class Hazards {
           h.train.visible = false;
           h.holder.add(h.train);
           h.len = cars * CL;
+          h.CL = CL;
+          h.hitSet = new Set();
           // Warnsignale beiderseits der Fahrbahn
           h.signals = [];
           for (const s of [-1, 1]) {
             const m = getModel('crossing_signal');
             m.root.position.set(s * (p.hw + 2.5), 0, s * 3.5);
-            m.root.rotation.y = s < 0 ? 0 : Math.PI;
+            m.root.rotation.y = -Math.PI / 2;   // Lampen zu den heranfahrenden Karts
             h.holder.add(m.root); h.signals.push(m); parts.push(m);
           }
           h.model = { root: h.holder, update() {}, dispose() { for (const m of parts) m.dispose(); } };
@@ -295,6 +300,8 @@ export class Hazards {
           h.r = d.r ?? (d.kind === 'bumper' ? 1.8 : 2.4);
           h.size = h.r * 2;
           h.pulse = 0;
+          // Höhe des Hindernisses (springende Karts darüber hinweg erst, wenn sie wirklich höher sind)
+          h.top = new THREE.Box3().setFromObject(h.holder).max.y - h.pos.y;
           break;
         }
         default: continue;
@@ -311,8 +318,11 @@ export class Hazards {
       const track = h.track;
       // weit weg: nicht simulieren, nicht zeichnen
       const hp = h.p ?? h.base ?? h.pos;
-      if (focus && hp && race.focusDist2(hp.x, hp.z) > 260 * 260) { h.holder.visible = false; continue; }
-      if (h.kind !== 'walker' && h.kind !== 'brummer') h.holder.visible = true;
+      // (Züge und feste Hindernisse laufen trotzdem weiter: Fahrplan und Kollision gelten auch außer Sicht)
+      const far = focus && hp && race.focusDist2(hp.x, hp.z) > 260 * 260;
+      if (far && !['train', 'pillar', 'bumper', 'spinpost'].includes(h.kind)) { h.holder.visible = false; continue; }
+      if (far) h.holder.visible = false;
+      else if (h.kind !== 'walker' && h.kind !== 'brummer') h.holder.visible = true;
       else if (!(h.down > 0)) h.holder.visible = true;
       h.t += dt;
       switch (h.kind) {
@@ -321,13 +331,30 @@ export class Hazards {
           if (h.kind === 'spinpost') h.holder.rotation.y += dt * 2.5;
           if (h.kind === 'bumper') { h.pulse = Math.max(0, h.pulse - dt * 4); h.holder.scale.setScalar((h.scale ?? 1) * (1 + 0.25 * h.pulse)); h.model.update(dt, { pulse: h.pulse }); }
           for (const r of race.racers) {
-            if (r.out || r.remote || r.puppet || r.air) continue;
+            if (r.out || r.remote || r.puppet) continue;
+            // nur wer auf Höhe des Hindernisses ist (am Boden oder im niedrigen Sprung), stößt dagegen
+            const hy = r.pos.y - h.pos.y;
+            if (hy > (h.top ?? 2) || hy < -2) continue;
             const dx = r.pos.x - h.pos.x, dz = r.pos.z - h.pos.z, d2 = dx * dx + dz * dz, R = h.r + r.radius;
             if (d2 > R * R || d2 < 1e-6) continue;
             const d = Math.sqrt(d2), nx = dx / d, nz = dz / d;
             r.pos.x = h.pos.x + nx * R; r.pos.z = h.pos.z + nz * R;
+            if (h.kind === 'bumper') {
+              // Abprall wie im Flipper: Geschwindigkeit an der Normalen spiegeln (kräftig, einmal)
+              const fx = Math.cos(r.yaw), fz = -Math.sin(r.yaw), rx = Math.sin(r.yaw), rz = Math.cos(r.yaw);
+              let vx = fx * r.speed + rx * r.vlat, vz = fz * r.speed + rz * r.vlat;
+              const vn = vx * nx + vz * nz;
+              if (vn < 0) { vx -= 2.1 * vn * nx; vz -= 2.1 * vn * nz; }
+              vx += nx * 4; vz += nz * 4;
+              // frontal getroffen: nicht rückwärts schleudern (man bliebe zwischen Bumpern hängen), sondern stark
+              // abbremsen und den Rest seitlich wegdrücken
+              const fwd = vx * fx + vz * fz, side = nx * rx + nz * rz;
+              r.speed = Math.max(fwd, 3);
+              r.vlat = Math.max(-14, Math.min(14, vx * rx + vz * rz + (side >= 0 ? 1 : -1) * Math.max(0, 3 - fwd) * 0.5));
+              if (r.bumpCooldown <= 0) { h.pulse = 1; r.bumpCooldown = 0.25; if (r.isPlayer) race.audio.sfx('bounce'); }
+              continue;
+            }
             r.vlat += 4 * (nx * Math.sin(r.yaw) + nz * Math.cos(r.yaw));
-            if (h.kind === 'bumper') { r.vlat += 9 * (nx * Math.sin(r.yaw) + nz * Math.cos(r.yaw)); r.speed *= 0.92; h.pulse = 1; if (r.isPlayer) race.audio.sfx('bounce'); continue; }
             if (r.antigrav && h.kind === 'spinpost') r.spinBoost(); else if (r.bumpCooldown <= 0) { r.speed *= h.kind === 'pillar' ? 0.55 : 0.7; r.bumpCooldown = 0.3; }
           }
           break;
@@ -414,7 +441,7 @@ export class Hazards {
           for (const r of race.racers) {
             if (r.out || r.remote || r.puppet) continue;
             const dx = r.pos.x - p.x, dz = r.pos.z - p.z, rr = r.radius + h.radius;
-            if (dx * dx + dz * dz < rr * rr && r.pos.y - p.y < h.R * 1.6) {
+            if (dx * dx + dz * dz < rr * rr && Math.abs(r.pos.y - p.y) < h.R * 1.6) {
               if (r.invincible) { if (!(h.cool > 0)) { race.effects.dust(p.x, p.y + 1, p.z, 0xffffff, 4); h.dir *= -1; h.cool = 1; } }
               else if (r.hit('squish', null)) race.effects.dust(p.x, p.y + 1, p.z, 0xffffff, 4);
             }
@@ -556,11 +583,16 @@ export class Hazards {
         if (r.out || r.remote || r.puppet) continue;
         const dx = r.pos.x - h.pos.x, dz = r.pos.z - h.pos.z;
         const a = dx * h.nx + dz * h.nz, b = dx * h.tx + dz * h.tz;
-        if (Math.abs(b) < 2.2 + r.radius && a < h.x + 0.5 && a > h.x - h.len && r.pos.y - h.pos.y < 5) {
-          if (r.hit('tumble', null)) { r.pos.x -= h.tx * 1.5; r.pos.z -= h.tz * 1.5; }
+        // Lok vorn bis x + CL/2, letzter Wagen hinten bis x − (Wagen−1)·CL − CL/2
+        if (Math.abs(b) < 2.2 + r.radius && a < h.x + h.CL / 2 && a > h.x - h.len + h.CL / 2 && r.pos.y - h.pos.y < 5 && !h.hitSet.has(r)) {
+          h.hitSet.add(r);   // je Durchfahrt nur ein Treffer
+          r.hit('tumble', null);
+          // zur näheren Gleisseite aus der Zone schieben
+          const out = (2.2 + r.radius + 0.4) * (b >= 0 ? 1 : -1) - b;
+          r.pos.x += h.tx * out; r.pos.z += h.tz * out;
         }
       }
-      if (h.x - h.len > h.span) { h.phase = 'idle'; h.timer = h.every; h.train.visible = false; }
+      if (h.x - h.len > h.span) { h.phase = 'idle'; h.timer = h.every; h.train.visible = false; h.hitSet.clear(); }
     }
     const blink = h.phase !== 'idle' && Math.floor(performance.now() / 300) % 2 === 0;
     for (const s of h.signals) s.update(dt, { on: h.phase !== 'idle', blink });
@@ -590,7 +622,7 @@ export class Hazards {
     h.holder.position.set(p.x, p.y, p.z);
     h.holder.rotation.set(0, p.yaw + (h.police ? Math.cos(h.t * 0.45 + h.u * 20) * 0.12 : 0), 0);
     h.model.update(dt, h.police ? { anim: 'walk' } : { anim: 'idle' });
-    if (race.groundLights && race.focusDist2(p.x, p.z) < 120 * 120) race.groundLights.add(p.x, p.y, p.z, p.yaw, 2.4, 13, 6.5, 0xe8eeff, 0.6);
+    if (race.groundLights && race.lightsOn && race.focusDist2(p.x, p.z) < 120 * 120) race.groundLights.add(p.x, p.y, p.z, p.yaw, 2.4, 13, 6.5, 0xe8eeff, 0.6);
     // Kollision: zwei Kreise (vorn, hinten) entlang des Autos
     const fx = Math.cos(p.yaw), fz = -Math.sin(p.yaw);
     for (const r of race.racers) {

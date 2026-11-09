@@ -23,9 +23,11 @@ export class Ceremony {
     this.state = 'ceremony';
     this.camera = app.camera;
     this.scene = new THREE.Scene();
-    if (app.scene?.environment) { this.scene.environment = app.scene.environment; this.scene.environmentIntensity = app.envIntensity ?? 0.42; }
     this.theme = getTheme('grass');
-    this.sky = new Sky(this.scene, this.theme, { quality: app.quality ?? 1 });
+    // eigener Himmel mit eigenem Umgebungslicht (das der Rennszene gehört deren Himmel und kann verworfen werden)
+    const env = (app.quality ?? 1) >= 2 && !!app.renderer;
+    this.sky = new Sky(this.scene, this.theme, { quality: app.quality ?? 1, envLight: env, renderer: app.renderer });
+    if (env) { this.sky.updateEnv(); this.scene.environmentIntensity = app.envIntensity ?? 0.42; }
     this.effects = new Effects(this.scene);
     this.t = 0;
     // Boden und Podest
@@ -33,9 +35,12 @@ export class Ceremony {
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     this.scene.add(ground);
+    // eigene Geometrien/Materialien/Texturen (beim Abbau freigeben; Modelle und geteilte Materialien nicht)
+    this.own = [ground.geometry, ground.material];
     const ring = new THREE.Mesh(new THREE.RingGeometry(6.5, 7.2, 48), new THREE.MeshStandardMaterial({ color: 0xfff8ee, roughness: 0.6 }));
     ring.rotation.x = -Math.PI / 2; ring.position.y = 0.01;
     this.scene.add(ring);
+    this.own.push(ring.geometry, ring.material);
     const b = new Build();
     for (const s of STEPS) {
       b.box(2.9, s.h, 2.6, s.color, { p: [s.x, s.h / 2, 0] }, 0.18);
@@ -44,6 +49,7 @@ export class Ceremony {
     const podium = new THREE.Mesh(b.geometry(), vcol(0.4));
     podium.castShadow = true; podium.receiveShadow = true;
     this.scene.add(podium);
+    this.own.push(podium.geometry);
     // Ziffern vorn auf den Stufen
     for (const s of STEPS) {
       const c = document.createElement('canvas');
@@ -55,6 +61,7 @@ export class Ceremony {
       const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
       const pl = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
       pl.position.set(s.x, s.h * 0.5, 1.32);
+      this.own.push(pl.geometry, pl.material, tex);
       this.scene.add(pl);
     }
     // Die drei Besten im Kart, Blick zur Kamera (+Z)
@@ -77,6 +84,7 @@ export class Ceremony {
     for (const sx of [-1, 1]) tb.torus(0.2, 0.045, 0xffc21a, { p: [sx * 0.6, 1.0, 0], r: [0, 0, 0] }, 8, 18);
     tb.cyl(0.46, 0.5, 0.18, 0x7a1a20, { p: [0, -0.09, 0] }, 24);
     const cup = new THREE.Mesh(tb.geometry(), gold());
+    this.own.push(cup.geometry);
     cup.castShadow = true;
     this.trophy = { root: new THREE.Group(), update() {}, dispose() {} };
     this.trophy.root.add(cup);
@@ -137,5 +145,7 @@ export class Ceremony {
     for (const c of this.crowd) c.m.dispose();
     this.effects.dispose();
     this.sky.dispose();
+    for (const d of this.drivers) d.kart.dispose?.();
+    for (const o of this.own) o.dispose();
   }
 }

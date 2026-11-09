@@ -21,7 +21,10 @@ KB.auto = {
   brake: [...KB.kb1.brake, ...KB.kb2.brake], drift: [...KB.kb1.drift, ...KB.kb2.drift, 'KeyR'], item: [...KB.kb1.item, ...KB.kb2.item, 'KeyX'],
 };
 
+// Tippen in ein Eingabefeld (Name, Raum-Code) steuert weder Kart noch Menü
+const typing = (e) => { const t = e.target; return !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable); };
 window.addEventListener('keydown', (e) => {
+  if (typing(e)) return;
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Tab', 'Enter'].includes(e.key)) e.preventDefault();
   if (!KEYS.has(e.code)) { PRESSED.add(e.code); PRESSED_J.add(e.code); LATCH.add(e.code); }
   KEYS.add(e.code);

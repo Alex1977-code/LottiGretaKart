@@ -98,7 +98,7 @@ export class Menus {
     const items = [...this.el.querySelectorAll('button:not([disabled])')];
     if (!items.length) return;
     const i = items.indexOf(document.activeElement);
-    const move = (d) => { const n = items[(Math.max(0, i) + d + items.length) % items.length]; n.focus({ preventScroll: true }); n.dispatchEvent(new Event('focusmove')); };
+    const move = (d) => { const n = items[(Math.max(0, i) + d + items.length) % items.length]; n.focus({ preventScroll: true }); n.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); n.dispatchEvent(new Event('focusmove')); };
     if (meta.left || meta.up) move(-1);
     if (meta.right || meta.down) move(1);
     if (meta.confirm && i >= 0) items[i].click();
@@ -732,9 +732,15 @@ export class Menus {
     this.on('[data-back]', () => (this.multi ? this.showMpModes() : this.showRacers()));
   }
 
+  /** Bestzeit-Schlüssel: je Rundenzahl und getrennt fürs Zeitfahren (3 Runden Rennen = bisheriger Schlüssel). */
+  bestKey(id) {
+    const laps = this.settings.laps ?? 3, trial = this.mode === 'trial';
+    return `${trial ? 'zf:' : ''}${id}${laps === 3 ? '' : `@${laps}`}`;
+  }
+
   showTracks() {
     const cards = TRACKS.map((t) => {
-      const b = this.best[t.id];
+      const b = this.best[this.bestKey(t.id)];
       return `<button class="card track" data-track="${t.id}">
         <img src="${this.thumb(t)}" alt="" /><span>${t.name}</span>
         <small>${b ? `Bestzeit ${fmtTime(b.time)} (${RACER_BY_ID[b.racer]?.name ?? ''})` : getTheme(t.theme).label}</small>
@@ -810,8 +816,8 @@ export class Menus {
     // Bestzeit
     let record = false;
     if (me && me.place && trackDef && !this.multi) {
-      const b = this.best[trackDef.id];
-      if (!b || me.time < b.time) { this.best[trackDef.id] = { time: me.time, racer: me.id }; save(BEST_KEY, this.best); record = true; }
+      const key = this.bestKey(trackDef.id), b = this.best[key];
+      if (!b || me.time < b.time) { this.best[key] = { time: me.time, racer: me.id }; save(BEST_KEY, this.best); record = true; }
     }
     const tag = (x) => (this.multi && x.isPlayer ? ` <em class="ptag" style="--pc:${PCOL[x.pi ?? 0]}">P${(x.pi ?? 0) + 1}</em>` : '');
     if (this.multi) record = false;
@@ -899,7 +905,7 @@ export class Menus {
     this.show('pause', `
       <div class="mscreen"><div class="mbody center"><div class="pausebox">
         <h2>Pause</h2>
-        <button class="go" data-resume data-focus>Weiter</button>
+        <button class="go" data-resume data-focus data-back>Weiter</button>
         <button data-restart>Neustart</button>
         <button class="btn-mute" data-mute>${this.ctx.audio.muted ? '🔇 Ton aus' : '🔊 Ton an'}</button>
         <button data-quit>Aufgeben</button>

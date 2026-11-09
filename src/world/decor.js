@@ -207,9 +207,9 @@ const cactus = () => g('cactus', () => new Build()
   .geometry());
 const mesa = () => g('mesa', () => new Build()
   .cyl(5.2, 6.4, 6, 0xffffff, { p: [0, 3, 0] }, 9)
-  .cyl(4.6, 5.2, 6, 0xf0d8c0, { p: [0, 9, 0] }, 9)
+  .cyl(4.6, 5.2, 6, 0xd6d6d6, { p: [0, 9, 0] }, 9)
   .cyl(4.2, 4.6, 5, 0xffffff, { p: [0, 14.5, 0] }, 9)
-  .cyl(4.4, 4.2, 0.8, 0xf8e0c8, { p: [0, 17.4, 0] }, 9)
+  .cyl(4.4, 4.2, 0.8, 0xe6e6e6, { p: [0, 17.4, 0] }, 9)
   .geometry());
 // Bonbonland: Lutscher (Spirale aus zwei Farben), Zuckerstange, Donut mit Streuseln, Gummibonbon
 const lollipop = () => g('lollipop', () => {
@@ -247,7 +247,7 @@ const swayMat = (kind) => {
   return m;
 };
 // Hindernis-Radius je Art (× Größe) in der offenen Welt
-const COLLIDE = { cactus: 0.4, mesa: 5.6, lollipop: 0.2, candycane: 0.2, donut: 1.3, roundTree: 0.5, pineTree: 0.45, mushroom: 0.9, rock: 1.0, block: 0.6, crystal: 0.4, palm: 0.35, umbrella: 0.12, snowman: 0.85 };
+const COLLIDE = { cactus: 0.4, mesa: 6.7, lollipop: 0.2, candycane: 0.2, donut: 1.3, roundTree: 0.5, pineTree: 0.45, mushroom: 0.9, rock: 1.3, block: 0.6, crystal: 0.4, palm: 0.35, umbrella: 0.12, snowman: 0.85 };
 
 export class Decor {
   constructor(race, track, theme, seed = 1, quality = 2, world = null) {
@@ -354,7 +354,7 @@ export class Decor {
       const gy = w.heightAt(x, z);
       const col = colors[placed % colors.length];
       cityBuilding(parts, wins, x, gy - 2, z, s, h, col, windowColor, () => this.r());
-      const hs = s / 2;
+      const hs = s / 2 + 0.35;   // Sockel (s + 0.6) und Pilaster stehen etwas vor
       w.addSeg(x - hs, z - hs, x + hs, z - hs); w.addSeg(x + hs, z - hs, x + hs, z + hs);
       w.addSeg(x + hs, z + hs, x - hs, z + hs); w.addSeg(x - hs, z + hs, x - hs, z - hs);
       placed++;
@@ -725,7 +725,21 @@ export class Decor {
 
   dispose() {
     for (const e of this.models) e.model.dispose();
-    this.group.traverse((o) => { if (o.isInstancedMesh) o.dispose(); });
+    // eigene Geometrien, Materialien und Texturen der Kulisse (Stadt, Starttor, Burg, Schilder, Zelt …) freigeben;
+    // geteilte (Formen-Cache, Kulissen-Materialien) und die Modelle (eigene dispose) bleiben
+    const shared = new Set([...Object.values(GEO), ...Object.values(HI_GEO), ...decorMats.values(), ...swayMats.values()]);
+    const models = new Set(this.models.map((e) => e.model.root));
+    const geos = new Set(), mats = new Set();
+    const walk = (o) => {
+      if (models.has(o)) return;
+      if (o.isInstancedMesh) o.dispose();
+      if (o.geometry && !shared.has(o.geometry) && !o.geometry.userData.shared) geos.add(o.geometry);
+      for (const m of [o.material].flat()) if (m && !shared.has(m) && !m.userData.shared) mats.add(m);
+      for (const c of o.children) walk(c);
+    };
+    walk(this.group);
+    for (const g of geos) g.dispose();
+    for (const m of mats) { for (const v of Object.values(m)) if (v?.isTexture) v.dispose(); m.dispose(); }
     this.group.removeFromParent();
   }
 }
@@ -751,7 +765,8 @@ function cityBuilding(parts, wins, x, y0, z, s, h, col, windowColor, r) {
       }
     }
     // Gesimse alle drei Geschosse
-    for (let yy = yb + 4.8; yy < yb + hh - 2; yy += 10.8) parts.box(w + 0.7, 0.4, w + 0.7, glass ? 0xc8ccd6 : light, { p: [x, yy, z] }, 0, 1);
+    // (zwischen den Fensterreihen, nicht quer durch die Fenster)
+    for (let yy = yb + 6.3; yy < yb + hh - 2; yy += 10.8) parts.box(w + 0.7, 0.4, w + 0.7, glass ? 0xc8ccd6 : light, { p: [x, yy, z] }, 0, 1);
     for (let yy = yb + 4.5; yy < yb + hh - 2; yy += 3.6) for (let f = 0; f < 4; f++) for (let k = 0; k < nw; k++) {
       if (!glass && r() < 0.35) continue;
       wins.push([x, yy, z, f, -w / 2 + pitch * (k + 0.5), w / 2 + 0.05, pitch * (glass ? 0.86 : 0.55), r() < 0.22 ? 0xbfe4ff : windowColor]);

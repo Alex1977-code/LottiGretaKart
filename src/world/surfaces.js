@@ -106,7 +106,8 @@ function pack(N, H, A, Rgh, strength) {
     const i = y * N + x;
     const hx = H[y * N + ((x + 1) % N)] - H[y * N + ((x - 1 + N) % N)];
     const hy = H[((y + 1) % N) * N + x] - H[((y - 1 + N) % N) * N + x];
-    let nx = -hx * strength, ny = -hy * strength, nz = 1;
+    // Steigung je Texel → bei größerer Textur flacher; auf 512 bezogen, damit das Relief gleich kräftig bleibt
+    let nx = -hx * strength * N / 512, ny = -hy * strength * N / 512, nz = 1;
     const l = Math.hypot(nx, ny, nz); nx /= l; ny /= l;
     data[i * 4] = Math.round((nx * 0.5 + 0.5) * 255);
     data[i * 4 + 1] = Math.round((ny * 0.5 + 0.5) * 255);
@@ -174,7 +175,8 @@ const MAKERS = {
     const H = new Float32Array(N * N), A = new Float32Array(N * N), R = new Float32Array(N * N).fill(0.95);
     for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
       const i = y * N + x;
-      const ph = ((x + y * 0.35) / N) * Math.PI * 2 * 9 + warp[i] * 9;
+      // ganze Wellenzahlen in x und y: die Textur kachelt ohne Naht
+      const ph = (x / N * 9 + y / N * 3) * Math.PI * 2 + warp[i] * 9;
       H[i] = Math.pow(Math.sin(ph) * 0.5 + 0.5, 1.6) * 0.9 + (grain[i] - 0.5) * 0.35;
       A[i] = (H[i] - 0.45) * 0.25 + (grain[i] - 0.5) * 0.25;
     }

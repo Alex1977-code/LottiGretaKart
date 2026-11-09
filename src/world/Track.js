@@ -160,6 +160,16 @@ export class Track {
   }
 
   /** Rundenanteil u an Kontrollpunkt-Stelle c (z. B. 11.25 = ein Viertel zwischen Punkt 11 und 12). */
+  /** u hinter das Ende einer Flugstrecke schieben (dort gibt es keine Fahrbahn für Kisten, Felder, Gefahren). */
+  outOfFlight(u) {
+    if (!this.flight) return u;
+    let i = ((Math.round(u * this.N) % this.N) + this.N) % this.N;
+    if (!this.flight[i]) return u;
+    let k = 0;
+    while (this.flight[i] && k++ < this.N) i = (i + 1) % this.N;
+    return ((i + Math.round(8 / this.ds)) % this.N) / this.N;
+  }
+
   uCtrl(c) { let i = 0; while (i < this.N - 1 && this.ctrlT[i] < c) i++; return i / this.N; }
 
   wrap(i) { const N = this.N; if (!this.closed) return i < 0 ? 0 : i >= N ? N - 1 : i; return ((i % N) + N) % N; }
@@ -198,7 +208,8 @@ export class Track {
       const list = this.cells.get(ck(cx + a, cz + b));
       if (!list) continue;
       for (const i of list) {
-        if (!(this.lift[i] > 0.05)) continue;
+        // (über Flugstrecken gibt es keine Fahrbahn – sonst landeten die Karts auf einem unsichtbaren Deck)
+        if (!(this.lift[i] > 0.05) || this.flight?.[i]) continue;
         const dx = x - this.px[i], dz = z - this.pz[i], d = dx * dx + dz * dz;
         if (d < bd) { bd = d; best = i; }
       }

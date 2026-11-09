@@ -7,7 +7,7 @@
 // ptero         Flugsaurier, Spannweite ≈ 5 m.             state { anim: 'fly' }  Flügelschlag.
 // dino_egg      geflecktes Dino-Ei ≈ 1,2 m im Nest.        state { anim: 'idle' }  wackelt ab und zu.
 // fern          Baumfarn ≈ 4 m.                            opts { size }
-// waterfall     Wasserfall am Felsen ≈ 14 m hoch mit Becken, Wasser fließt (animiert).
+// dino_waterfall Wasserfall am Felsen ≈ 14 m hoch mit Becken, Wasser fließt (animiert).
 
 import * as THREE from 'three';
 import { Build, mesh, vcol, std, cached, joint, eyes, makeModel, Clock, TAU, clamp } from '../lib/kit.js';
@@ -245,8 +245,8 @@ function waterfall() {
   root.add(fall, pool, foam);
   const clk = new Clock();
   const update = (dt) => { clk.tick(dt, 'idle'); tex.offset.y = clk.t * 1.2; foam.scale.setScalar(1 + 0.15 * sin(clk.t * 6)); };
-  return makeModel('waterfall', root, update, [fall.geometry, pool.geometry, foam.geometry, tex]);
+  return makeModel('dino_waterfall', root, update, [fall.geometry, pool.geometry, foam.geometry, tex]);
 }
 
-export const MODELS = { trex, brachio, triceratops, ptero, dino_egg: dinoEgg, fern, waterfall };
+export const MODELS = { trex, brachio, triceratops, ptero, dino_egg: dinoEgg, fern, dino_waterfall: waterfall };
 void clamp;

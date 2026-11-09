@@ -79,10 +79,12 @@ export function pineGeo() {
       const a = (i / (seg * 2)) * Math.PI * 2 + L * 0.4, rr = R * (i % 2 ? 0.78 : 1) * (0.92 + 0.16 * noise3(i * 0.7, L, 3));
       pos.push(Math.cos(a) * rr, y0 - (i % 2 ? 0.05 : 0.32), Math.sin(a) * rr);
     }
-    // Unterseite leicht nach innen gewölbt
+    // Unterseite leicht nach innen gewölbt – mit eigenen Randpunkten, sonst mitteln sich die Normalen von Ober- und
+    // Unterseite am Rand und die Zweige wirken von unten flach beleuchtet
     pos.push(0, y0 + 0.35, 0);
     const n = seg * 2, under = n + 1;
-    for (let i = 0; i < n; i++) { const a = 1 + i, c = 1 + ((i + 1) % n); idx.push(0, c, a, under, a, c); }
+    for (let i = 0; i < n; i++) pos.push(pos[(1 + i) * 3], pos[(1 + i) * 3 + 1], pos[(1 + i) * 3 + 2]);
+    for (let i = 0; i < n; i++) { const a = 1 + i, c = 1 + ((i + 1) % n); idx.push(0, c, a, under, under + 1 + i, under + 1 + ((i + 1) % n)); }
     let g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setIndex(idx);
@@ -181,17 +183,16 @@ export function palmGeo() {
     const rib = [];
     const n = 10;
     for (let k = 0; k <= n; k++) { const t = k / n, x = t * L; const c = top.clone().addScaledVector(dir, x); c.y += 0.25 * (1 - t) - x * x * droop * 0.3; rib.push(c); }
-    const pos = [], col = [];
-    const push = (v, c) => { pos.push(v.x, v.y, v.z); col.push(c, c, c); };
+    const pos = [];
+    const push = (v) => { pos.push(v.x, v.y, v.z); };
     for (const sg of [-1, 1]) {
       for (let k = 0; k < n; k++) {
         const t = (k + 0.5) / n, w = 0.85 * Math.sin(Math.PI * Math.min(1, t * 1.1 + 0.08)) + 0.1;
         const tip = rib[k].clone().lerp(rib[k + 1], 0.8).addScaledVector(side, sg * w); tip.y -= 0.32 * w;
-        const shade = 0.62 + 0.3 * (1 - t);
-        // Oberseite und Unterseite (umgekehrte Reihenfolge)
+        // Oberseite und Unterseite (umgekehrte Reihenfolge); Helligkeit kommt über die Höhe (siehe unten)
         const tri = sg > 0 ? [rib[k], rib[k + 1], tip] : [rib[k], tip, rib[k + 1]];
-        for (const v of tri) push(v, shade);
-        for (const v of [tri[0], tri[2], tri[1]]) push(v, shade * 0.8);
+        for (const v of tri) push(v);
+        for (const v of [tri[0], tri[2], tri[1]]) push(v);
       }
     }
     const g = new THREE.BufferGeometry();

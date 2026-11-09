@@ -48,7 +48,7 @@ export default {
     { kind: 'snapper', u: 0.22, lat: 0.7 },
     { kind: 'snapper', u: 0.4, lat: -0.7 },
     { kind: 'snapper', u: 0.88, lat: 0.7 },
-    { kind: 'spinpost', u: 0.62, lat: 0.3 },
+    { kind: 'spinpost', u: 0.66, lat: 0.3 },
     { kind: 'spinpost', u: 0.7, lat: -0.35 },
   ],
   scenery(D) {
