@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { lin } from '../lgw/three/world/geometry.js';
 import { addGroundDetail } from './shaders.js';
-import { surfOpts } from './surfaces.js';
+import { surfOpts, SURF } from './surfaces.js';
 
 // Fahrbahn-Belag je Thema: Holzbohlen auf Stegen und Decks, Pflaster in Altstädten, sonst Asphalt
 const ROAD_KIND = { treetop: 'wood', boolake: 'wood', cruise: 'wood', ancient: 'cobble', canal: 'cobble', town: 'cobble' };
@@ -370,9 +370,9 @@ export class Track {
   }
 
   /** Bandförmige Fläche entlang der Strecke von lat a bis b (je Abtastpunkt), Farbe je Segment. */
-  ribbon(aFn, bFn, yOff, colorFn, every = 1, skipFn = null) {
+  ribbon(aFn, bFn, yOff, colorFn, every = 1, skipFn = null, road = false) {
     const N = this.N;
-    const pos = [], col = [];
+    const pos = [], col = [], rd = [];
     for (let i = 0; i < N; i += every) {
       const j = (i + every) % N;
       if (!this.closed && i + every > N - 1) break;
@@ -387,20 +387,30 @@ export class Track {
       // a liegt links (kleineres lat) → Dreiecke gegen den Uhrzeigersinn von oben
       pos.push(...a0, ...b0, ...a1, ...a1, ...b0, ...b1);
       for (let q = 0; q < 6; q++) col.push(c[0], c[1], c[2]);
+      // Fahrbahn-Koordinaten für die Abnutzung im Shader: quer −1 … +1, längs in Metern
+      if (road) { const s0 = i * this.ds, s1 = (i + every) * this.ds; rd.push(-1, s0, 1, s0, -1, s1, -1, s1, 1, s0, 1, s1); }
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    if (road) g.setAttribute('lgkRoad', new THREE.Float32BufferAttribute(rd, 2));
     g.computeVertexNormals();
     return g;
+  }
+
+  /** Fahrbahn-Material (nass oder trocken); wear: mit Abnutzung (nur für die Fahrbahn selbst, nicht für Linien/Curbs). */
+  roadMaterial(wear) {
+    const th = this.theme, kind = ROAD_KIND[this.def.theme] ?? 'asphalt';
+    const w = wear && SURF.quality >= 2 && !this.def.rainbow ? (kind === 'asphalt' ? 'asphalt' : 'plain') : null;
+    return th.wetRoad
+      ? addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.35, side: THREE.DoubleSide }), { grain: 0.06, scale: 1.8, key: 'roadwet', wet: true, wear: w, surf: surfOpts({ top: kind, slope: false, topScale: 1 / 4, strength: 1.1, detail: 0.32 }) })
+      : addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.0, side: THREE.DoubleSide }), { grain: 0.06, scale: 1.8, key: 'road', rain: 1, wear: w, surf: surfOpts({ top: kind, slope: false, topScale: 1 / 4, strength: 1.3, detail: 0.4 }) });
   }
 
   buildRoad() {
     const th = this.theme;
     const cR = lin(th.road), cR2 = lin(th.road2), cL = lin(th.line), cA = lin(th.curbA), cB = lin(th.curbB);
-    const mat = th.wetRoad
-      ? addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.35, side: THREE.DoubleSide }), { grain: 0.06, scale: 1.8, key: 'roadwet', wet: true, surf: surfOpts({ top: ROAD_KIND[this.def.theme] ?? 'asphalt', slope: false, topScale: 1 / 4, strength: 1.1, detail: 0.32 }) })
-      : addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.0, side: THREE.DoubleSide }), { grain: 0.06, scale: 1.8, key: 'road', rain: 1, surf: surfOpts({ top: ROAD_KIND[this.def.theme] ?? 'asphalt', slope: false, topScale: 1 / 4, strength: 1.3, detail: 0.4 }) });
+    const mat = this.roadMaterial(false);
     const add = (g, name, shadow = true) => {
       const m = new THREE.Mesh(g, mat);
       m.receiveShadow = shadow; m.name = name;
@@ -419,7 +429,10 @@ export class Track {
       }
     } else {
       const IM = this.iceMask, cI = lin(0xcfe8f8), cI2 = lin(0xbcdcf2);
-      add(this.ribbon((i) => -hw(i), (i) => hw(i), () => 0.06, (i) => (IM && IM[i] ? (Math.floor(i / 3) % 2 ? cI : cI2) : Math.floor(i / 6) % 2 ? cR : cR2), 1, sk), 'fahrbahn');
+      // (eigenes Material mit Abnutzung: Ideallinie, Randschmutz, Walzstreifen, Flicken – siehe addGroundDetail)
+      const fb = new THREE.Mesh(this.ribbon((i) => -hw(i), (i) => hw(i), () => 0.06, (i) => (IM && IM[i] ? (Math.floor(i / 3) % 2 ? cI : cI2) : Math.floor(i / 6) % 2 ? cR : cR2), 1, sk, true), this.roadMaterial(true));
+      fb.receiveShadow = true; fb.name = 'fahrbahn';
+      this.group.add(fb);
     }
     if (this.keys) {
       const white = lin(0xfaf8f2), black = lin(0x1a1a22), K = this.keys;
@@ -459,6 +472,9 @@ export class Track {
     const th = this.theme;
     const H = th.wallH ?? 0.75, T = 0.45;
     const cA = lin(th.wallA), cB = lin(th.wallB), cT = lin(th.wallTop);
+    // Sockel/Fugen dunkel (aus der dunkleren Wandfarbe), Zierstreifen hell (aus der Oberkante)
+    const dk = (c, k) => c.map((v) => v * k), mixw = (c, k) => c.map((v) => v + (1 - v) * k);
+    const cK = dk(lin(th.wallA).map((v, q) => Math.min(v, lin(th.wallB)[q])), 0.35), cS = mixw(cT, 0.55);
     const parts = [];
     for (const side of [-1, 1]) {
       const inner = (i) => side * this.wallAt(i), outer = (i) => side * (this.wallAt(i) + T);
@@ -469,6 +485,29 @@ export class Track {
       // Innen- und Außenflächen als senkrechte Bänder (gleiche lat, unterschiedliche Höhe)
       parts.push(this.wallFace(inner, H, (i) => (Math.floor(i / 4) % 2 ? cA : cB), skip));
       parts.push(this.wallFace(outer, H, () => cA, skip));
+      // Gliederung der Innenseite (knapp vor der Wand): dunkler Sockel, heller Zierstreifen, Fugen zwischen den
+      // 4-m-Elementen – wie zusammengesteckte Leitplanken-Elemente statt einer glatten Leiste
+      const face = (i) => side * (this.wallAt(i) - 0.012);
+      parts.push(this.wallFace(face, 0.09, () => cK, skip, -0.3));
+      parts.push(this.wallFace(face, H * 0.8, () => cS, skip, H * 0.62));
+      const pos = [], col = [];
+      for (let i = 0; i < this.N; i += 4) {
+        if (skip(i) || skip(this.wrap(i - 1))) continue;
+        const lat = side * (this.wallAt(i) - 0.02);
+        for (const [d0, d1, y0, y1] of [[-0.045, 0.045, 0.09, H]]) {
+          const Q = (d, y) => { const x = this.px[i] + this.tx[i] * d - this.tz[i] * lat, z = this.pz[i] + this.tz[i] * d + this.tx[i] * lat; return [x, this.roadY(i, x, z) + y, z]; };
+          const a0 = Q(d0, y0), a1 = Q(d1, y0), b0 = Q(d0, y1), b1 = Q(d1, y1);
+          pos.push(...a0, ...b0, ...a1, ...a1, ...b0, ...b1);
+          for (let q = 0; q < 6; q++) col.push(cK[0], cK[1], cK[2]);
+        }
+      }
+      if (pos.length) {
+        const sg = new THREE.BufferGeometry();
+        sg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        sg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+        sg.computeVertexNormals();
+        parts.push(sg);
+      }
     }
     const geo = mergeAll(parts);
     const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, side: THREE.DoubleSide }));
@@ -567,7 +606,7 @@ export class Track {
     return false;
   }
 
-  wallFace(latFn, H, colorFn, skipFn = null) {
+  wallFace(latFn, H, colorFn, skipFn = null, y0 = -0.3) {
     const N = this.N, pos = [], col = [];
     for (let i = 0; i < N; i++) {
       const j = (i + 1) % N, c = colorFn(i);
@@ -577,7 +616,8 @@ export class Track {
         const lat = latFn(k), x = this.px[k] - this.tz[k] * lat, z = this.pz[k] + this.tx[k] * lat;
         return [x, this.roadY(k, x, z) + y, z];
       };
-      const a0 = P(i, -0.3), a1 = P(j, -0.3), b0 = P(i, H), b1 = P(j, H);
+      if (!c) continue;
+      const a0 = P(i, y0), a1 = P(j, y0), b0 = P(i, H), b1 = P(j, H);
       pos.push(...a0, ...b0, ...a1, ...a1, ...b0, ...b1);
       for (let q = 0; q < 6; q++) col.push(c[0], c[1], c[2]);
     }
@@ -608,11 +648,31 @@ export class Track {
         for (let q = 0; q < 6; q++) col.push(cc[0], cc[1], cc[2]);
       }
     }
+    // Startfelder: zwölf weiße Winkel vor den Plätzen der Startaufstellung (Maße wie Race.grid)
+    {
+      const Pg = (sm, lat) => {
+        const k = this.wrap(Math.floor(sm / this.ds)), r = sm - Math.floor(sm / this.ds) * this.ds;
+        const x = this.px[k] + this.tx[k] * r - this.tz[k] * lat, z = this.pz[k] + this.tz[k] * r + this.tx[k] * lat;
+        return [x, this.roadY(k, x, z) + 0.085, z];
+      };
+      const quad = (s0, s1, l0, l1) => {
+        const a0 = Pg(s0, l0), b0 = Pg(s0, l1), a1 = Pg(s1, l0), b1 = Pg(s1, l1);
+        pos.push(...a0, ...b0, ...a1, ...a1, ...b0, ...b1);
+        for (let q = 0; q < 6; q++) col.push(W[0], W[1], W[2]);
+      };
+      for (let k = 0; k < 12; k++) {
+        const row = Math.floor(k / 2), side = k % 2 ? 1 : -1;
+        const sk = -5 - row * 4.2 - (k % 2) * 1.6 + 1.35, lat = side * Math.min(2.6, hw * 0.4);
+        quad(sk, sk + 0.16, lat - 1.05, lat + 1.05);            // Querstrich vor dem Kart
+        quad(sk - 1.1, sk, lat - 1.05, lat - 0.91);             // linker Schenkel
+        quad(sk - 1.1, sk, lat + 0.91, lat + 1.05);             // rechter Schenkel
+      }
+    }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     g.computeVertexNormals();
-    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, side: THREE.DoubleSide }));
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1 }));
     m.receiveShadow = true; m.name = 'startlinie';
     this.group.add(m);
   }

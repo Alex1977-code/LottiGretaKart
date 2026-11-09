@@ -67,7 +67,7 @@ export class Racer {
     this.kart = buildKart(def.kart);
     this.root.add(this.kart.root);
     this.driver = createDriver(race.view, def, this.kart);
-    this.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    this.root.traverse((o) => { if (o.isMesh && !o.userData.noShadow) o.castShadow = true; });
     if (race.night || race.weather === 'rain' || race.mayNight) {
       this.headlights = addHeadlights(this.kart);
       this.headlights.visible = !!(race.night || race.weather === 'rain');
@@ -597,7 +597,7 @@ export class Racer {
     this.kart.update(dt, {
       speed: this.speed, steer: this.disabled ? 0 : this.steer, t,
       boost: this.boostT > 0 ? Math.min(1, this.boostT * 2) : 0, boostColor: this.boostColor,
-      drift: d.on ? d.dir : 0, sparkLevel: d.level, offroad: this.offroad, hover: this.hoverK,
+      drift: d.on ? d.dir : 0, sparkLevel: d.level, offroad: this.offroad, hover: this.hoverK, air: this.air || this.underwater,
     });
     // Fahrer
     // Umschauen, wenn jemand dicht dahinter ist (wie im Vorbild), ab und zu prüfen

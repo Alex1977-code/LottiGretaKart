@@ -8,6 +8,7 @@
 // Auspuff-Flammen und Drift-Funken sind additive Sprites (keine Schatten).
 
 import { THREE, Build, vcol, mesh, glowTexture, metal } from '../lgw/course/models/lib/kit.js';
+import { SURF } from '../world/surfaces.js';
 
 const TIRE = 0x2a2834, TIRE_SIDE = 0x3a3846;
 export const KART = {
@@ -76,6 +77,57 @@ function bodyGeo(st) {
     for (const s of [-1, 1]) {
       b.box(0.3, 0.05, 0.22, st.accent, { p: [KART.wheelFront.x, KART.wheelFront.r * 2 + 0.06, s * KART.wheelFront.z] , r: [0, 0, 0.12] }, 0.03);
     }
+    // ---- Details (wie ein echtes Renn-Kart aus der Nähe) ----
+    const DARK = 0x22202c, STEEL = 0x5a566e, ALU = 0xd8dce8, seatC = st.seat ?? 0x34304a;
+    // Frontflügel mit Endplatten und zwei Streben zur Nase
+    b.box(0.2, 0.035, 1.14, st.accent, { p: [1.0, 0.13, 0] }, 0);
+    for (const s of [-1, 1]) {
+      b.box(0.26, 0.15, 0.03, st.trim, { p: [0.99, 0.185, s * 0.57] }, 0);
+      b.box(0.2, 0.045, 0.05, st.trim, { p: [0.9, 0.155, s * 0.2] }, 0);
+    }
+    // Lufteinlässe vorn an den Seitenkästen (dunkel, mit Lamellen) und Entlüftungsschlitze obenauf
+    for (const s of [-1, 1]) {
+      b.box(0.05, 0.17, 0.2, DARK, { p: [0.485, 0.335, s * 0.36] }, 0);
+      for (const y of [0.29, 0.335, 0.38]) b.box(0.055, 0.012, 0.19, ALU, { p: [0.49, y, s * 0.36] }, 0);
+      for (let k = 0; k < 3; k++) b.box(0.1, 0.012, 0.16, DARK, { p: [-0.42 + k * 0.15, 0.462, s * 0.36] }, 0);
+      // Schweller (dunkle Leiste) und Schrauben am Seitenkasten
+      b.box(1.3, 0.05, 0.03, DARK, { p: [-0.05, 0.145, s * 0.44] }, 0);
+      for (const x of [-0.6, -0.3, 0.3]) b.sphere(0.016, ALU, { p: [x, 0.25, s * 0.512], s: [1, 1, 0.5] }, 6, 4);
+      // Querlenker der Vorderachse (zwei Stäbe als V) und Spurstange
+      b.cyl(0.015, 0.015, 0.28, STEEL, { p: [0.66, 0.2, s * 0.29], r: [Math.PI / 2, 0, 0.25 * s] }, 6);
+      b.cyl(0.015, 0.015, 0.28, STEEL, { p: [0.5, 0.2, s * 0.29], r: [Math.PI / 2, 0, -0.25 * s] }, 6);
+      b.cyl(0.011, 0.011, 0.3, ALU, { p: [0.58, 0.29, s * 0.28], r: [Math.PI / 2, 0, 0] }, 5);
+      // Außenspiegel auf dünnem Arm
+      b.cyl(0.012, 0.012, 0.17, STEEL, { p: [0.2, 0.53, s * 0.45], r: [0.25 * s, 0, 0.3] }, 5);
+      b.box(0.035, 0.075, 0.12, st.main, { p: [0.235, 0.625, s * 0.475] }, 0);
+      b.box(0.012, 0.055, 0.095, 0xcfe6f4, { p: [0.213, 0.625, s * 0.475] }, 0);
+      // Sitzwangen
+      b.box(0.4, 0.15, 0.07, seatC, { p: [KART.seatX, 0.45, s * 0.27] }, 0);
+      // Auspuff-Mündung (dunkles Innenrohr)
+      b.cyl(0.046, 0.046, 0.02, 0x15131c, { p: [-1.136, 0.36, s * 0.2], r: [0, 0, Math.PI / 2] }, 10);
+      // Haubenstifte auf der Nase
+      b.cyl(0.014, 0.014, 0.03, ALU, { p: [0.6, 0.545, s * 0.16] }, 6);
+    }
+    // Kopfstütze und Überrollbügel hinter dem Sitz
+    b.box(0.1, 0.16, 0.3, seatC, { p: [KART.seatX - 0.34, 0.9, 0], r: [0, 0, 0.18] }, 0.04);
+    b.torus(0.29, 0.026, ALU, { p: [-0.56, 0.6, 0], r: [0, Math.PI / 2, 0] }, 6, 20);
+    // Motor: Zylinderkopf mit Kühlrippen, Luftfilter mit Deckel, Zündkabel-Stutzen
+    b.box(0.22, 0.12, 0.36, 0x6a677e, { p: [-0.72, 0.56, 0] }, 0);
+    for (let k = 0; k < 5; k++) b.box(0.24, 0.012, 0.4, 0xa8a5ba, { p: [-0.72, 0.515 + k * 0.024, 0] }, 0);
+    b.cyl(0.1, 0.1, 0.1, st.accent, { p: [-0.72, 0.69, 0] }, 14);
+    b.cyl(0.105, 0.105, 0.02, ALU, { p: [-0.72, 0.745, 0] }, 14);
+    b.sphere(0.03, ALU, { p: [-0.72, 0.765, 0], s: [1, 0.6, 1] }, 8, 5);
+    for (const z of [-0.12, 0.12]) b.cyl(0.018, 0.018, 0.06, 0xffc21a, { p: [-0.62, 0.64, z] }, 6);
+    // Hinterachse, Kettenschutz und Heckstoßstange
+    b.cyl(0.028, 0.028, 1.0, STEEL, { p: [KART.wheelRear.x, KART.wheelRear.r, 0], r: [Math.PI / 2, 0, 0] }, 8);
+    b.box(0.3, 0.16, 0.05, DARK, { p: [-0.6, 0.3, 0.33] }, 0);
+    b.cyl(0.024, 0.024, 0.92, ALU, { p: [-1.04, 0.22, 0], r: [Math.PI / 2, 0, 0] }, 8);
+    for (const z of [-0.3, 0.3]) b.box(0.2, 0.03, 0.03, STEEL, { p: [-0.95, 0.22, z] }, 0);
+    // Endplatten am Heckflügel und zweites Flügelblatt
+    for (const z of [-0.5, 0.5]) b.box(0.24, 0.16, 0.025, st.trim, { p: [-0.86, 0.76, z], r: [0, 0, -0.12] }, 0);
+    b.box(0.12, 0.03, 0.96, st.trim, { p: [-0.93, 0.7, 0], r: [0, 0, -0.25] }, 0);
+    // Rücklicht-Gehäuse (die Lichter selbst leuchten als eigenes Teil)
+    for (const z of [-0.276, 0.276]) b.box(0.05, 0.1, 0.17, DARK, { p: [-0.885, 0.46, z] }, 0);
     return b.geometry();
   });
 }
@@ -84,22 +136,26 @@ function wheelGeo(r, rim) {
   return cachedGeo(`kart:wheel:${r}:${rim}`, () => {
     const b = new Build();
     const w = r * 0.95;
-    b.cyl(r, r, w, TIRE, { r: [Math.PI / 2, 0, 0] }, 20);
-    // Reifenprofil: Stollen rundherum (man sieht das Drehen)
-    for (let i = 0; i < 16; i++) {
-      const a = (i / 16) * Math.PI * 2;
-      b.box(r * 0.2, r * 0.12, w * 0.86, TIRE_SIDE, { p: [Math.cos(a) * r * 1.02, Math.sin(a) * r * 1.02, 0], r: [0, 0, a + Math.PI / 2] }, 0.01, 1);
+    // Reifen mit runden Schultern (Drehkörper statt Walze)
+    b.lathe([[r * 0.6, -w / 2], [r * 0.9, -w / 2], [r * 0.985, -w * 0.38], [r, -w * 0.22], [r, w * 0.22], [r * 0.985, w * 0.38], [r * 0.9, w / 2], [r * 0.6, w / 2]], TIRE, { r: [Math.PI / 2, 0, 0] }, 22);
+    // Profil: zwei versetzte Stollenreihen (man sieht das Drehen), dazwischen eine Rille
+    for (let i = 0; i < 14; i++) for (const row of [-1, 1]) {
+      const a = ((i + (row > 0 ? 0.5 : 0)) / 14) * Math.PI * 2;
+      b.box(r * 0.22, r * 0.07, w * 0.36, TIRE_SIDE, { p: [Math.cos(a) * r * 1.0, Math.sin(a) * r * 1.0, row * w * 0.22], r: [0, 0, a + Math.PI / 2] }, 0);
     }
-    b.torus(r * 0.86, r * 0.16, TIRE_SIDE, { p: [0, 0, w / 2] }, 8, 20);
-    b.torus(r * 0.86, r * 0.16, TIRE_SIDE, { p: [0, 0, -w / 2] }, 8, 20);
-    // Felge mit Nabe und Speichen-Noppen (Drehung sichtbar)
     for (const s of [1, -1]) {
-      b.cyl(r * 0.58, r * 0.58, 0.03, rim, { p: [0, 0, s * (w / 2 + 0.005)], r: [Math.PI / 2, 0, 0] }, 16);
-      b.sphere(r * 0.2, 0xfff8ee, { p: [0, 0, s * (w / 2 + 0.02)], s: [1, 1, 0.5] }, 10, 6);
-      for (let i = 0; i < 4; i++) {
-        const a = (i / 4) * Math.PI * 2;
-        b.sphere(r * 0.1, 0xfff8ee, { p: [Math.cos(a) * r * 0.38, Math.sin(a) * r * 0.38, s * (w / 2 + 0.02)], s: [1, 1, 0.5] }, 8, 5);
+      const z = s * w / 2;
+      // helle Linie auf der Reifenflanke, Felgenhorn, dunkles Felgenbett
+      b.torus(r * 0.8, r * 0.028, 0x9a98aa, { p: [0, 0, z + s * 0.004] }, 4, 22);
+      b.torus(r * 0.6, r * 0.06, rim, { p: [0, 0, z + s * 0.004] }, 6, 20);
+      b.cyl(r * 0.58, r * 0.58, 0.02, 0x2c2a38, { p: [0, 0, z - s * 0.03], r: [Math.PI / 2, 0, 0] }, 16);
+      // fünf Speichen, Nabenkappe und Radmuttern
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        b.box(r * 0.56, r * 0.15, 0.03, rim, { p: [Math.cos(a) * r * 0.3, Math.sin(a) * r * 0.3, z - s * 0.008], r: [0, 0, a] }, 0);
+        b.sphere(r * 0.045, 0xd8dce8, { p: [Math.cos(a + 0.63) * r * 0.2, Math.sin(a + 0.63) * r * 0.2, z + s * 0.012], s: [1, 1, 0.6] }, 6, 4);
       }
+      b.sphere(r * 0.17, 0xfff8ee, { p: [0, 0, z + s * 0.012], s: [1, 1, 0.45] }, 10, 6);
     }
     return b.geometry();
   });
@@ -131,7 +187,29 @@ function flameTexture() {
   return flameTex;
 }
 
-let CHROME = null;
+let CHROME = null, TAIL = null, PAINT = null, BLOB_GEO = null, BLOB_MAT = null, blobTex = null;
+function blobTexture() {
+  if (blobTex) return blobTex;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(32, 32, 4, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.55, 'rgba(255,255,255,0.55)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+  blobTex = new THREE.CanvasTexture(c);
+  return blobTex;
+}
+/** Lack der Karts: Klarlack über der Farbe (spiegelt Himmel und Sonne) ab Grafikstufe 2, sonst matter Kunststoff. */
+function kartPaint() {
+  if (PAINT) return PAINT;
+  PAINT = SURF.quality >= 2
+    ? new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.45, metalness: 0, clearcoat: 0.75, clearcoatRoughness: 0.14 })
+    : vcol(0.38);
+  PAINT.userData.shared = true;
+  return PAINT;
+}
 export const SPARK_COLORS = [0xffffff, 0x58b8ff, 0xffa030, 0xff5ad0];
 
 export function buildKart(style) {
@@ -139,8 +217,15 @@ export function buildKart(style) {
   root.name = 'kart';
   const body = new THREE.Group();     // neigt sich (Federung, Drift), Räder bleiben am Boden
   root.add(body);
-  const shell = mesh(bodyGeo(style), vcol(0.38), {}, true);
+  const shell = mesh(bodyGeo(style), kartPaint(), {}, true);
   body.add(shell);
+  // Rücklichter: leuchten (im Bloom mit kleinem Schein) – man sieht die Karts ja meist von hinten
+  const tail = mesh(cachedGeo('kart:tail', () => {
+    const t = new Build();
+    for (const z of [-0.276, 0.276]) t.box(0.02, 0.07, 0.14, 0xffffff, { p: [-0.912, 0.46, z] }, 0);
+    return t.geometry();
+  }), (TAIL ??= Object.assign(new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 0.22, 0.16) }), { userData: { shared: true } })), {}, false);
+  body.add(tail);
 
   // Chromteile (spiegeln die Umgebung): Auspuffrohre, Motordeckel, Federbeine vorn
   const chrome = new Build();
@@ -208,12 +293,21 @@ export function buildKart(style) {
   hoverGlow.position.set(0, 0.12, 0);
   root.add(hoverGlow);
 
+  // Kontaktschatten: weicher dunkler Fleck unter dem Kart – es „steht“ auf der Fahrbahn (auch ohne Umgebungsverdeckung)
+  const blob = new THREE.Mesh((BLOB_GEO ??= new THREE.PlaneGeometry(2.5, 1.75).rotateX(-Math.PI / 2)),
+    (BLOB_MAT ??= Object.assign(new THREE.MeshBasicMaterial({ map: blobTexture(), color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }), { userData: { shared: true } })));
+  blob.position.y = 0.035;
+  blob.userData.noShadow = true;
+  blob.name = 'kontaktschatten';
+  root.add(blob);
+
   let roll = 0;
   return {
     root, body, seat, wheels, steering, flames, sparks,
     update(dt, k) {
       const speed = k.speed ?? 0;
       const hover = k.hover ?? 0;
+      blob.visible = !k.air;
       for (const w of wheels) {
         w.spin.rotation.z -= (speed / w.r) * dt;
         if (w.front) w.hub.rotation.y = (k.steer ?? 0) * 0.42;

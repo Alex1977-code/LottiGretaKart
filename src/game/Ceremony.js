@@ -72,10 +72,10 @@ export class Ceremony {
       const kart = buildKart(def.kart);
       kart.root.position.set(s.x, s.h, 0.1);
       kart.root.rotation.y = -Math.PI / 2 + (i === 1 ? 0.35 : i === 2 ? -0.35 : 0);
-      kart.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      kart.root.traverse((o) => { if (o.isMesh && !o.userData.noShadow) o.castShadow = true; });
       this.scene.add(kart.root);
       const driver = createDriver(null, def, kart);
-      kart.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      kart.root.traverse((o) => { if (o.isMesh && !o.userData.noShadow) o.castShadow = true; });
       this.drivers.push({ kart, driver, i });
     });
     // Goldener Pokal über dem Sieger

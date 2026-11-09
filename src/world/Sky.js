@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { colorize, lin, mixc, smooth, Rnd } from '../lgw/three/world/geometry.js';
 import { cloudPuffGeo } from './organic.js';
-import { SUN_DIR } from './shaders.js';
+import { SUN_DIR, CLOUD_SHADE } from './shaders.js';
 
 // Luftperspektive wie in Mario Kart 8 Deluxe: der Nebel setzt spät ein – nah klare Farben, am Horizont die
 // Berge der Fernsicht im Dunst (die Themen-Werte sind für die frühere Inselwelt gedacht und werden gestreckt)
@@ -265,6 +265,7 @@ export class Sky {
   update(dt, camera, focus) {
     this.updateEnv();
     SUN_DIR.value.copy(this.sunDir);
+    CLOUD_SHADE.value = this.clouds?.visible && !this.nightOn ? (this.weatherKey?.startsWith('rain') ? 0.4 : 1) : 0;
     this.domeGroup.position.copy(camera.position);
     if (this.clouds) this.clouds.rotation.y += dt * 0.004;
     if (focus) {

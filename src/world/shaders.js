@@ -13,6 +13,8 @@ export const SHADER_TIME = { value: 0 };
 export const SUN_DIR = { value: new THREE.Vector3(0.4, 0.8, 0.3).normalize() };
 /** Nässe durch Regen (0 … 1, vom Wetter gesetzt): Fahrbahn dunkler und spiegelnd mit Pfützen, Gelände dunkler. */
 export const RAIN_WET = { value: 0 };
+/** Wolkenschatten (0 … 1, vom Himmel gesetzt: nur wenn Wolken am Himmel stehen): ziehen langsam über Gelände und Fahrbahn. */
+export const CLOUD_SHADE = { value: 0 };
 
 const NOISE = /* glsl */ `
 float lgkHash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
@@ -37,15 +39,16 @@ function addVarying(shader) {
   shader.vertexShader = shader.vertexShader
     .replace('#include <common>', '#include <common>\nvarying vec3 vLgkW;\nvarying float vLgkD;')
     .replace('#include <project_vertex>', '#include <project_vertex>\n  vLgkW = (modelMatrix * vec4(transformed, 1.0)).xyz;\n  vLgkD = -mvPosition.z;');
-  shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>\nvarying vec3 vLgkW;\nvarying float vLgkD;\nuniform float uLgkTime;\nuniform float uLgkRain;\n${NOISE}`);
+  shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>\nvarying vec3 vLgkW;\nvarying float vLgkD;\nuniform float uLgkTime;\nuniform float uLgkRain;\nuniform float uLgkCloud;\n${NOISE}`);
   shader.uniforms.uLgkTime = SHADER_TIME;
   shader.uniforms.uLgkRain = RAIN_WET;
+  shader.uniforms.uLgkCloud = CLOUD_SHADE;
 }
 
 /**
  * Detail-Korn und Unterwasser-Look für Gelände/Fahrbahn. grain = Stärke des Korns (0,1 … 0,3), scale = Körnung.
  */
-export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patches = false, wet = false, rain = 0.35, surf = null } = {}) {
+export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patches = false, wet = false, rain = 0.35, surf = null, wear = null } = {}) {
   const S = surf ? { topScale: 1 / 3, sideScale: 1 / 9, strength: 1, detail: 0.32, side: 'rock', slope: true, ...surf } : null;
   const size = S?.size ?? 512;
   // Texturen gleich beim Anlegen des Materials rechnen (im Ladebildschirm), nicht erst beim Übersetzen des Shaders
@@ -76,6 +79,12 @@ export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patche
       float dep = clamp(-vLgkW.y / 8.0, 0.0, 1.0);
       diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.5, 0.82, 0.95), 0.4 + 0.5 * dep);
     }
+    // Wolkenschatten: große weiche Flecken, die langsam über die Landschaft ziehen
+    if (uLgkCloud > 0.0) {
+      vec2 cp = vLgkW.xz * 0.0042 + vec2(uLgkTime * 0.011, uLgkTime * 0.006);
+      float cs = smoothstep(0.5, 0.74, lgkNoise(cp) * 0.7 + lgkNoise(cp * 2.3 + 4.0) * 0.3);
+      diffuseColor.rgb *= 1.0 - 0.17 * cs * uLgkCloud;
+    }
   }`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
   ${wet ? 'roughnessFactor = mix(0.4, 0.05, smoothstep(0.48, 0.66, lgkNoise(vLgkW.xz * 0.07) * 0.6 + lgkNoise(vLgkW.xz * 0.29 + 5.0) * 0.4));'
@@ -85,6 +94,41 @@ export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patche
     float dep = clamp(-vLgkW.y / 3.0, 0.0, 1.0) * (1.0 - smoothstep(30.0, 90.0, vLgkD));
     totalEmissiveRadiance += vec3(0.42, 0.7, 0.75) * lgkCaustic(vLgkW.xz, uLgkTime) * 0.55 * dep;
   }`);
+    if (wear) {
+      // Abnutzung der Fahrbahn (Geometrie-Attribut lgkRoad: quer −1 … +1, längs in Metern):
+      // dunkles, glatteres Band der Ideallinie mit Gummiabrieb, Schmutz an den Rändern, feine Walzstreifen längs,
+      // bei Asphalt dazu ausgebesserte Flicken und Quernähte
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute vec2 lgkRoad;\nvarying vec2 vLgkRoad;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\n  vLgkRoad = lgkRoad;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vLgkRoad;\nfloat lgkLine = 0.0;')
+        .replace('#include <color_fragment>', `#include <color_fragment>
+  {
+    float e = abs(vLgkRoad.x), far = 1.0 - smoothstep(70.0, 190.0, vLgkD);
+    // Ideallinie: pendelt leicht, Abrieb in Längsschlieren
+    float mid = vLgkRoad.x - 0.22 * sin(vLgkRoad.y * 0.045);
+    float streak = lgkNoise(vec2(vLgkRoad.x * 11.0, vLgkRoad.y * 0.07));
+    lgkLine = (1.0 - smoothstep(0.16, 0.62, abs(mid))) * (0.4 + 0.6 * streak) * far;
+    diffuseColor.rgb *= 1.0 - lgkLine * 0.27;
+    // Rand: Staub und Schmutz, unregelmäßig
+    diffuseColor.rgb *= 1.0 - smoothstep(0.7, 1.0, e + (lgkNoise(vec2(vLgkRoad.y * 0.3, vLgkRoad.x * 3.0)) - 0.5) * 0.16) * 0.3 * far;
+    // Walzstreifen längs (fein)
+    diffuseColor.rgb *= 0.94 + 0.12 * lgkNoise(vec2(vLgkRoad.x * 34.0, vLgkRoad.y * 0.025));
+    ${wear === 'asphalt' ? `// ausgebesserte Flicken (dunkler, leicht anderer Ton) und Quernähte alle 24 m
+    vec2 pc = vec2(vLgkRoad.x * 1.6 + 5.0, vLgkRoad.y / 11.0), pi = floor(pc), pf = fract(pc);
+    float ph = lgkHash(pi);
+    if (ph > 0.86) {
+      vec2 lo = vec2(0.12 + 0.2 * lgkHash(pi + 3.1), 0.15 + 0.25 * lgkHash(pi + 7.7)), hi = lo + vec2(0.5, 0.42);
+      float inP = step(lo.x, pf.x) * step(pf.x, hi.x) * step(lo.y, pf.y) * step(pf.y, hi.y);
+      diffuseColor.rgb *= 1.0 - inP * 0.17 * far;
+    }
+    float seam = 1.0 - smoothstep(0.0, 0.006, abs(fract(vLgkRoad.y / 24.0) - 0.5));
+    diffuseColor.rgb *= 1.0 - seam * 0.32 * far;` : ''}
+  }`)
+        .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+  roughnessFactor *= 1.0 - lgkLine * 0.3;   // die Ideallinie ist glatt gefahren`);
+    }
     if (S) {
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', `#include <common>\nvarying vec3 vLgkN;${S.off ? '\nattribute float lgkOff;\nvarying float vLgkOff;' : ''}`)
@@ -126,7 +170,7 @@ export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patche
   roughnessFactor = mix(roughnessFactor, lgkSurfRough, 0.75);`);
     }
   };
-  mat.customProgramCacheKey = () => `lgk-ground-${key}-${grain}-${scale}-${patches}-${wet}-${rain}-${S ? `${S.top}-${S.side}-${S.off}-${S.slope}-${size}` : ''}`;
+  mat.customProgramCacheKey = () => `lgk-ground-${key}-${grain}-${scale}-${patches}-${wet}-${rain}-${S ? `${S.top}-${S.side}-${S.off}-${S.slope}-${size}` : ''}-${wear ?? ''}`;
   return mat;
 }
 

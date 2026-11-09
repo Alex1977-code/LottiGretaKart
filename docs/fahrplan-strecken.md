@@ -121,6 +121,7 @@ gewünscht.
 | G4 Modelle | Stadthäuser mit Sockel, Gesimsen, Pilastern, Glasfassaden, Rückstaffelung und Dachaufbauten; Modelle sparsamer (dünne Bauteile ohne unsichtbare Rundung, flache Blüten, nähere Detailstufe der Bäume: 25–45 % weniger Dreiecke je Bild) | fertig |
 | G5 Leveldesign | Bausteine in `src/world/levelkit.js`: Felswände als Rahmen (steile Wand mit Felsfarbe und Fels-Relief, Krone mit Wiese) auf 17 Strecken, Tunnel mit Portal, Gewölbe und Lampenband auf 11 Strecken, Abkürzungen (befestigt oder Schotter) mit Banden-Lücken auf 8 Strecken (gesucht mit `tools/find-shortcuts.mjs`) | fertig |
 | G6 Wasser und Himmel | Wasser glatter (klarere Himmelsspiegelung), feine Kräuselwellen nah an der Kamera, Sonnenglitzern auf den Wellen; Lichtstrahlen der Sonne (Nachbearbeitung, ab Stufe 2) – Schaum am Ufer gab es schon | fertig |
+| G7 Details | Karts: Frontflügel, Querlenker, Motor mit Kühlrippen und Luftfilter, Überrollbügel, Spiegel, Speichenfelgen, Reifen mit runden Schultern, leuchtende Rücklichter, Klarlack, weicher Kontaktschatten; Fahrbahn: Ideallinie mit Gummiabrieb, Randschmutz, Walzstreifen, Flicken und Quernähte (Shader), Startfelder; Banden mit Sockel, Zierstreifen und Fugen; Reifenstapel in engen Kurven, Werbetafeln an den Geraden; Wolkenschatten ziehen über Gelände und Fahrbahn | fertig |
 
 Grafikstufen: „Sparsam“ ohne Zusatz-Texturen; „Hoch“ (Handy) mit Bildlicht, Tonemapping, 512er-Texturen und Detailstufen,
 ohne Umgebungsverdeckung; „Ultra“ (Rechner) zusätzlich GTAO und 1024er-Texturen. Die Auflösung passt sich bei
