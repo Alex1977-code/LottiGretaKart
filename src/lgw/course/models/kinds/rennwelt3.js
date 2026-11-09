@@ -32,6 +32,10 @@
 // toy_soldier     Spielzeugsoldat (marschiert)
 // crayon          Buntstift, liegt, opts { color }
 // book_stack      Bücherstapel
+// pompom_tree     Baum aus Wollpompons auf einem Pfeifenputzer-Stamm, opts { color }
+// button_flower   Blume aus Knöpfen, opts { color }
+// ice_cream       Eiswaffel mit Kugeln und Sahne, opts { color, scoops }
+// cherry          Kirsche mit Stiel
 
 import * as THREE from 'three';
 import { Build, mesh, vcol, cached, joint, makeModel, Clock } from '../lib/kit.js';
@@ -577,7 +581,61 @@ function bookStack() {
   return makeModel('book_stack', root, () => {});
 }
 
+function pompomTree(o = {}) {
+  const C = o.color ?? 0xff8ac8;
+  const root = new THREE.Group();
+  root.add(mesh(cached(`rw3:pompom:${C}`, () => {
+    const b = new Build();
+    b.tube([[0, 0, 0], [0.4, 2, 0], [-0.3, 4, 0.2], [0, 6, 0]], 0.35, 0x8a6a4a, {}, 12, 6);
+    const c2 = new THREE.Color(C).offsetHSL(0.03, 0, 0.08).getHex();
+    for (let k = 0; k < 9; k++) { const a = k * 2.4, r = k ? 1.6 : 0; b.sphere(1.6 + (k % 3) * 0.3, k % 2 ? C : c2, { p: [Math.cos(a) * r, 7 + (k % 3) * 0.8, Math.sin(a) * r] }, 10, 8); }
+    return b.geometry();
+  }), vcol(1), {}, true));
+  return makeModel('pompom_tree', root, () => {});
+}
+
+function buttonFlower(o = {}) {
+  const C = o.color ?? 0xffd86a;
+  const root = new THREE.Group();
+  root.add(mesh(cached(`rw3:bflower:${C}`, () => {
+    const b = new Build();
+    b.cyl(0.08, 0.08, 1.6, 0x5aa84a, { p: [0, 0.8, 0] }, 6);
+    b.cyl(0.7, 0.7, 0.18, C, { p: [0, 1.7, 0], r: [Math.PI / 2 - 0.3, 0, 0] }, 18);
+    for (const [x, y] of [[-0.18, -0.18], [0.18, -0.18], [-0.18, 0.18], [0.18, 0.18]]) b.cyl(0.07, 0.07, 0.22, 0x3a2a2a, { p: [x, 1.7 + y * 0.95, y * 0.3], r: [Math.PI / 2 - 0.3, 0, 0] }, 6);
+    b.box(0.5, 0.05, 0.3, 0x6ac85a, { p: [0.25, 0.7, 0], r: [0, 0, 0.5] }, 0.02);
+    return b.geometry();
+  }), vcol(0.5), {}, false));
+  return makeModel('button_flower', root, () => {});
+}
+
+function iceCream(o = {}) {
+  const C = o.color ?? 0xff9ac8, N = o.scoops ?? 2;
+  const root = new THREE.Group();
+  root.add(mesh(cached(`rw3:ice:${C}:${N}`, () => {
+    const b = new Build();
+    b.cone(5, 14, (x, y, z) => ((Math.floor((y + x) * 0.8) + Math.floor((y - x) * 0.8)) % 2 ? 0xd8a24a : 0xc8903a), { p: [0, 7, 0], r: [Math.PI, 0, 0] }, 16);
+    const cols = [C, 0xfff0d0, 0xa8e8a0, 0x8a5a32];
+    for (let k = 0; k < N; k++) b.sphere(5.2 - k * 0.4, cols[k % 4], { p: [0, 15 + k * 7, 0], s: [1, 0.9, 1] }, 18, 12);
+    b.sphere(1.2, 0xe8202a, { p: [0, 15 + N * 7 - 2.3, 0] }, 10, 8);
+    for (let k = 0; k < 14; k++) { const a = k * 1.7; b.box(0.25, 0.8, 0.25, [0xff4a9a, 0x3a8ae8, 0xffd23a, 0x3aa84a][k % 4], { p: [Math.cos(a) * 4, 17 + (k % 3), Math.sin(a) * 4], r: [k, k * 2, 0] }, 0.05); }
+    return b.geometry();
+  }), vcol(0.4), {}, true));
+  return makeModel('ice_cream', root, () => {});
+}
+
+function cherry() {
+  const root = new THREE.Group();
+  root.add(mesh(cached('rw3:cherry', () => {
+    const b = new Build();
+    b.sphere(1, 0xd8101a, { p: [0, 1, 0] }, 16, 12);
+    b.tube([[0, 1.9, 0], [0.3, 2.8, 0], [0.9, 3.4, 0]], 0.07, 0x4a8a2a, {}, 8, 5);
+    return b.geometry();
+  }), vcol(0.2), {}, true));
+  return makeModel('cherry', root, () => {});
+}
+
 export const MODELS = {
+  pompom_tree: pompomTree, button_flower: buttonFlower, ice_cream: iceCream, cherry,
   canal_house: canalHouse, houseboat, cyclist, golden_stupa: goldenStupa, tuk_tuk: tukTuk, long_boat: longBoat,
   ancient_temple: ancientTemple, colosseum, toy_block: toyBlock, teddy, toy_soldier: toySoldier, crayon, book_stack: bookStack,
   bounce_pad: bouncePad, rail_track: railTrack, train_loco: trainLoco, train_car: trainCar, crossing_signal: crossingSignal,

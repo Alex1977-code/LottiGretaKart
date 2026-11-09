@@ -734,5 +734,41 @@ const PLAYROOM = {
   wallA: 0xe8392d, wallB: 0x3a8ae8, wallTop: 0xffd23a, wallH: 0.8,
 };
 
-export const THEMES = { canal: CANAL, templecity: TEMPLECITY, ancient: ANCIENT, playroom: PLAYROOM, western: WESTERN, boolake: BOOLAKE, cruise: CRUISE, mall: MALL, choco: CHOCO, shroom: SHROOM, pinball: PINBALL, cheese: CHEESE, treetop: TREETOP, savanna: SAVANNA, bathroom: BATHROOM, clockwork: CLOCKWORK, town: TOWN, blossom: BLOSSOM, greatwall: GREATWALL, future: FUTURE, mine: MINE, frozen: FROZEN, icesheet: ICESHEET, music: MUSIC, valley: VALLEY, farm: FARM, skyway: SKYWAY, dunes: DUNES, lavafort: LAVAFORT, space: SPACE, airport: AIRPORT, disco: DISCO, park: PARK, sweets: SWEETS, ruins: RUINS, stadium: STADIUM, canyon: CANYON, royal: ROYAL, arena: ARENA, harbor: HARBOR, tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
+// Rohrkanal: Röhrengrün, Backstein, Kanaltürkis.
+const SEWER = {
+  ...GRASS,
+  label: 'Rohrkanal',
+  rock: 0xb8583a,
+  grass: 0x5ab83a, grass2: 0x50aa34, offroad: 0xb8583a, offroad2: 0xa84a32,
+  road: 0x7a8a8a, road2: 0x748484, line: 0xffffff, curbA: 0x3cbf3a, curbB: 0xfaf8f4,
+  wallA: 0xb8583a, wallB: 0x8a3a2a, wallTop: 0x3cbf3a, wallH: 0.9,
+};
+// Retro-Rennbahn: kräftige, flache 16-Bit-Farben.
+const RETRO = {
+  ...GRASS,
+  label: 'Retro-Rennbahn',
+  grass: 0x3ac83a, grass2: 0x3ac83a, grassFar: 0x32b832, offroad: 0xf0c85a, offroad2: 0xe8c050,
+  road: 0x8a8a8a, road2: 0x8a8a8a, line: 0xffffff, curbA: 0xe8202a, curbB: 0xffffff,
+  wallA: 0xc8783a, wallB: 0xffc21a, wallTop: 0xe8202a, wallH: 0.6,
+};
+// Bastelinsel: Pastell, Filz, Karton.
+const CRAFT = {
+  ...BEACH,
+  label: 'Bastelinsel',
+  rock: 0xd8b88a,
+  grass: 0x9af08a, grass2: 0x8ae47a, grassFar: 0x7ad86a, offroad: 0xd8b88a, offroad2: 0xccac80,
+  road: 0xc8a8d8, road2: 0xc0a0d0, line: 0xffffff, curbA: 0xff8ac8, curbB: 0xffffff,
+  wallA: 0xd8b88a, wallB: 0xc8a070, wallTop: 0x8ad4ff, wallH: 0.8,
+  bridge: 0xd8b88a, bridgePillar: 0xc8a070, bridgeTop: 0xd8b88a, bridgeTop2: 0xccac80,
+};
+// Eisbecher-Himmel: Erdbeerrosa, Vanille, Pistazie, Himmelblau.
+const SUNDAE = {
+  ...SKYWAY,
+  label: 'Eisbecher-Himmel',
+  road: 0xffd0e4, road2: 0xffc8de, line: 0xffffff, curbA: 0xff4a9a, curbB: 0xfff0d0,
+  wallA: 0xfff0d0, wallB: 0xff9ac8, wallTop: 0xa8e8a0, wallH: 0.8,
+  bridge: 0xd8a24a, bridgePillar: 0xc8903a, bridgeTop: 0xffd0e4, bridgeTop2: 0xffc8de,
+};
+
+export const THEMES = { sewer: SEWER, retro: RETRO, craft: CRAFT, sundae: SUNDAE, canal: CANAL, templecity: TEMPLECITY, ancient: ANCIENT, playroom: PLAYROOM, western: WESTERN, boolake: BOOLAKE, cruise: CRUISE, mall: MALL, choco: CHOCO, shroom: SHROOM, pinball: PINBALL, cheese: CHEESE, treetop: TREETOP, savanna: SAVANNA, bathroom: BATHROOM, clockwork: CLOCKWORK, town: TOWN, blossom: BLOSSOM, greatwall: GREATWALL, future: FUTURE, mine: MINE, frozen: FROZEN, icesheet: ICESHEET, music: MUSIC, valley: VALLEY, farm: FARM, skyway: SKYWAY, dunes: DUNES, lavafort: LAVAFORT, space: SPACE, airport: AIRPORT, disco: DISCO, park: PARK, sweets: SWEETS, ruins: RUINS, stadium: STADIUM, canyon: CANYON, royal: ROYAL, arena: ARENA, harbor: HARBOR, tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
 export const getTheme = (n) => THEMES[n] ?? GRASS;
