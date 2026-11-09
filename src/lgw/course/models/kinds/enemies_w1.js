@@ -81,7 +81,7 @@ function pilzCapGeo() {
     decals(b, hits, 0.08, PZ.spot, 0.22);
     // ---- Details: heller Hutrand, Lamellen an der Unterseite, kleine Zusatzpunkte ----
     b.torus(0.433, 0.014, 0xffa255, { p: [0, 0.13, 0], r: [Math.PI / 2, 0, 0] }, 5, 32);
-    for (let i = 0; i < 18; i++) { const a = (i / 18) * TAU; b.box(0.2, 0.014, 0.012, 0xf2bd84, { p: [Math.cos(a) * 0.3, 0.02, Math.sin(a) * 0.3], r: [0, -a, 0] }, 0); }
+    for (let i = 0; i < 18; i++) { const a = (i / 18) * TAU; b.box(0.13, 0.012, 0.012, 0xf2bd84, { p: [Math.cos(a) * 0.3, 0.028, Math.sin(a) * 0.3], r: [0, -a, 0.14] }, 0); }
     const small = [[0.3, 0.3, 0.035], [-0.9, 0.3, 0.03], [0.95, 0.28, 0.03], [-0.25, 0.32, 0.03], [2.2, 0.3, 0.035], [-2.1, 0.32, 0.03], [3.0, 0.5, 0.035], [1.6, 0.85, 0.03], [-1.7, 0.9, 0.035]]
       .map(([az, el, r]) => ({ ...onLathe(CAP_PTS, 0.08, az, el), r }));
     decals(b, small, 0.035, PZ.spot, 0.22);
