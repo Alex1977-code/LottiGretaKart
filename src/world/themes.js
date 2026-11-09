@@ -625,5 +625,51 @@ const TOWN = {
   bridge: 0xb8a888, bridgePillar: 0xa89878, bridgeTop: 0x8a8898, bridgeTop2: 0x84829a,
 };
 
-export const THEMES = { cheese: CHEESE, treetop: TREETOP, savanna: SAVANNA, bathroom: BATHROOM, clockwork: CLOCKWORK, town: TOWN, blossom: BLOSSOM, greatwall: GREATWALL, future: FUTURE, mine: MINE, frozen: FROZEN, icesheet: ICESHEET, music: MUSIC, valley: VALLEY, farm: FARM, skyway: SKYWAY, dunes: DUNES, lavafort: LAVAFORT, space: SPACE, airport: AIRPORT, disco: DISCO, park: PARK, sweets: SWEETS, ruins: RUINS, stadium: STADIUM, canyon: CANYON, royal: ROYAL, arena: ARENA, harbor: HARBOR, tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
+// Einkaufszentrum (Innenraum): heller Marmor, Glasdach, bunte Läden.
+const MALL = {
+  ...GRASS,
+  label: 'Einkaufszentrum',
+  indoor: true,
+  sky: [[1, 0xcfe6f6], [0.45, 0xdcecf8], [0.15, 0xe8f2fa], [0, 0xf2f6fa], [-1, 0xd8e2ea]],
+  background: 0xe8f0f6, fog: { color: 0xeef2f6, near: 200, far: 800 },
+  hemi: { sky: 0xffffff, ground: 0xc8c0b8, intensity: 1.6 },
+  sun: { color: 0xfff8ec, intensity: 2.2, dir: [0.3, 1, 0.4] },
+  sunDisc: false, clouds: false, hills: null,
+  rock: 0xd8d0c8,
+  grass: 0xf0ebe2, grass2: 0xe2dcd2, grassFar: 0xe8e2d8, offroad: 0xd8d0c4, offroad2: 0xccc4b8,
+  road: 0x8a8a9a, road2: 0x848494, line: 0xffffff, curbA: 0xe8392d, curbB: 0xfaf8f4,
+  wallA: 0xfaf8f4, wallB: 0x3a8ae8, wallTop: 0xffc21a, wallH: 0.9,
+  bridge: 0xe8e4dc, bridgePillar: 0xd8d4cc, bridgeTop: 0xf0ece4, bridgeTop2: 0xe8e4dc,
+};
+// Schokoberg: Kakaobraun, Karamell, Felsrot.
+const CHOCO = {
+  ...AUTUMN,
+  label: 'Schokoberg',
+  rock: 0x5a3218,
+  grass: 0x7a4a28, grass2: 0x6e4224, grassFar: 0x5a3218, offroad: 0x8a5a32, offroad2: 0x7e522e,
+  road: 0xa07a5a, road2: 0x987254, line: 0xffe8c8, curbA: 0xd8a24a, curbB: 0x4a2812,
+  wallA: 0x6a4428, wallB: 0x4a2812, wallTop: 0xffd23a, wallH: 1.0,
+};
+// Pilzschlucht: Moosgrün, Pilzrot, Felsviolett, leuchtendes Cyan in der Höhle.
+const SHROOM = {
+  ...GRASS,
+  label: 'Pilzschlucht',
+  rock: 0x7a6a8a,
+  grass: 0x5ab83a, grass2: 0x50a834, grassFar: 0x4a9a32, offroad: 0x8a7a6a, offroad2: 0x7e6e60,
+  road: 0x8a7e94, road2: 0x84788e, line: 0xffffff, curbA: 0xe8392d, curbB: 0xfaf8f4,
+  wallA: 0xfaf0dc, wallB: 0xe8392d, wallTop: 0x3ad8ff, wallH: 0.8,
+};
+// Flipperhalle: Nachtblau, Neonpink, Chrom, Gold.
+const PINBALL = {
+  ...NIGHTCITY,
+  label: 'Flipperhalle',
+  indoor: true,
+  rock: 0x2a1e4a,
+  grass: 0x1e1a4a, grass2: 0x2a1e5a, grassFar: 0x16123a, offroad: 0x2a2460, offroad2: 0x241e56,
+  road: 0x3a2a7a, road2: 0x362674, line: 0xff3ab8, curbA: 0xffd23a, curbB: 0x1a1a2a,
+  wallA: 0xc8ccd6, wallB: 0x8a90a8, wallTop: 0xff3ab8, wallH: 1.0,
+  bridge: 0x3a2a7a, bridgePillar: 0x2a1e5a, bridgeTop: 0x4a3a8a, bridgeTop2: 0x443484,
+};
+
+export const THEMES = { mall: MALL, choco: CHOCO, shroom: SHROOM, pinball: PINBALL, cheese: CHEESE, treetop: TREETOP, savanna: SAVANNA, bathroom: BATHROOM, clockwork: CLOCKWORK, town: TOWN, blossom: BLOSSOM, greatwall: GREATWALL, future: FUTURE, mine: MINE, frozen: FROZEN, icesheet: ICESHEET, music: MUSIC, valley: VALLEY, farm: FARM, skyway: SKYWAY, dunes: DUNES, lavafort: LAVAFORT, space: SPACE, airport: AIRPORT, disco: DISCO, park: PARK, sweets: SWEETS, ruins: RUINS, stadium: STADIUM, canyon: CANYON, royal: ROYAL, arena: ARENA, harbor: HARBOR, tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
 export const getTheme = (n) => THEMES[n] ?? GRASS;

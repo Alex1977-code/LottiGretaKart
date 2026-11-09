@@ -138,6 +138,16 @@ export class Items {
         this.scene.add(g);
         this.ramps.push({ g, x: p.x, z: p.z, yaw: p.yaw, w, len: 2.6 });
       }
+      // Trampoline (Pilzschlucht): federnde Pilzhüte auf der Fahrbahn schleudern das Kart hoch in die Luft
+      for (const b0 of def.bouncers ?? []) {
+        const [u, lat = 0, w = 6] = Array.isArray(b0) ? b0 : [tr.uCtrl(b0.c), b0.lat, b0.w];
+        const hw = tr.hw[tr.wrap(Math.round(u * tr.N))];
+        const p = tr.pointAt(u, lat * hw);
+        const m = getModel('bounce_pad', { r: w / 2, color: b0.color });
+        m.root.position.set(p.x, p.y + 0.02, p.z);
+        this.scene.add(m.root);
+        this.ramps.push({ g: m.root, model: m, x: p.x, z: p.z, yaw: p.yaw, w, len: w, bounce: true, r: w / 2, squash: 0 });
+      }
       // Gleiter-Schanzen (blau, wie die Gleiter-Rampen in Mario Kart 8): weiter Flug mit dem Gleiter
       for (const g0 of def.glides ?? []) {
         // [u, Seite, Breite] oder { c: Kontrollpunkt-Stelle, lat, w }
@@ -466,12 +476,17 @@ export class Items {
       for (let pi = 0; pi < this.ramps.length; pi++) {
         const p = this.ramps[pi];
         if (Math.abs(r.pos.x - p.x) > 8 || Math.abs(r.pos.z - p.z) > 8) continue;
+        if (p.bounce) {
+          if (!r.air && r.speed > 3 && (r.pos.x - p.x) ** 2 + (r.pos.z - p.z) ** 2 < p.r * p.r) { r.launch(12); p.squash = 1; }
+          continue;
+        }
         if (inRect(r.pos.x, r.pos.z, p.x, p.z, p.yaw, p.len / 2, p.w / 2) && r.speed > 5) {
           if (p.glide) r.launch(11, true); else r.launch(8.5 + Math.min(3, r.speed * 0.08));
         }
       }
     }
     for (let pi = 0; pi < this.pads.length; pi++) this.pads[pi].model.update(dt, 'idle');
+    for (const p of this.ramps) if (p.bounce) { p.squash = Math.max(0, p.squash - dt * 3); p.model.update(dt, { squash: p.squash }); }
     // Geschosse
     const ps = this.projectiles;
     for (let k = 0; k < ps.length; k++) {
@@ -617,7 +632,7 @@ export class Items {
     if (this.boxMesh) { this.boxMesh.removeFromParent(); this.boxMesh.dispose(); }
     for (const p of this.projectiles) if (!p.dead) this.remove(p);
     for (const p of this.pads) p.model.dispose();
-    for (const r of this.ramps) r.g.removeFromParent();
+    for (const r of this.ramps) { r.g.removeFromParent(); r.model?.dispose?.(); }
     this.coinBody?.removeFromParent(); this.coinFace?.removeFromParent();
     this.coinBody?.dispose(); this.coinFace?.dispose();
   }

@@ -48,7 +48,7 @@ export function aiInput(racer, race, dt) {
     const h = hl[hk];
     // Stampfsteine immer, Schnappblumen und Schneebälle nur geschickte Fahrer
     const snap = h.kind === 'snapper' || h.kind === 'roller';
-    if (h.kind !== 'stampfstein' && h.kind !== 'pillar' && !(snap && ai.skill > 0.5) || !h.p) continue;
+    if (h.kind !== 'stampfstein' && h.kind !== 'pillar' && h.kind !== 'bumper' && !(snap && ai.skill > 0.5) || !h.p) continue;
     if ((h.p.x - racer.pos.x) ** 2 + (h.p.z - racer.pos.z) ** 2 > 40 * 40) continue;
     const q = track.locate(h.p.x, h.p.z, i, ai._sl ?? (ai._sl = {}));
     if (Math.abs(q.lat) > q.hw + 3) continue; // liegt nicht an meinem Weg

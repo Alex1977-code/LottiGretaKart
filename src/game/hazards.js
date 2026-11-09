@@ -15,6 +15,10 @@
 //               wer sie in der Anti-Gravitation streift, bekommt einen Spin-Boost; sonst prallt man ab. { u, lat }
 //   pillar      Felssäule mitten auf der Fahrbahn (teilt die Strecke in mehrere Wege, Felsental): wer sie rammt,
 //               prallt ab und wird langsamer. { u, lat, r (Radius, Standard 2.4), model (Standard rock_pillar), opts }
+//   bumper      Flipper-Bumper (Flipperhalle): wie pillar, schleudert aber kräftig zur Seite und leuchtet auf
+//   train       Zug am Bahnübergang: Warnlichter blinken, dann fährt ein langer Zug quer über die Fahrbahn –
+//               wer erwischt wird, überschlägt sich. { u, every (s), cars, speed, span (Gleislänge je Seite),
+//               model (Lok), car (Wagen) }
 // Definition in der Strecke: hazards: [{ kind, u, model?, speed?, lat?, side?, every? }]
 
 import * as THREE from 'three';
@@ -242,8 +246,44 @@ export class Hazards {
           h.r = 0.66;
           break;
         }
-        case 'pillar': {
-          h.model = getModel(d.model ?? 'rock_pillar', d.opts ?? {});
+        case 'train': {
+          const p = track.pointAt(d.u, 0);
+          h.pos = new THREE.Vector3(p.x, p.y, p.z);
+          h.p = h.pos;
+          h.holder = new THREE.Group();
+          h.holder.position.copy(h.pos);
+          h.holder.rotation.y = p.yaw - Math.PI / 2;   // lokales +X = quer zur Strecke (nach rechts)
+          h.nx = -track.tz[p.i]; h.nz = track.tx[p.i];
+          h.tx = track.tx[p.i]; h.tz = track.tz[p.i];
+          h.span = d.span ?? 150;
+          const rails = getModel('rail_track', { length: h.span * 2 });
+          h.holder.add(rails.root);
+          const cars = d.cars ?? 5, CL = d.carLength ?? 13;
+          h.train = new THREE.Group();
+          const parts = [rails];
+          for (let k = 0; k < cars; k++) {
+            const m = getModel(k === 0 ? d.model ?? 'train_loco' : d.car ?? 'train_car', d.opts ?? {});
+            m.root.position.x = -k * CL;
+            h.train.add(m.root); parts.push(m);
+          }
+          h.train.visible = false;
+          h.holder.add(h.train);
+          h.len = cars * CL;
+          // Warnsignale beiderseits der Fahrbahn
+          h.signals = [];
+          for (const s of [-1, 1]) {
+            const m = getModel('crossing_signal');
+            m.root.position.set(s * (p.hw + 2.5), 0, s * 3.5);
+            m.root.rotation.y = s < 0 ? 0 : Math.PI;
+            h.holder.add(m.root); h.signals.push(m); parts.push(m);
+          }
+          h.model = { root: h.holder, update() {}, dispose() { for (const m of parts) m.dispose(); } };
+          h.speed = d.speed ?? 26; h.every = d.every ?? 9; h.timer = (d.offset ?? Math.random()) * h.every; h.phase = 'idle';
+          h.x = -h.span;
+          break;
+        }
+        case 'pillar': case 'bumper': {
+          h.model = getModel(d.model ?? (d.kind === 'bumper' ? 'pinball_bumper' : 'rock_pillar'), d.opts ?? {});
           h.holder = new THREE.Group();
           h.holder.add(h.model.root);
           h.holder.scale.setScalar(d.scale ?? 1);
@@ -252,8 +292,9 @@ export class Hazards {
           h.p = h.pos;
           h.holder.position.copy(h.pos);
           h.holder.rotation.y = d.u * 40;
-          h.r = d.r ?? 2.4;
+          h.r = d.r ?? (d.kind === 'bumper' ? 1.8 : 2.4);
           h.size = h.r * 2;
+          h.pulse = 0;
           break;
         }
         default: continue;
@@ -275,8 +316,10 @@ export class Hazards {
       else if (!(h.down > 0)) h.holder.visible = true;
       h.t += dt;
       switch (h.kind) {
-        case 'spinpost': case 'pillar': {
+        case 'train': this.updateTrain(h, dt); break;
+        case 'spinpost': case 'pillar': case 'bumper': {
           if (h.kind === 'spinpost') h.holder.rotation.y += dt * 2.5;
+          if (h.kind === 'bumper') { h.pulse = Math.max(0, h.pulse - dt * 4); h.holder.scale.setScalar((h.scale ?? 1) * (1 + 0.25 * h.pulse)); h.model.update(dt, { pulse: h.pulse }); }
           for (const r of race.racers) {
             if (r.out || r.remote || r.puppet || r.air) continue;
             const dx = r.pos.x - h.pos.x, dz = r.pos.z - h.pos.z, d2 = dx * dx + dz * dz, R = h.r + r.radius;
@@ -284,6 +327,7 @@ export class Hazards {
             const d = Math.sqrt(d2), nx = dx / d, nz = dz / d;
             r.pos.x = h.pos.x + nx * R; r.pos.z = h.pos.z + nz * R;
             r.vlat += 4 * (nx * Math.sin(r.yaw) + nz * Math.cos(r.yaw));
+            if (h.kind === 'bumper') { r.vlat += 9 * (nx * Math.sin(r.yaw) + nz * Math.cos(r.yaw)); r.speed *= 0.92; h.pulse = 1; if (r.isPlayer) race.audio.sfx('bounce'); continue; }
             if (r.antigrav && h.kind === 'spinpost') r.spinBoost(); else if (r.bumpCooldown <= 0) { r.speed *= h.kind === 'pillar' ? 0.55 : 0.7; r.bumpCooldown = 0.3; }
           }
           break;
@@ -494,6 +538,32 @@ export class Hazards {
       }
     }
     this.bombs = this.bombs.filter((b) => !b.dead);
+  }
+
+  /** Zug am Bahnübergang: warten → Warnlichter → Zug fährt quer über die Fahrbahn. */
+  updateTrain(h, dt) {
+    const race = this.race;
+    if (race.state === 'race' || race.state === 'finish' || race.state === 'free' || race.demo) h.timer -= dt;
+    if (h.phase === 'idle') {
+      if (h.timer <= 2.4) h.phase = 'warn';
+    } else if (h.phase === 'warn') {
+      if (h.timer <= 0) { h.phase = 'pass'; h.x = -h.span + h.len; h.train.visible = true; }
+    } else {
+      h.x += h.speed * dt;
+      h.train.position.x = h.x;
+      // Kollision: Zug belegt quer [x − len, x], längs ±2,2 m um die Gleise
+      for (const r of race.racers) {
+        if (r.out || r.remote || r.puppet) continue;
+        const dx = r.pos.x - h.pos.x, dz = r.pos.z - h.pos.z;
+        const a = dx * h.nx + dz * h.nz, b = dx * h.tx + dz * h.tz;
+        if (Math.abs(b) < 2.2 + r.radius && a < h.x + 0.5 && a > h.x - h.len && r.pos.y - h.pos.y < 5) {
+          if (r.hit('tumble', null)) { r.pos.x -= h.tx * 1.5; r.pos.z -= h.tz * 1.5; }
+        }
+      }
+      if (h.x - h.len > h.span) { h.phase = 'idle'; h.timer = h.every; h.train.visible = false; }
+    }
+    const blink = h.phase !== 'idle' && Math.floor(performance.now() / 300) % 2 === 0;
+    for (const s of h.signals) s.update(dt, { on: h.phase !== 'idle', blink });
   }
 
   /** Orca-Show: schwimmen → Anlauf (Warnring) → Sprung → Welle über die Fahrbahn → abtauchen. */

@@ -35,6 +35,33 @@ ersetzt; Teneriffa und Loro Parque fahren als Bonus im Kanaren-Cup (mit Hafensta
 Uhrwerk, Stadtrundfahrt (fertig). Damit gibt es neun Cups mit 36 Strecken nach den Archetypen plus den Kanaren-Cup
 als Bonus.
 
+## Etappen 11–15 – Archetypen der Booster-Strecken und übrige Klassiker
+
+| Etappe | Cup | Strecke (eigener Name) | Archetyp / Vorbild | Neue Technik |
+| --- | --- | --- | --- | --- |
+| 11 | Turbo-Cup | Einkaufszentrum | Einkaufszentrum mit Rolltreppen und Parkdeck | Hallenwände |
+| 11 | Turbo-Cup | Schokoberg | Schokoladen-Berg mit rollenden Felsen | – |
+| 11 | Turbo-Cup | Pilzschlucht | Pilz-Schlucht mit federnden Pilzhüten | Trampoline (`bouncers`) |
+| 11 | Turbo-Cup | Flipperhalle | Flipper-Tisch mit Bumpern und Stahlkugeln | Bumper (`bumper`) |
+| 12 | Pfoten-Cup | Zugwüste | Wüste mit Eisenbahn | Zug am Bahnübergang (`train`) |
+| 12 | Pfoten-Cup | Spukteich | Spuk-See mit Holzstegen | – |
+| 12 | Pfoten-Cup | Kreuzfahrtschiff | Fahrt über das Deck eines Kreuzfahrtschiffs | – |
+| 12 | Pfoten-Cup | Weihnachtsberg | Weihnachtsdorf am Berg | – |
+| 13 | Rüben-Cup | Grachtenstadt | Stadt mit Kanälen, Brücken, Fahrrädern | – |
+| 13 | Rüben-Cup | Tempelstadt | Stadt mit goldenen Tempeln und Tuk-Tuks | – |
+| 13 | Rüben-Cup | Säulenstadt | antike Stadt mit Säulen und Arena | – |
+| 13 | Rüben-Cup | Spielzimmer | Kinderzimmer mit Riesen-Spielzeug | – |
+| 14 | Propeller-Cup | Rohrkanal | Röhren und Abwasserkanal | – |
+| 14 | Propeller-Cup | Retro-Rennbahn | klassische Pixel-Rennbahn | – |
+| 14 | Propeller-Cup | Bastelinsel | Welt aus Wolle, Filz und Karton | – |
+| 14 | Propeller-Cup | Eisbecher-Himmel | Eiscreme-Welt hoch am Himmel | – |
+| 15 | Mond-Cup | U-Bahn | U-Bahn-Tunnel mit Zügen | – |
+| 15 | Mond-Cup | Röhrenkap | Kap mit Glasröhre unter dem Fluss | – |
+| 15 | Mond-Cup | Hyperring | Zukunfts-Rennring über dem Ozean | – |
+| 15 | Mond-Cup | Regenbogen-Ring | großes Regenbogen-Finale im All | – |
+
+Erledigt: **Etappe 11 – Turbo-Cup**.
+
 Neue Technik für Etappe 5 ff.: Abschnitte ohne Leitplanken (`noWalls`, Herunterfallen = zurückgesetzt),
 Regenbogen-Fahrbahn (`rainbow`), Klaviertasten mit Tönen (`piano`), Matsch, Sand und Schnee neben der Fahrbahn
 (`mud`), Glatteis (`ice`), Lava neben der Strecke (`lavaAt`), feste Rundenzahl (`laps`), Tageszeit je Runde

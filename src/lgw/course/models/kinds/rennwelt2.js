@@ -858,11 +858,11 @@ function tvTower() {
 
 /** Riesiger gefliester Raum: vier Wände mit Fliesenfugen und Bordüre (Ursprung = Raummitte am Boden). */
 function roomWalls(o = {}) {
-  const S = o.size ?? 600, H = o.h ?? 160;
+  const S = o.size ?? 600, H = o.h ?? 160, c1 = o.c1 ?? 0xf4f8fc, c2 = o.c2 ?? 0xdceef8, band = o.band ?? 0x3a8ae8, T = o.tile ?? 12;
   const root = new THREE.Group();
-  root.add(mesh(cached(`rw2:room:${S}:${H}`, () => {
+  root.add(mesh(cached(`rw2:room:${S}:${H}:${c1}:${c2}:${band}:${T}`, () => {
     const b = new Build();
-    const tile = (x, y, z) => { const u = Math.abs(x) + Math.abs(z); return y > H * 0.55 && y < H * 0.6 ? 0x3a8ae8 : (Math.floor(u / 12) + Math.floor(y / 12)) % 2 ? 0xf4f8fc : 0xdceef8; };
+    const tile = (x, y, z) => { const u = Math.abs(x) + Math.abs(z); return y > H * 0.55 && y < H * 0.6 ? band : (Math.floor(u / T) + Math.floor(y / T)) % 2 ? c1 : c2; };
     for (let k = 0; k < 4; k++) {
       const g = new THREE.PlaneGeometry(S, H, 50, 14);
       g.translate(0, H / 2, 0);
