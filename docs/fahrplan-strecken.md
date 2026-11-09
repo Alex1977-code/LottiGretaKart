@@ -110,3 +110,18 @@ Regenbogen-Fahrbahn (`rainbow`), Klaviertasten mit Tönen (`piano`), Matsch, San
 
 Teneriffa und Loro Parque waren eigene Wünsche – sie bleiben vorerst als Bonus-Strecken erhalten, bis anders
 gewünscht. 
+
+## Grafik-Etappen G1–G6 (Qualität wie Mario Kart 8, für Handy und Rechner)
+
+| Etappe | Inhalt | Stand |
+| --- | --- | --- |
+| G1 Render-Technik | Bildbasiertes Licht aus dem Strecken-Himmel (PMREM: Spiegelungen und Umgebungslicht passend zu Tageszeit und Thema), neutrales Tonemapping, Umgebungsverdeckung GTAO (ab Stufe „Ultra“, ohne Fehlschatten durch unsichtbare/durchsichtige Teile), weiche Schattenränder | fertig |
+| G2 Materialien | Oberflächen-Werkstatt (`src/world/surfaces.js`): beim Laden erzeugte PBR-Texturen mit Relief, Detail und Rauheit – Asphalt mit Splitt und Rissen, Wiese aus Halmen, Erde/Kies am Rand, Sand mit Rippeln, Schnee, Fels, Pflaster, Holzbohlen; Gelände mischt Boden, Randstreifen und Fels an Hängen (triplanar) | fertig |
+| G3 Natur | Organische Formen (`src/world/organic.js`) mit Detailstufen: Laubbäume mit Ästen und unregelmäßigen Kronen, Tannen mit gezackten Etagen, Büsche, verwitterte Felsen, erodierte Tafelberge, gerippte Kakteen, Palmen mit gefiederten Wedeln, bauschige Wolken; Stämme und Blüten behalten ihre Farbe | fertig |
+| G4 Modelle | Stadthäuser mit Sockel, Gesimsen, Pilastern, Glasfassaden, Rückstaffelung und Dachaufbauten; weitere Modelle folgen | begonnen |
+| G5 Leveldesign | abwechslungsreichere Streckenformen, Abzweigungen und Abkürzungen, Tunnel und Überführungen, Felswände als Rahmen, Höhepunkte je Strecke | offen |
+| G6 Wasser und Himmel | spiegelndes Wasser mit Brechung und Schaum, Lichtstrahlen | offen |
+
+Grafikstufen: „Sparsam“ ohne Zusatz-Texturen; „Hoch“ (Handy) mit Bildlicht, Tonemapping, 512er-Texturen und Detailstufen,
+ohne Umgebungsverdeckung; „Ultra“ (Rechner) zusätzlich GTAO und 1024er-Texturen. Die Auflösung passt sich bei
+ruckelndem Bild automatisch an.

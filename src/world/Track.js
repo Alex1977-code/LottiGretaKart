@@ -9,6 +9,10 @@
 import * as THREE from 'three';
 import { lin } from '../lgw/three/world/geometry.js';
 import { addGroundDetail } from './shaders.js';
+import { surfOpts } from './surfaces.js';
+
+// Fahrbahn-Belag je Thema: Holzbohlen auf Stegen und Decks, Pflaster in Altstädten, sonst Asphalt
+const ROAD_KIND = { treetop: 'wood', boolake: 'wood', cruise: 'wood', ancient: 'cobble', canal: 'cobble', town: 'cobble' };
 
 /** Schlüssel einer Rasterzelle als kleine Ganzzahl (keine Zeichenkette – erzeugt keinen Speichermüll). */
 const ck = (a, b) => (a + 2048) * 4096 + (b + 2048);
@@ -384,8 +388,8 @@ export class Track {
     const th = this.theme;
     const cR = lin(th.road), cR2 = lin(th.road2), cL = lin(th.line), cA = lin(th.curbA), cB = lin(th.curbB);
     const mat = th.wetRoad
-      ? addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.35, side: THREE.DoubleSide }), { grain: 0.1, scale: 1.8, key: 'roadwet', wet: true })
-      : addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.0, side: THREE.DoubleSide }), { grain: 0.1, scale: 1.8, key: 'road', rain: 1 });
+      ? addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.35, side: THREE.DoubleSide }), { grain: 0.06, scale: 1.8, key: 'roadwet', wet: true, surf: surfOpts({ top: ROAD_KIND[this.def.theme] ?? 'asphalt', slope: false, topScale: 1 / 4, strength: 1.1, detail: 0.32 }) })
+      : addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.0, side: THREE.DoubleSide }), { grain: 0.06, scale: 1.8, key: 'road', rain: 1, surf: surfOpts({ top: ROAD_KIND[this.def.theme] ?? 'asphalt', slope: false, topScale: 1 / 4, strength: 1.3, detail: 0.4 }) });
     const add = (g, name, shadow = true) => {
       const m = new THREE.Mesh(g, mat);
       m.receiveShadow = shadow; m.name = name;

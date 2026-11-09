@@ -10,6 +10,42 @@ import { Build, vcol } from '../lgw/course/models/lib/kit.js';
 import { getModel } from '../lgw/course/models/index.js';
 import { Rnd } from '../lgw/three/world/geometry.js';
 import { addSway } from './shaders.js';
+import { treeGeo, pineGeo, bushGeo, rockGeo, mesaGeo, cactusGeo, palmGeo } from './organic.js';
+
+// Exemplar-Farbe nur auf neutral-graue Teile (Laub, Fels, Hut): farbige Teile (Stamm, Blüte, Nase) behalten ihre Farbe
+const KEEP_COLORED = `
+#if defined( USE_COLOR ) || defined( USE_INSTANCING_COLOR )
+  vColor = vec4(1.0);
+#endif
+#ifdef USE_COLOR
+  vColor.rgb *= color;
+#endif
+#ifdef USE_INSTANCING_COLOR
+  {
+    float lgkSat = max(max(color.r, color.g), color.b) - min(min(color.r, color.g), color.b);
+    vColor.rgb *= mix(instanceColor.rgb, vec3(1.0), smoothstep(0.06, 0.16, lgkSat));
+  }
+#endif`;
+function keepColored(mat) {
+  const prev = mat.onBeforeCompile;
+  mat.onBeforeCompile = (shader, r) => { prev?.call(mat, shader, r); shader.vertexShader = shader.vertexShader.replace('#include <color_vertex>', KEEP_COLORED); };
+  const prevKey = mat.customProgramCacheKey?.bind(mat);
+  mat.customProgramCacheKey = () => `${prevKey ? prevKey() : ''}-keepcol`;
+  return mat;
+}
+const decorMats = new Map();
+const decorMat = (rough, extra = {}, key = '') => {
+  const k = `${rough}:${key}`;
+  let m = decorMats.get(k);
+  if (!m) { m = keepColored(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: rough, ...extra })); decorMats.set(k, m); }
+  return m;
+};
+
+// Detaillierte Formen für die Nähe (organisch), die einfachen bleiben für die Ferne (Detailstufen)
+const HI = { roundTree: treeGeo, pineTree: pineGeo, bush: bushGeo, rock: rockGeo, mesa: mesaGeo, cactus: cactusGeo, palm: palmGeo };
+const HI_GEO = {};
+const hiGeo = (kind) => HI_GEO[kind] ?? (HI_GEO[kind] = HI[kind]());
+const LOD_DIST = 150;
 
 // ------------------------------------------------------------------ Geometrien der Massenware (Ursprung = Fuß)
 const GEO = {};
@@ -207,7 +243,7 @@ const SWAY = { tuft: 0.14, flower: 0.1, reed: 0.12, fern: 0.05, palm: 0.018, rou
 const swayMats = new Map();
 const swayMat = (kind) => {
   let m = swayMats.get(kind);
-  if (!m) { m = addSway(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, side: kind === 'fern' ? THREE.DoubleSide : THREE.FrontSide }), SWAY[kind], kind); swayMats.set(kind, m); }
+  if (!m) { m = keepColored(addSway(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, side: kind === 'fern' ? THREE.DoubleSide : THREE.FrontSide }), SWAY[kind], kind)); swayMats.set(kind, m); }
   return m;
 };
 // Hindernis-Radius je Art (× Größe) in der offenen Welt
@@ -317,15 +353,7 @@ export class Decor {
       if (!w.isFree(x, z, s * 0.75 + 4)) continue;
       const gy = w.heightAt(x, z);
       const col = colors[placed % colors.length];
-      parts.box(s, h, s, col, { p: [x, gy + h / 2 - 2, z] }, 0.5, 1);
-      // einzelne Fenster (Vierecke) auf allen vier Seiten, zufällig beleuchtet
-      const nw = Math.max(2, Math.round(s / 3.2)), pitch = s / nw;
-      for (let y = 4; y < h - 4; y += 3.6) for (let f = 0; f < 4; f++) for (let k = 0; k < nw; k++) {
-        if (this.r() < 0.42) continue;
-        const along = -s / 2 + pitch * (k + 0.5);
-        wins.push([x, gy + y - 2, z, f, along, s / 2 + 0.04, pitch * 0.55, this.r() < 0.22 ? 0xbfe4ff : windowColor]);
-      }
-      parts.box(s * 0.5, 2, s * 0.5, 0x8a8aa0, { p: [x, gy + h - 1, z] }, 0.2, 1);
+      cityBuilding(parts, wins, x, gy - 2, z, s, h, col, windowColor, () => this.r());
       const hs = s / 2;
       w.addSeg(x - hs, z - hs, x + hs, z - hs); w.addSeg(x + hs, z - hs, x + hs, z + hs);
       w.addSeg(x + hs, z + hs, x - hs, z + hs); w.addSeg(x - hs, z + hs, x - hs, z - hs);
@@ -647,14 +675,25 @@ export class Decor {
         t.push(e);
       }
       for (const part of tiles.values()) {
-        const mat = SWAY[kind] && this.quality >= 2 ? swayMat(kind) : vcol(kind === 'crystal' ? 0.2 : 0.55, kind === 'crystal' ? { emissive: 0x2a4a6a } : {}, kind === 'crystal' ? 'crystal' : '');
-        const im = new THREE.InstancedMesh(KINDS[kind](), mat, part.length);
-        part.forEach((e, i) => { im.setMatrixAt(i, e.m); im.setColorAt(i, e.c); });
-        im.castShadow = this.noShadow ? false : this.quality >= 2 ? !['hill', 'flower', 'building', 'stalactite', 'starfish', 'tuft', 'pebble', 'daisy', 'reed', 'fern', 'fenceRail'].includes(kind) : ['roundTree', 'pineTree', 'mushroom', 'palm'].includes(kind);
-        im.receiveShadow = true;
-        im.computeBoundingSphere();
-        im.name = `kulisse:${kind}`;
-        this.group.add(im);
+        const mat = SWAY[kind] && this.quality >= 2 ? swayMat(kind) : decorMat(kind === 'crystal' ? 0.2 : ['rock', 'mesa'].includes(kind) ? 0.9 : 0.6, kind === 'crystal' ? { emissive: 0x2a4a6a } : {}, kind === 'crystal' ? 'crystal' : '');
+        const cast = this.noShadow ? false : this.quality >= 2 ? !['hill', 'flower', 'building', 'stalactite', 'starfish', 'tuft', 'pebble', 'daisy', 'reed', 'fern', 'fenceRail'].includes(kind) : ['roundTree', 'pineTree', 'mushroom', 'palm'].includes(kind);
+        const mk = (geo) => {
+          const im = new THREE.InstancedMesh(geo, mat, part.length);
+          part.forEach((e, i) => { im.setMatrixAt(i, e.m); im.setColorAt(i, e.c); });
+          im.castShadow = cast;
+          im.receiveShadow = true;
+          im.computeBoundingSphere();
+          im.name = `kulisse:${kind}`;
+          this.group.add(im);
+          return im;
+        };
+        const im = mk(KINDS[kind]());
+        // Nähe: organische, detaillierte Form; Ferne: die einfache (umgeschaltet in update)
+        if (HI[kind] && this.quality >= 2) {
+          const hi = mk(hiGeo(kind));
+          (this.lodTiles ??= []).push({ hi, lo: im, x: im.boundingSphere.center.x, z: im.boundingSphere.center.z, r: LOD_DIST + im.boundingSphere.radius });
+          im.visible = false;
+        }
         // Kleinkram nur in der Nähe zeichnen
         const near = NEAR_ONLY[kind];
         if (near && this.world) (this.nearTiles ??= []).push({ im, x: im.boundingSphere.center.x, z: im.boundingSphere.center.z, r: near + im.boundingSphere.radius });
@@ -668,6 +707,7 @@ export class Decor {
     const cams = Array.isArray(cam) ? cam : cam ? [cam] : null;
     const d2 = (x, z) => { let d = Infinity; for (const c of cams) d = Math.min(d, (x - c.x) ** 2 + (z - c.z) ** 2); return d; };
     if (cams && this.nearTiles) for (const n of this.nearTiles) n.im.visible = d2(n.x, n.z) < n.r * n.r;
+    if (cams && this.lodTiles) for (const n of this.lodTiles) { const near = d2(n.x, n.z) < n.r * n.r; n.hi.visible = near; n.lo.visible = !near; }
     if (this.beams) this.beams.forEach((b, i) => { b.rotation.y = (i / this.beams.length) * Math.PI * 2 + Math.sin(t * 0.4 + i) * 0.5; });
     for (const e of this.models) {
       // ferne Modelle ausblenden und nicht animieren
@@ -688,6 +728,51 @@ export class Decor {
     this.group.traverse((o) => { if (o.isInstancedMesh) o.dispose(); });
     this.group.removeFromParent();
   }
+}
+
+/**
+ * Stadthaus mit Architektur statt Kasten: Sockel mit Ladenzone, Gesimse, Pilaster zwischen den Fensterachsen,
+ * bei Hochhäusern Rückstaffelung, oben Brüstung mit Klimageräten, Wassertank oder Antenne. Fenster (Vierecke)
+ * kommen in die Liste wins (siehe windowQuads). r() = Zufall.
+ */
+function cityBuilding(parts, wins, x, y0, z, s, h, col, windowColor, r) {
+  const c = new THREE.Color(col), dark = c.clone().multiplyScalar(0.72).getHex(), light = c.clone().lerp(new THREE.Color(0xffffff), 0.28).getHex();
+  const type = r();
+  const glass = type < 0.25;
+  const body = (w, hh, yb) => {
+    parts.box(w, hh, w, glass ? new THREE.Color(col).lerp(new THREE.Color(0x6a8ab8), 0.5).getHex() : col, { p: [x, yb + hh / 2, z] }, 0.15, 1);
+    const nw = Math.max(2, Math.round(w / 3.2)), pitch = w / nw;
+    // Pilaster bzw. Glasfassaden-Sprossen zwischen den Fensterachsen
+    for (let f = 0; f < 4; f++) {
+      const nx = [1, 0, -1, 0][f], nz = [0, 1, 0, -1][f], tx = -nz, tz = nx;
+      for (let k = 0; k <= nw; k++) {
+        const along = -w / 2 + pitch * k;
+        parts.box(glass ? 0.18 : 0.42, hh - 1, glass ? 0.18 : 0.42, glass ? 0xd8dce4 : light, { p: [x + nx * (w / 2 + 0.12) + tx * along, yb + hh / 2, z + nz * (w / 2 + 0.12) + tz * along] }, 0, 1);
+      }
+    }
+    // Gesimse alle drei Geschosse
+    for (let yy = yb + 4.8; yy < yb + hh - 2; yy += 10.8) parts.box(w + 0.7, 0.4, w + 0.7, glass ? 0xc8ccd6 : light, { p: [x, yy, z] }, 0, 1);
+    for (let yy = yb + 4.5; yy < yb + hh - 2; yy += 3.6) for (let f = 0; f < 4; f++) for (let k = 0; k < nw; k++) {
+      if (!glass && r() < 0.35) continue;
+      wins.push([x, yy, z, f, -w / 2 + pitch * (k + 0.5), w / 2 + 0.05, pitch * (glass ? 0.86 : 0.55), r() < 0.22 ? 0xbfe4ff : windowColor]);
+    }
+    // Dachbrüstung und Dachfläche
+    parts.box(w + 0.5, 1.1, w + 0.5, light, { p: [x, yb + hh + 0.15, z] }, 0, 1);
+    parts.box(w - 0.4, 0.3, w - 0.4, 0x6a6a76, { p: [x, yb + hh + 0.5, z] }, 0, 1);
+  };
+  // Sockel mit Ladenzone (dunkler, große Schaufenster)
+  parts.box(s + 0.6, 4.4, s + 0.6, dark, { p: [x, y0 + 2.2, z] }, 0.1, 1);
+  for (let f = 0; f < 4; f++) wins.push([x, y0 + 2, z, f, 0, s / 2 + 0.36, s * 0.8, 0xffe8b0]);
+  let top = y0 + 4.4, w = s;
+  if (h > 40 && type > 0.45) {
+    const h1 = h * 0.62;
+    body(w, h1, top); top += h1; w = s * 0.7;
+    body(w, h - h1 - 4.4, top); top += h - h1 - 4.4;
+  } else { body(w, h - 4.4, top); top += h - 4.4; }
+  // Dachaufbauten
+  for (let k = 0; k < 2 + Math.floor(r() * 3); k++) parts.box(1.6 + r() * 1.4, 1.2, 1.6, 0xb8bcc8, { p: [x + (r() - 0.5) * w * 0.6, top + 1.2, z + (r() - 0.5) * w * 0.6] }, 0.1, 1);
+  if (r() < 0.4) { parts.cyl(1.3, 1.3, 2.6, 0x8a5a32, { p: [x + w * 0.22, top + 3.3, z - w * 0.2] }, 10); parts.cone(1.45, 0.9, 0x6a4428, { p: [x + w * 0.22, top + 5.05, z - w * 0.2] }, 10); for (const [dx, dz] of [[-0.8, -0.8], [0.8, -0.8], [-0.8, 0.8], [0.8, 0.8]]) parts.cyl(0.08, 0.08, 1.4, 0x3a3a44, { p: [x + w * 0.22 + dx, top + 1.3, z - w * 0.2 + dz] }, 4); }
+  if (r() < 0.35) parts.cyl(0.12, 0.2, 7, 0xd8d8e0, { p: [x - w * 0.25, top + 4, z + w * 0.25] }, 5);
 }
 
 /** Fenster als Vierecke: [x, y, z, Seite 0–3, Versatz entlang der Seite, Abstand zur Mitte, Breite, Farbe]. */

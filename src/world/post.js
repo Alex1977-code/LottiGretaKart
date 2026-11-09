@@ -9,6 +9,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 
 // Ungültige Werte (NaN/unendlich) über die Bits erkennen: isnan() streicht der Shader-Übersetzer auf dem iPhone
 // (Metal, „fast math“) einfach weg. Ein einziges solches Pixel würde vom Leuchten über den ganzen Bildschirm
@@ -42,14 +43,43 @@ const GradeShader = {
     }`,
 };
 
+/**
+ * GTAO, das nur sichtbare, deckende Flächen kennt: unsichtbare Teile (eingeklappter Gleiter, ausgeblendete
+ * Materialien), durchsichtige Effekte (Leuchten, Funken, Rauch, Wasser, Glas), Sprites und Punkte zählen nicht –
+ * sonst lägen sie im Normalen-Durchgang als „Wand“ vor der Kamera und färbten die Stelle schwarz.
+ */
+class CleanGTAOPass extends GTAOPass {
+  _overrideVisibility() {
+    const cache = this._visibilityCache;
+    this.scene.traverse((o) => {
+      if (!o.visible) return;
+      let hide = o.isPoints || o.isLine || o.isLine2 || o.isSprite;
+      if (!hide && o.isMesh) {
+        const m = Array.isArray(o.material) ? o.material[0] : o.material;
+        hide = !m || m.visible === false || m.colorWrite === false || (m.transparent && (m.opacity < 0.98 || m.depthWrite === false)) || m.blending === THREE.AdditiveBlending || m.alphaTest > 0 || m.side === THREE.BackSide && m.depthWrite === false;
+      }
+      if (hide) { o.visible = false; cache.push(o); }
+    });
+  }
+}
+
 export class Post {
-  constructor(renderer, quality = 2) {
+  constructor(renderer, quality = 2, { ao = quality >= 3 } = {}) {
     this.renderer = renderer;
     const size = renderer.getDrawingBufferSize(new THREE.Vector2());
     const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: quality >= 3 ? 4 : 2 });
     this.composer = new EffectComposer(renderer, rt);
     this.renderPass = new RenderPass(null, null);
     this.composer.addPass(this.renderPass);
+    // Umgebungsverdeckung (GTAO): Kontaktschatten in Ecken, unter Karts, an Bäumen, Häusern und Felsen – die Szene
+    // steht fest auf dem Boden statt zu schweben
+    if (ao) {
+      this.gtao = new CleanGTAOPass(new THREE.Scene(), new THREE.PerspectiveCamera(70, 1, 0.35, 1300), size.x, size.y);
+      this.gtao.updateGtaoMaterial({ radius: 2.2, distanceExponent: 1.4, thickness: 1.2, scale: 1.15, samples: quality >= 3 ? 16 : 10 });
+      this.gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 5, rings: 2, samples: 12 });
+      this.gtao.blendIntensity = 0.95;
+      this.composer.addPass(this.gtao);
+    }
     // Bloom in halber Auflösung (spart Leistung, weicher)
     this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.3, 0.35, 1.7);
     // weiche Schwelle: sonst springen Glanzpunkte an der Grenze von Bild zu Bild an und aus (Flackern)
@@ -99,6 +129,7 @@ export class Post {
   render(scene, camera) {
     this.renderPass.scene = scene;
     this.renderPass.camera = camera;
+    if (this.gtao) { this.gtao.scene = scene; this.gtao.camera = camera; }
     this.composer.render();
   }
 }

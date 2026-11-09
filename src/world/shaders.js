@@ -6,6 +6,7 @@
 // Alle teilen sich eine Zeit (SHADER_TIME.value, von WorldView.update gesetzt).
 
 import * as THREE from 'three';
+import { surfaceTexture } from './surfaces.js';
 
 export const SHADER_TIME = { value: 0 };
 /** Nässe durch Regen (0 … 1, vom Wetter gesetzt): Fahrbahn dunkler und spiegelnd mit Pfützen, Gelände dunkler. */
@@ -42,7 +43,9 @@ function addVarying(shader) {
 /**
  * Detail-Korn und Unterwasser-Look für Gelände/Fahrbahn. grain = Stärke des Korns (0,1 … 0,3), scale = Körnung.
  */
-export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patches = false, wet = false, rain = 0.35 } = {}) {
+export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patches = false, wet = false, rain = 0.35, surf = null } = {}) {
+  const S = surf ? { topScale: 1 / 3, sideScale: 1 / 9, strength: 1, detail: 0.32, side: 'rock', slope: true, ...surf } : null;
+  const size = S?.size ?? 512;
   mat.onBeforeCompile = (shader) => {
     addVarying(shader);
     shader.fragmentShader = shader.fragmentShader
@@ -78,8 +81,48 @@ export function addGroundDetail(mat, { grain = 0.2, scale = 1, key = 'g', patche
     float dep = clamp(-vLgkW.y / 3.0, 0.0, 1.0) * (1.0 - smoothstep(30.0, 90.0, vLgkD));
     totalEmissiveRadiance += vec3(0.42, 0.7, 0.75) * lgkCaustic(vLgkW.xz, uLgkTime) * 0.55 * dep;
   }`);
+    if (S) {
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', `#include <common>\nvarying vec3 vLgkN;${S.off ? '\nattribute float lgkOff;\nvarying float vLgkOff;' : ''}`)
+        .replace('#include <project_vertex>', `#include <project_vertex>\n  vLgkN = normalize(mat3(modelMatrix) * objectNormal);${S.off ? '\n  vLgkOff = lgkOff;' : ''}`);
+      if (S.off) shader.uniforms.uSurfOff = { value: surfaceTexture(S.off, size) };
+      shader.uniforms.uSurfTop = { value: surfaceTexture(S.top, size) };
+      shader.uniforms.uSurfSide = { value: surfaceTexture(S.side, size) };
+      shader.uniforms.uSurfP = { value: new THREE.Vector4(S.topScale, S.sideScale, S.strength, S.detail) };
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', `#include <common>\nvarying vec3 vLgkN;${S.off ? '\nvarying float vLgkOff;\nuniform sampler2D uSurfOff;' : ''}\nuniform sampler2D uSurfTop;\nuniform sampler2D uSurfSide;\nuniform vec4 uSurfP;\nvec3 lgkSurfN;\nfloat lgkSurfRough;`)
+        .replace('#include <color_fragment>', `#include <color_fragment>
+  {
+    // Oberflächen-Textur: oben Boden (zwei Maßstäbe gegen sichtbare Wiederholung), an Hängen Fels (triplanar)
+    vec3 Nw = normalize(vLgkN);
+    float fadeS = 1.0 - smoothstep(45.0, 160.0, vLgkD);
+    vec4 tT = texture2D(uSurfTop, vLgkW.xz * uSurfP.x);
+    vec4 tT2 = texture2D(uSurfTop, vLgkW.xz * uSurfP.x * 0.29 + vec2(0.37, 0.71));
+    ${S.off ? `float ko = smoothstep(0.25, 0.75, vLgkOff);
+    vec4 tO = texture2D(uSurfOff, vLgkW.xz * uSurfP.x * 0.8);
+    tT = mix(tT, tO, ko); tT2 = mix(tT2, tO, ko);` : ''}
+    float k = ${S.slope ? '1.0 - smoothstep(0.6, 0.86, Nw.y)' : '0.0'};
+    vec3 bw = pow(abs(Nw), vec3(4.0)); bw /= (bw.x + bw.y + bw.z);
+    vec4 sx = texture2D(uSurfSide, vLgkW.zy * uSurfP.y);
+    vec4 sy = texture2D(uSurfSide, vLgkW.xz * uSurfP.y);
+    vec4 sz = texture2D(uSurfSide, vLgkW.xy * uSurfP.y);
+    vec4 tS = sx * bw.x + sy * bw.y + sz * bw.z;
+    float det = mix(mix(tT.b, tT2.b, 0.4), tS.b, k);
+    diffuseColor.rgb *= 1.0 + (det - 0.5) * 2.0 * uSurfP.w * (0.45 + 0.55 * fadeS);
+    lgkSurfRough = mix(tT.a, tS.a, k);
+    vec2 nT = tT.rg * 2.0 - 1.0;
+    vec2 nx_ = sx.rg * 2.0 - 1.0, ny_ = sy.rg * 2.0 - 1.0, nz_ = sz.rg * 2.0 - 1.0;
+    vec3 pS = vec3(0.0, nx_.y, nx_.x) * bw.x + vec3(ny_.x, 0.0, ny_.y) * bw.y + vec3(nz_.x, nz_.y, 0.0) * bw.z;
+    vec3 pert = mix(vec3(nT.x, 0.0, nT.y), pS, k);
+    lgkSurfN = normalize(Nw + pert * uSurfP.z * (0.25 + 0.75 * fadeS));
+  }`)
+        .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+  normal = normalize((viewMatrix * vec4(lgkSurfN, 0.0)).xyz) * faceDirection;`)
+        .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+  roughnessFactor = mix(roughnessFactor, lgkSurfRough, 0.75);`);
+    }
   };
-  mat.customProgramCacheKey = () => `lgk-ground-${key}-${grain}-${scale}-${patches}-${wet}-${rain}`;
+  mat.customProgramCacheKey = () => `lgk-ground-${key}-${grain}-${scale}-${patches}-${wet}-${rain}-${S ? `${S.top}-${S.side}-${S.off}-${S.slope}-${size}` : ''}`;
   return mat;
 }
 

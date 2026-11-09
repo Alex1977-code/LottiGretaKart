@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import { colorize, lin, mixc, smooth, Rnd } from '../lgw/three/world/geometry.js';
+import { cloudPuffGeo } from './organic.js';
 
 // Luftperspektive wie in Mario Kart 8 Deluxe: der Nebel setzt spät ein – nah klare Farben, am Horizont die
 // Berge der Fernsicht im Dunst (die Themen-Werte sind für die frühere Inselwelt gedacht und werden gestreckt)
@@ -21,9 +22,12 @@ function skyColor(stops, t, o) {
 }
 
 export class Sky {
-  constructor(scene, theme, { quality = 1, sunDisc = null, envLight = false } = {}) {
-    // mit Umgebungslicht etwas weniger Himmelslicht, sonst wird alles zu hell
-    this.hemiK = envLight ? 0.72 : 1;
+  constructor(scene, theme, { quality = 1, sunDisc = null, envLight = false, renderer = null } = {}) {
+    // mit Umgebungslicht (Himmel als Lichtquelle) weniger Himmelslicht, sonst wird alles zu hell
+    this.hemiK = envLight ? 0.5 : 1;
+    this.renderer = envLight ? renderer : null;
+    this.envDirty = true;
+    this.groundCol = new THREE.Color(theme.grass ?? 0x6a9a4a);
     this.scene = scene;
     this.theme = theme;
     this.group = new THREE.Group();
@@ -47,6 +51,8 @@ export class Sky {
     this.sun.shadow.mapSize.set(ms, ms);
     this.sun.shadow.bias = -0.0006;
     this.sun.shadow.normalBias = 0.04;
+    // weiche Schattenränder (Vogel-Scheibe im PCF-Filter)
+    this.sun.shadow.radius = quality >= 3 ? 3.2 : 2.2;
     scene.add(this.sun, this.sun.target);
   }
 
@@ -88,9 +94,10 @@ export class Sky {
 
   buildClouds() {
     const rnd = new Rnd(77);
-    const puff = new THREE.SphereGeometry(1, 14, 10);
-    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x9fb8d0, emissiveIntensity: 0.35, fog: false });
-    const n = 28, per = 5;
+    const puff = cloudPuffGeo();
+    // (kaum Umgebungslicht: sonst färbt der grüne Boden die Wolken-Unterseiten)
+    const mat = new THREE.MeshStandardMaterial({ roughness: 1, color: 0xf4f6fa, envMapIntensity: 0.05, emissive: 0xe4ecf6, emissiveIntensity: 0.62, fog: false });
+    const n = 30, per = 7;
     const im = new THREE.InstancedMesh(puff, mat, n * per);
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3();
     let k = 0;
@@ -99,8 +106,8 @@ export class Sky {
       const a = rnd.frac() * Math.PI * 2, r = 380 + rnd.frac() * 300, y = 90 + rnd.frac() * 110;
       const size = 12 + rnd.frac() * 14;
       for (let j = 0; j < per; j++) {
-        p.set(Math.cos(a) * r + (j - 2) * size * 0.9, y + Math.sin(j * 1.7) * size * 0.25, Math.sin(a) * r + rnd.frac() * size * 0.5);
-        const ss = size * (j === 2 ? 1.3 : 0.75 + rnd.frac() * 0.3);
+        p.set(Math.cos(a) * r + (j - 3) * size * 0.62, y + Math.sin(j * 1.7) * size * 0.22 + (j === 3 ? size * 0.35 : 0), Math.sin(a) * r + (rnd.frac() - 0.5) * size * 0.9);
+        const ss = size * (j === 3 ? 1.35 : j === 2 || j === 4 ? 1.05 : 0.65 + rnd.frac() * 0.3);
         s.set(ss, ss * 0.62, ss * 0.8);
         m.compose(p, q, s);
         im.setMatrixAt(k++, m);
@@ -116,7 +123,7 @@ export class Sky {
    * (nur wenn sich die Gewichte merklich ändern) und mischt Nebel, Hintergrund, Himmels-/Bodenlicht und Sonne.
    */
   blend(weights) {
-    const key = weights.map((x) => x.w.toFixed(2)).join(',');
+    const key = weights.map((x) => `${x.w.toFixed(2)}:${x.theme.sky[0][1]}:${x.theme.sky[3]?.[1]}`).join(',');
     const C = (hex) => _c.setHex(hex);
     const mixHex = (get) => {
       const out = new THREE.Color(0, 0, 0);
@@ -152,6 +159,37 @@ export class Sky {
       Col.setXYZ(i, r / sum, g / sum, b / sum);
     }
     Col.needsUpdate = true;
+    this.groundCol.copy(mixHex((t) => t.grassFar ?? t.grass ?? 0x6a9a4a));
+    this.envDirty = true;
+  }
+
+  /**
+   * Bildbasiertes Licht (IBL) aus dem aktuellen Himmel: Kuppel-Farbverlauf, Sonne und ein Boden in der
+   * Geländefarbe werden in eine vorgefilterte Umgebungs-Textur (PMREM) gerechnet. Alle PBR-Materialien bekommen
+   * damit Himmelslicht von oben, Bodenlicht von unten und passende Spiegelungen (Lack, Chrom, nasse Straße).
+   */
+  updateEnv() {
+    const R = this.renderer;
+    if (!R || !this.envDirty) return;
+    this.envDirty = false;
+    if (!this.envScene) {
+      this.envScene = new THREE.Scene();
+      this.envDome = new THREE.Mesh(this.dome.geometry, this.dome.material);
+      this.envGround = new THREE.Mesh(new THREE.CircleGeometry(SKY_R * 0.8, 24), new THREE.MeshBasicMaterial({ color: 0x55803a, fog: false }));
+      this.envGround.rotation.x = -Math.PI / 2; this.envGround.position.y = -40;
+      this.envSun = new THREE.Mesh(new THREE.SphereGeometry(40, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }));
+      this.envScene.add(this.envDome, this.envGround, this.envSun);
+      this.pmrem = new THREE.PMREMGenerator(R);
+    }
+    this.envGround.material.color.copy(this.groundCol).multiplyScalar(0.6);
+    // Sonne als heller Fleck (HDR) in Richtung des Sonnenlichts – gibt Glanzpunkte auf Lack und Wasser
+    const d = this.sunDir;
+    this.envSun.position.set(d.x, Math.max(0.15, d.y), d.z).normalize().multiplyScalar(SKY_R * 0.7);
+    this.envSun.material.color.copy(this.sun.color).multiplyScalar(this.nightOn ? 0.6 : 6);
+    const rt = this.pmrem.fromScene(this.envScene, 0, 1, SKY_R * 2, { size: 128 });
+    this.envRT?.dispose();
+    this.envRT = rt;
+    this.scene.environment = rt.texture;
   }
 
   /** Nachts: Sterne, Mond statt Sonne (kühl, kleiner Hof), keine Wolken. */
@@ -218,6 +256,7 @@ export class Sky {
 
   /** Kuppel und Schattenkamera folgen dem Fokus (Spieler). */
   update(dt, camera, focus) {
+    this.updateEnv();
     this.domeGroup.position.copy(camera.position);
     if (this.clouds) this.clouds.rotation.y += dt * 0.004;
     if (focus) {
@@ -233,6 +272,7 @@ export class Sky {
   }
 
   dispose() {
+    this.envRT?.dispose(); this.pmrem?.dispose(); this.envGround?.geometry.dispose(); this.envSun?.geometry.dispose();
     this.group.removeFromParent();
     this.hemi.removeFromParent();
     this.sun.removeFromParent();

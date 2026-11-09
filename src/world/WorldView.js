@@ -8,6 +8,7 @@ import { getTheme } from './themes.js';
 import { lin } from '../lgw/three/world/geometry.js';
 import { Rnd } from '../lgw/three/world/geometry.js';
 import { addGroundDetail, makeWaterMaterial, SHADER_TIME } from './shaders.js';
+import { surfOpts, groundKind } from './surfaces.js';
 import { IslandLife } from './life.js';
 import { buildTrackDetails } from './trackDetail.js';
 import { buildNightLamps } from './night.js';
@@ -57,7 +58,7 @@ export class WorldView {
     const col = (hex) => { let v = cache.get(hex); if (!v) { v = lin(hex); cache.set(hex, v); } return v; };
     const sand = col(0xe8d39a), sandWet = col(0xc9b27a), rock = col(0x9a92a0), rockDark = col(0x7a7284), snow = col(0xf4f2f8);
     const ash = col(0x3a3034), lavaRim = col(0xc8401a);
-    const mat = addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }), { grain: 0.16, key: 'terrain', patches: true });
+    const mat = addGroundDetail(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }), { grain: 0.12, key: 'terrain', patches: true, surf: surfOpts({ top: groundKind(w.courses[0].def.theme), off: 'dirt', side: 'rock', topScale: 1 / 3, sideScale: 1 / 10, strength: 1.7, detail: 0.5 }) });
     const tmp = [0, 0, 0], acc = [0, 0, 0], rk = [0, 0, 0];
     for (let tz = 0; tz < hf.nz - 1; tz += TILE) {
       for (let tx = 0; tx < hf.nx - 1; tx += TILE) {
@@ -66,7 +67,7 @@ export class WorldView {
         let maxH = -99, uw = false;
         for (let iz = 0; iz <= nz; iz += 4) for (let ix = 0; ix <= nx; ix += 4) { const gi = (tz + iz) * hf.nx + tx + ix; maxH = Math.max(maxH, hf.h[gi]); uw ||= hf.uw[gi] === 1; }
         if (maxH < -6 && !uw) continue;   // (außer in Unterwasser-Zonen: dort fährt man auf dem Grund)
-        const pos = new Float32Array((nx + 1) * (nz + 1) * 3), cols = new Float32Array((nx + 1) * (nz + 1) * 3);
+        const pos = new Float32Array((nx + 1) * (nz + 1) * 3), cols = new Float32Array((nx + 1) * (nz + 1) * 3), offs = new Float32Array((nx + 1) * (nz + 1));
         let k = 0;
         for (let iz = 0; iz <= nz; iz++) {
           for (let ix = 0; ix <= nx; ix++, k++) {
@@ -85,6 +86,7 @@ export class WorldView {
               if (wgt <= 0) continue;
               const g = col(stripe ? r.th.grass : r.th.grass2), o = col(Math.floor((x * 0.7 + z) / 5) % 2 ? r.th.offroad : r.th.offroad2);
               const ow = Math.min(1, roadW * 1.4);
+              offs[k] = ow;
               for (let q = 0; q < 3; q++) acc[q] += (g[q] + (o[q] - g[q]) * ow) * wgt;
               // Felsfarbe der Region (z. B. roter Fels in der Schlucht), sonst Grau
               const rc = r.th.rock !== undefined ? col(r.th.rock) : rock;
@@ -115,6 +117,7 @@ export class WorldView {
           const g = new THREE.BufferGeometry();
           g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
           g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+          g.setAttribute('lgkOff', new THREE.BufferAttribute(offs, 1));
           g.setIndex(idx);
           g.computeVertexNormals();
           g.computeBoundingSphere();

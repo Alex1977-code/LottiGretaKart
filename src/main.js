@@ -25,6 +25,7 @@ import { logoHTML } from './ui/logo.js';
 import { setTimeSetting } from './world/night.js';
 import { setWeatherSetting } from './world/weather.js';
 import { Post } from './world/post.js';
+import { setSurfaceQuality } from './world/surfaces.js';
 import { installRimLight } from './world/trackDetail.js';
 
 const params = new URLSearchParams(location.search);
@@ -39,6 +40,9 @@ canvas.id = 'gl3d';
 app.prepend(canvas);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
+// Tonemapping: helle Stellen (Sonne auf Lack, Schnee, Neon) laufen weich aus statt hart abzuschneiden; die neutrale
+// Kurve erhält die kräftigen Farben des Spielzeug-Looks
+if (quality >= 2) { renderer.toneMapping = THREE.NeutralToneMapping; renderer.toneMappingExposure = 1.0; }
 
 // Nahebene nicht zu dicht an der Kamera: sonst reicht die Tiefengenauigkeit auf Handy-Grafikchips in der Ferne nicht
 // (Fahrbahn, Gelände und Lichtkegel flackern gegeneinander)
@@ -53,7 +57,8 @@ const ctx = {
   paused: false,
 };
 // Nachbearbeitung wie bei Mario Kart 8 (Leuchten, Farben, Kontrast) ab Grafikstufe „Hoch“
-if (usePost) ctx.post = new Post(renderer, quality);
+setSurfaceQuality(quality);
+if (usePost) ctx.post = new Post(renderer, quality, { ao: params.has('ao') ? params.get('ao') !== '0' : quality >= 3 });
 if (quality >= 2) installRimLight();
 window.__kart = ctx; // Tests/Fehlersuche
 ctx.ai = { aiInput, initAI }; // Tests: Spielerin von der KI fahren lassen
@@ -170,7 +175,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && ctx.race && !ctx.race.demo && !ctx.paused && ctx.race.state !== 'done') menus.pause();
 });
 
-const ENV_INTENSITY = 0.42;
+const ENV_INTENSITY = 0.85;
 
 // ------------------------------------------------------------------ Grundszene, dann Menü oder Direktstart
 const loading = document.createElement('div');
@@ -231,7 +236,7 @@ async function boot() {
     ctx.envIntensity = ENV_INTENSITY;
     pmrem.dispose();
   }
-  ctx.sky = new Sky(ctx.scene, getTheme('grass'), { quality, sunDisc: true, envLight: quality >= 2 });
+  ctx.sky = new Sky(ctx.scene, getTheme('grass'), { quality, sunDisc: true, envLight: quality >= 2, renderer });
   // Fehlersuche: ?shadows=0 schaltet die Schatten ab
   if (params.get('shadows') === '0') ctx.sky.sun.castShadow = false;
   // Licht an der Spielerin (Höhle, Zelt, Nacht) – immer in der Szene, Stärke setzt das Rennen
