@@ -13,6 +13,8 @@
 //               { u, lane (Querversatz in m), speed (m/s), model, opts, police }
 //   spinpost    Spin-Pfosten (Anti-Gravitation, wie in Mario Kart 8): blau-weiß gestreifte Säule auf der Fahrbahn –
 //               wer sie in der Anti-Gravitation streift, bekommt einen Spin-Boost; sonst prallt man ab. { u, lat }
+//   pillar      Felssäule mitten auf der Fahrbahn (teilt die Strecke in mehrere Wege, Felsental): wer sie rammt,
+//               prallt ab und wird langsamer. { u, lat, r (Radius, Standard 2.4), model (Standard rock_pillar), opts }
 // Definition in der Strecke: hazards: [{ kind, u, model?, speed?, lat?, side?, every? }]
 
 import * as THREE from 'three';
@@ -240,6 +242,20 @@ export class Hazards {
           h.r = 0.66;
           break;
         }
+        case 'pillar': {
+          h.model = getModel(d.model ?? 'rock_pillar', d.opts ?? {});
+          h.holder = new THREE.Group();
+          h.holder.add(h.model.root);
+          h.holder.scale.setScalar(d.scale ?? 1);
+          const p = track.pointAt(d.u, (d.lat ?? 0) * base.hw);
+          h.pos = new THREE.Vector3(p.x, p.y, p.z);
+          h.p = h.pos;
+          h.holder.position.copy(h.pos);
+          h.holder.rotation.y = d.u * 40;
+          h.r = d.r ?? 2.4;
+          h.size = h.r * 2;
+          break;
+        }
         default: continue;
       }
       h.model.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
@@ -259,8 +275,8 @@ export class Hazards {
       else if (!(h.down > 0)) h.holder.visible = true;
       h.t += dt;
       switch (h.kind) {
-        case 'spinpost': {
-          h.holder.rotation.y += dt * 2.5;
+        case 'spinpost': case 'pillar': {
+          if (h.kind === 'spinpost') h.holder.rotation.y += dt * 2.5;
           for (const r of race.racers) {
             if (r.out || r.remote || r.puppet || r.air) continue;
             const dx = r.pos.x - h.pos.x, dz = r.pos.z - h.pos.z, d2 = dx * dx + dz * dz, R = h.r + r.radius;
@@ -268,7 +284,7 @@ export class Hazards {
             const d = Math.sqrt(d2), nx = dx / d, nz = dz / d;
             r.pos.x = h.pos.x + nx * R; r.pos.z = h.pos.z + nz * R;
             r.vlat += 4 * (nx * Math.sin(r.yaw) + nz * Math.cos(r.yaw));
-            if (r.antigrav) r.spinBoost(); else r.speed *= 0.7;
+            if (r.antigrav && h.kind === 'spinpost') r.spinBoost(); else if (r.bumpCooldown <= 0) { r.speed *= h.kind === 'pillar' ? 0.55 : 0.7; r.bumpCooldown = 0.3; }
           }
           break;
         }

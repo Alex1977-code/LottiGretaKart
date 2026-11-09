@@ -490,5 +490,33 @@ const FARM = {
   wallA: 0xfaf6ee, wallB: 0xb8282a, wallTop: 0xffc21a, wallH: 0.7,
 };
 
-export const THEMES = { farm: FARM, skyway: SKYWAY, dunes: DUNES, lavafort: LAVAFORT, space: SPACE, airport: AIRPORT, disco: DISCO, park: PARK, sweets: SWEETS, ruins: RUINS, stadium: STADIUM, canyon: CANYON, royal: ROYAL, arena: ARENA, harbor: HARBOR, tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
+// Eissee (Archetyp zugefrorener See): Schnee, Eisblau, Tannengrün.
+const FROZEN = {
+  ...SNOW,
+  label: 'Eissee',
+  road: 0x8a90a8, road2: 0x838aa2, curbA: 0x3a8ae8, curbB: 0xffffff,
+  wallA: 0xdff0ff, wallB: 0x5aaae8, wallTop: 0xffffff, wallH: 0.9,
+};
+// Eisfläche des Sees (Region im Eissee)
+const ICESHEET = { ...FROZEN, grass: 0xbfe2f6, grass2: 0xb2d8f0, grassFar: 0xa8d0ec, offroad: 0xc8e6f8, offroad2: 0xbadff4 };
+
+// Musikpark (Archetyp Musik-Welt): Bühnenviolett, Gold, Tastenschwarz-Weiß, bunte Noten.
+const MUSIC = {
+  ...GRASS,
+  label: 'Musikpark',
+  grass: 0x6ad84a, grass2: 0x5ecb42, road: 0x5a4a7a, road2: 0x544472, line: 0xffd23a, curbA: 0x1a1a22, curbB: 0xfaf8f2,
+  wallA: 0xfaf8f2, wallB: 0x8a3ae8, wallTop: 0xffc21a, wallH: 0.8,
+};
+
+// Felsental (Archetyp Felsen-Labyrinth): graue Felsen, Wiesengrün, Erdbraun.
+const VALLEY = {
+  ...GRASS,
+  label: 'Felsental',
+  rock: 0x8a8078,
+  grass: 0x7ac84a, grass2: 0x6cba42, grassFar: 0x5aa83a, offroad: 0xa08a6a, offroad2: 0x947e60,
+  road: 0xa09078, road2: 0x988a72, line: 0xfff4e0, curbA: 0xe8892d, curbB: 0xfaf6ee,
+  wallA: 0x9a9088, wallB: 0x7a7068, wallTop: 0xffc21a, wallH: 0.9,
+};
+
+export const THEMES = { frozen: FROZEN, icesheet: ICESHEET, music: MUSIC, valley: VALLEY, farm: FARM, skyway: SKYWAY, dunes: DUNES, lavafort: LAVAFORT, space: SPACE, airport: AIRPORT, disco: DISCO, park: PARK, sweets: SWEETS, ruins: RUINS, stadium: STADIUM, canyon: CANYON, royal: ROYAL, arena: ARENA, harbor: HARBOR, tenerife: TENERIFE, nightcity: NIGHTCITY, halloween: HALLOWEEN, cats: CATS, bunny: BUNNY, city: CITY, reef: REEF, jungle: JUNGLE, pirate: PIRATE, zoo: ZOO, grass: GRASS, autumn: AUTUMN, circus: CIRCUS, highway: HIGHWAY, cave: CAVE, beach: BEACH, snow: SNOW, castle: CASTLE, desert: DESERT, volcano: VOLCANO, candy: CANDY };
 export const getTheme = (n) => THEMES[n] ?? GRASS;

@@ -593,7 +593,7 @@ export class Decor {
     g.computeVertexNormals();
     const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x3a3044, roughness: 1, side: THREE.DoubleSide }));
     m.rotation.x = Math.PI / 2;
-    m.position.set((b.minX + b.maxX) / 2, 17, (b.minZ + b.maxZ) / 2);
+    m.position.set((b.minX + b.maxX) / 2, this.ceilingY ?? 17, (b.minZ + b.maxZ) / 2);
     this.group.add(m);
   }
 

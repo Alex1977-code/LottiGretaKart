@@ -24,8 +24,9 @@ leicht und hell, Strecke 2–3 je eine neue Mechanik, Strecke 4 dunkler und gef�
 Erledigt: **Etappe 2 – Sonnen-Cup** (Kart-Stadion, Seepark, Zuckerschlucht, Tempelruinen), **Etappe 3 –
 Blüten-Cup** (Blumenring, Hafenstadt, Spukvilla, Wasserfall-Schlucht) und **Etappe 4 – Sternen-Cup**
 (Ferienflughafen, Delfinlagune, Disco-Halle, Gipfelabfahrt mit Abschnitten, Fass-Kanone und Schneefall) und
-**Etappe 5 – Kronen-Cup** (Wolkenstraße, Knochendünen, Lavafestung, Sternenbahn). Die übrigen bisherigen Strecken
-fahren bis zu ihrem Ersatz im Muschel-, Blatt- und Kanaren-Cup.
+**Etappe 5 – Kronen-Cup** (Wolkenstraße, Knochendünen, Lavafestung, Sternenbahn) und **Etappe 6 – Muschel-Cup**
+(Kuhweide, Palmenstrand, Nachtautobahn, Schlossring). Die übrigen bisherigen Strecken fahren bis zu ihrem Ersatz im
+Blatt- und Kanaren-Cup.
 
 Neue Technik für Etappe 5 ff.: Abschnitte ohne Leitplanken (`noWalls`, Herunterfallen = zurückgesetzt),
 Regenbogen-Fahrbahn (`rainbow`), Klaviertasten mit Tönen (`piano`), Matsch, Sand und Schnee neben der Fahrbahn

@@ -305,7 +305,7 @@ export class Racer {
     // Drift: Kart rutscht nach außen – weniger, wenn nach außen gelenkt wird (es fährt dann mehr dorthin, wohin es zeigt)
     const slide = d.on ? -d.dir * Math.abs(this.speed) * (0.08 + 0.025 * clamp(d.s ?? 0, -1, 1)) : 0;
     // Eis (rutschig): das Kart schiebt lange seitlich weiter
-    const ice = this.race.ice && !this.air && surface === 'road' ? 0.3 : 1;
+    const ice = (this.race.ice === true || track?.iceMask?.[loc.i]) && !this.air && surface === 'road' ? 0.3 : 1;
     this.vlat = damp(this.vlat, slide, (d.on ? 4 : P.grip) * ice, dt);
     if (!this.grind) {
       this.pos.x += (fx * this.speed + rx * this.vlat) * dt;

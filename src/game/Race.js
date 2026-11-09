@@ -97,7 +97,7 @@ export class Race {
     // Nacht: Strecke (oder Einstellung) bestimmt es; Laternen, Scheinwerfer, stärkeres Leuchten
     // Tageszeit: wie die Strecke es vorsieht (oder Einstellung); nachts Laternen, Scheinwerfer, stärkeres Leuchten
     this.daytime = o.daytime ?? (o.night !== undefined ? (o.night ? 'night' : 'day') : this.def.timeByLap && getTimeSetting() === 'auto' ? this.def.timeByLap[0] : resolveTime(this.def));
-    this.ice = !!this.def.ice;
+    this.ice = this.def.ice === true;   // ganze Strecke Glatteis; Abschnitte ([[von, bis]]) über track.iceMask
     this.night = this.daytime === 'night';
     this.dusk = this.daytime === 'dusk';
     app.post?.setNight(this.night ? 1 : this.dusk ? 0.3 : 0);

@@ -117,6 +117,11 @@ export class Track {
       this.keys = new Int16Array(N).fill(-1);
       for (const [c0, c1] of def.piano) for (let i = 0; i < N; i++) if (this.ctrlT[i] >= c0 && this.ctrlT[i] <= c1) this.keys[i] = Math.floor((i * this.ds) / 2.5);
     }
+    // Glatteis (ice: true oder [[von, bis]]): hier rutscht das Kart (Racer), die Fahrbahn ist eisblau
+    if (Array.isArray(def.ice)) {
+      this.iceMask = new Uint8Array(N);
+      for (const [c0, c1] of def.ice) for (let i = 0; i < N; i++) if (this.ctrlT[i] >= c0 && this.ctrlT[i] <= c1) this.iceMask[i] = 1;
+    }
     this.hasLift = this.lift.some((v) => v > 0.05);
     // negatives lift: die Straße taucht ab (unter den Meeresspiegel) – das Gelände wird bis dorthin abgesenkt
     this.hasDive = this.lift.some((v) => v < -0.05);
@@ -397,7 +402,10 @@ export class Track {
         const g = this.ribbon((i) => -hw(i) + (2 * hw(i) * k) / 7, (i) => -hw(i) + (2 * hw(i) * (k + 1)) / 7, () => 0.06, (i) => (Math.floor(i / 4) % 2 ? rb[k] : rb[k].map((v) => v * 0.75)), 1, sk);
         const m = new THREE.Mesh(g, glowMat); m.name = 'regenbogen'; this.group.add(m);
       }
-    } else add(this.ribbon((i) => -hw(i), (i) => hw(i), () => 0.06, (i) => (Math.floor(i / 6) % 2 ? cR : cR2), 1, sk), 'fahrbahn');
+    } else {
+      const IM = this.iceMask, cI = lin(0xcfe8f8), cI2 = lin(0xbcdcf2);
+      add(this.ribbon((i) => -hw(i), (i) => hw(i), () => 0.06, (i) => (IM && IM[i] ? (Math.floor(i / 3) % 2 ? cI : cI2) : Math.floor(i / 6) % 2 ? cR : cR2), 1, sk), 'fahrbahn');
+    }
     if (this.keys) {
       const white = lin(0xfaf8f2), black = lin(0x1a1a22), K = this.keys;
       add(this.ribbon((i) => -hw(i), (i) => hw(i), () => 0.075, (i) => (K[i] < 0 ? null : K[i] % 2 ? black : white), 1, sk), 'klaviertasten');
