@@ -587,8 +587,9 @@ const SAVANNA = {
 const BATHROOM = {
   ...GRASS,
   label: 'Badezimmer',
+  indoor: true,
   sky: [[1, 0xdfeef8], [0.45, 0xe8f2fa], [0.15, 0xf0f6fc], [0, 0xf4f8fc], [-1, 0xdce8f2]],
-  background: 0xe8f2fa, fog: { color: 0xe8f0f8, near: 160, far: 520 },
+  background: 0xe8f2fa, fog: { color: 0xe8f0f8, near: 220, far: 900 },
   hemi: { sky: 0xffffff, ground: 0xb8d0e0, intensity: 1.6 },
   sun: { color: 0xffffff, intensity: 2.2, dir: [0.2, 1, 0.3] },
   sunDisc: false, clouds: false, hills: null,
@@ -602,6 +603,7 @@ const BATHROOM = {
 const CLOCKWORK = {
   ...CAVE,
   label: 'Uhrwerk',
+  indoor: true,
   rock: 0x5a4632,
   sky: [[1, 0x1a1208], [0, 0x2a1e10], [-1, 0x120c06]],
   background: 0x2a1e10, fog: { color: 0x2a1e12, near: 40, far: 200 },

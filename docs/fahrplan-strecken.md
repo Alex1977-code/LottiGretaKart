@@ -31,6 +31,9 @@ ersetzt; Teneriffa und Loro Parque fahren als Bonus im Kanaren-Cup (mit Hafensta
 
 **Etappe 8 – Blitz-Cup** (neu): Kirschblüteninsel, Drachenmauer, Neonmetropole, Goldmine (fertig).
 **Etappe 9 – Ei-Cup** (neu): Babypark (sieben Runden), Käseland, Baumwipfelweg, Jahreszeitendorf (fertig).
+**Etappe 10 – Glocken-Cup** (neu): Abendsteppe (Tag → Abend → Nacht je Runde), Badezimmer (Miniaturwelt),
+Uhrwerk, Stadtrundfahrt (fertig). Damit gibt es neun Cups mit 36 Strecken nach den Archetypen plus den Kanaren-Cup
+als Bonus.
 
 Neue Technik für Etappe 5 ff.: Abschnitte ohne Leitplanken (`noWalls`, Herunterfallen = zurückgesetzt),
 Regenbogen-Fahrbahn (`rainbow`), Klaviertasten mit Tönen (`piano`), Matsch, Sand und Schnee neben der Fahrbahn
@@ -78,5 +81,4 @@ Regenbogen-Fahrbahn (`rainbow`), Klaviertasten mit Tönen (`piano`), Matsch, San
 | 10 | Glocken-Cup | Stadtrundfahrt | Großstadt mit Sehenswürdigkeiten | – |
 
 Teneriffa und Loro Parque waren eigene Wünsche – sie bleiben vorerst als Bonus-Strecken erhalten, bis anders
-gewünscht. Danach folgen Archetypen aus den Booster-Strecken (Städte mit wechselnder Route je Runde,
-Tageszeitwechsel über die Runden, Miniatur-Welt).
+gewünscht. 

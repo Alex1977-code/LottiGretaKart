@@ -370,6 +370,8 @@ export class WorldView {
   /** Wälder, Büsche, Blumen und Felsen im ganzen Ausschnitt der Strecke – Baumart nach Region, Dichte je Fläche. */
   buildForests() {
     const w = this.world, b = w.def.bounds;
+    // Innenräume (Badezimmer, Uhrwerk): keine Wälder, kein Gras, kein Schilf
+    if (getTheme(w.courses[0].def.theme).indoor) return;
     const ha = ((b.maxX - b.minX) * (b.maxZ - b.minZ)) / 10000;   // Fläche in Hektar
     const d = new Decor(this.scene, w.courses[0].track, getTheme('grass'), 99, this.quality, w);
     d.noShadow = true; // Wälder werfen keine Schatten (Leistung); Bäume an den Strecken schon

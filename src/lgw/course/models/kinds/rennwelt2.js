@@ -45,6 +45,7 @@
 // clock_face     Zifferblatt mit drehenden Zeigern, opts { r }
 // clock_tower    Turm mit Uhr (Stadtrundfahrt)
 // tv_tower       Fernsehturm mit Kugel
+// room_walls     vier geflieste Wände eines riesigen Raums (Badezimmer), opts { size, h }
 // truck          Sattelzug mit Auflieger (Nachtautobahn), vorn = +X, Länge ≈ 10 m, opts { color }
 
 import * as THREE from 'three';
@@ -855,7 +856,26 @@ function tvTower() {
   return makeModel('tv_tower', root, () => {});
 }
 
+/** Riesiger gefliester Raum: vier Wände mit Fliesenfugen und Bordüre (Ursprung = Raummitte am Boden). */
+function roomWalls(o = {}) {
+  const S = o.size ?? 600, H = o.h ?? 160;
+  const root = new THREE.Group();
+  root.add(mesh(cached(`rw2:room:${S}:${H}`, () => {
+    const b = new Build();
+    const tile = (x, y, z) => { const u = Math.abs(x) + Math.abs(z); return y > H * 0.55 && y < H * 0.6 ? 0x3a8ae8 : (Math.floor(u / 12) + Math.floor(y / 12)) % 2 ? 0xf4f8fc : 0xdceef8; };
+    for (let k = 0; k < 4; k++) {
+      const g = new THREE.PlaneGeometry(S, H, 50, 14);
+      g.translate(0, H / 2, 0);
+      const a = (k * Math.PI) / 2;
+      b.add(g, tile, { p: [Math.sin(a) * -S / 2, 0, Math.cos(a) * -S / 2], r: [0, a, 0] });
+    }
+    return b.geometry();
+  }), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.25, side: THREE.DoubleSide }), {}, false));
+  return makeModel('room_walls', root, () => {});
+}
+
 export const MODELS = {
+  room_walls: roomWalls,
   cheese_wedge: cheeseWedge, cheese_wheel: cheeseWheel, giant_tree: giantTree, giant_mushroom: giantMushroom, acacia, elephant, giraffe,
   bathtub, rubber_duck: rubberDuck, soap, toothbrush, gear, clock_face: clockFace, clock_tower: clockTower, tv_tower: tvTower,
   torii, pagoda, bamboo, stone_lantern: stoneLantern, great_wall: greatWall, wall_tower: wallTower, dragon_head: dragonHead,

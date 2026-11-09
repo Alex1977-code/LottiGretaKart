@@ -25,6 +25,10 @@ import babypark from './babypark.js';
 import kaeseland from './kaeseland.js';
 import baumwipfel from './baumwipfel.js';
 import jahreszeiten from './jahreszeiten.js';
+import abendsteppe from './abendsteppe.js';
+import badezimmer from './badezimmer.js';
+import uhrwerk from './uhrwerk.js';
+import stadtrundfahrt from './stadtrundfahrt.js';
 import kuhweide from './kuhweide.js';
 import musikpark from './musikpark.js';
 import nachtautobahn from './nachtautobahn.js';
@@ -34,5 +38,5 @@ import arena from './arena.js';
 import schlossring from './schlossring.js';
 import schlucht from './schlucht.js';
 
-export const TRACKS = [kartstadion, seepark, zuckerschlucht, tempelruinen, blumenring, hafenstadt, spukvilla, schlucht, flughafen, delfinlagune, discohalle, gipfelabfahrt, kuhweide, palmenstrand, nachtautobahn, schlossring, arena, eissee, musikpark, felsental, wolkenstrasse, knochenduenen, lavafestung, sternenbahn, kirschbluete, drachenmauer, neonmetropole, goldmine, babypark, kaeseland, baumwipfel, jahreszeiten, loroparque, teneriffa];
+export const TRACKS = [kartstadion, seepark, zuckerschlucht, tempelruinen, blumenring, hafenstadt, spukvilla, schlucht, flughafen, delfinlagune, discohalle, gipfelabfahrt, kuhweide, palmenstrand, nachtautobahn, schlossring, arena, eissee, musikpark, felsental, wolkenstrasse, knochenduenen, lavafestung, sternenbahn, kirschbluete, drachenmauer, neonmetropole, goldmine, babypark, kaeseland, baumwipfel, jahreszeiten, abendsteppe, badezimmer, uhrwerk, stadtrundfahrt, loroparque, teneriffa];
 export const TRACK_BY_ID = Object.fromEntries(TRACKS.map((t) => [t.id, t]));
