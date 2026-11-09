@@ -36,6 +36,11 @@
 // button_flower   Blume aus Knöpfen, opts { color }
 // ice_cream       Eiswaffel mit Kugeln und Sahne, opts { color, scoops }
 // cherry          Kirsche mit Stiel
+// subway_car      U-Bahn-Wagen (vorn = +X, Länge ≈ 13 m), opts { color }
+// subway_station  Bahnsteig mit Dach, Bank und Stationsschild (entlang X), opts { color, text }
+// tile_pillar     gekachelte Säule mit Farbband, opts { color }
+// glass_tube      gläserne Röhre um die Fahrbahn (Durchfahrt entlang X), opts { width, length }
+// holo_ring       leuchtender Ring über der Fahrbahn (Durchfahrt entlang X), opts { width, color }
 
 import * as THREE from 'three';
 import { Build, mesh, vcol, cached, joint, makeModel, Clock } from '../lib/kit.js';
@@ -634,7 +639,79 @@ function cherry() {
   return makeModel('cherry', root, () => {});
 }
 
+function subwayCar(o = {}) {
+  const C = o.color ?? 0xe8392d;
+  const root = new THREE.Group();
+  const body = joint();
+  body.add(mesh(cached(`rw3:subway:${C}`, () => {
+    const b = new Build();
+    b.box(13, 3.4, 3, 0xd8dce4, { p: [0, 2.3, 0] }, 0.5);
+    b.box(13.05, 0.6, 3.05, C, { p: [0, 1.5, 0] }, 0.1);
+    for (let x = -5; x <= 5; x += 2.5) for (const s of [-1, 1]) b.box(1.6, 1.2, 0.05, 0x2a3a5a, { p: [x, 2.9, s * 1.53] }, 0.02);
+    b.box(0.05, 1.4, 2.2, 0x2a3a5a, { p: [6.53, 2.8, 0] }, 0.02);
+    for (const s of [-1, 1]) b.box(0.08, 0.3, 0.4, 0xfff4c8, { p: [6.55, 1.5, s * 1.0] }, 0.02);
+    for (const x of [-4.5, 4.5]) for (const s of [-1, 1]) b.cyl(0.45, 0.45, 0.3, 0x1a1a1a, { p: [x, 0.5, s * 1.1], r: [Math.PI / 2, 0, 0] }, 12);
+    return b.geometry();
+  }), vcol(0.3), {}, true));
+  root.add(body);
+  return makeModel('subway_car', root, (dt, st) => { body.scale.y = st.anim === 'squashed' ? 0.5 : 1; });
+}
+
+function subwayStation(o = {}) {
+  const C = o.color ?? 0x3a8ae8, text = o.text ?? 'STATION';
+  const root = new THREE.Group();
+  root.add(mesh(cached(`rw3:station:${C}`, () => {
+    const b = new Build();
+    b.box(30, 1.2, 6, 0xd8d4cc, { p: [0, 0.6, -3] }, 0.05);
+    b.box(30, 0.2, 0.4, 0xffd23a, { p: [0, 1.25, -0.3] }, 0.02);
+    for (const x of [-12, -4, 4, 12]) b.cyl(0.25, 0.25, 6, 0x8a8a96, { p: [x, 4, -4] }, 8);
+    b.box(31, 0.4, 7, C, { p: [0, 7.2, -3] }, 0.1);
+    for (const x of [-8, 8]) b.box(3, 0.5, 0.8, 0x8a5a32, { p: [x, 1.6, -5] }, 0.05);
+    return b.geometry();
+  }), vcol(0.4), {}, true));
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(8, 1.6), new THREE.MeshBasicMaterial({ map: signTexture(text, '#' + C.toString(16).padStart(6, '0')) }));
+  sign.position.set(0, 6, -0.4); root.add(sign);
+  return makeModel('subway_station', root, () => {}, [sign.geometry, sign.material]);
+}
+
+function tilePillar(o = {}) {
+  const C = o.color ?? 0x3a8ae8;
+  const root = new THREE.Group();
+  root.add(mesh(cached(`rw3:tpillar:${C}`, () => {
+    const b = new Build();
+    b.box(1.6, 22, 1.6, (x, y) => (y > 6 && y < 7.5 ? C : 0xf0f2f4), { p: [0, 11, 0] }, 0.1);
+    return b.geometry();
+  }), vcol(0.3), {}, false));
+  return makeModel('tile_pillar', root, () => {});
+}
+
+let GLASS = null;
+function glassTube(o = {}) {
+  const W = o.width ?? 20, L = o.length ?? 8;
+  const R = W / 2 + 1;
+  const root = new THREE.Group();
+  const g = cached(`rw3:tube:${W}:${L}`, () => { const c = new THREE.CylinderGeometry(R, R, L + 0.2, 28, 1, true, -Math.PI / 2, Math.PI); c.rotateZ(Math.PI / 2); c.scale(1, 0.7, 1); return c; });
+  const m = new THREE.Mesh(g, (GLASS ??= new THREE.MeshStandardMaterial({ color: 0xcfefff, transparent: true, opacity: 0.28, roughness: 0.05, metalness: 0.2, side: THREE.DoubleSide, depthWrite: false })));
+  m.renderOrder = 3;
+  root.add(m);
+  root.add(mesh(cached(`rw3:tuberib:${W}`, () => new Build().torus(R, 0.25, 0xc8d4e0, { r: [0, Math.PI / 2, 0], s: [1, 0.7, 1] }, 6, 24, Math.PI).geometry()), vcol(0.3), {}, false));
+  return makeModel('glass_tube', root, () => {});
+}
+
+function holoRing(o = {}) {
+  const W = o.width ?? 24, C = o.color ?? 0x3ad8ff;
+  const root = new THREE.Group();
+  const R = W / 2;
+  const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(C).multiplyScalar(2.2) });
+  const g = new THREE.TorusGeometry(R, 0.5, 8, 40, Math.PI);
+  const m = new THREE.Mesh(g, mat); m.rotation.y = Math.PI / 2; m.scale.set(1, 0.8, 1); root.add(m);
+  for (const s of [-1, 1]) root.add(mesh(cached('rw3:holopost', () => new Build().cyl(0.5, 0.7, 1.2, 0xd8dce4, { p: [0, 0.6, 0] }, 10).geometry()), vcol(0.3), { p: [0, 0, s * R] }, false));
+  let t = Math.random() * 6;
+  return makeModel('holo_ring', root, (dt) => { t += dt; mat.color.setHex(C).multiplyScalar(1.8 + 0.6 * Math.sin(t * 4)); }, [g, mat]);
+}
+
 export const MODELS = {
+  subway_car: subwayCar, subway_station: subwayStation, tile_pillar: tilePillar, glass_tube: glassTube, holo_ring: holoRing,
   pompom_tree: pompomTree, button_flower: buttonFlower, ice_cream: iceCream, cherry,
   canal_house: canalHouse, houseboat, cyclist, golden_stupa: goldenStupa, tuk_tuk: tukTuk, long_boat: longBoat,
   ancient_temple: ancientTemple, colosseum, toy_block: toyBlock, teddy, toy_soldier: toySoldier, crayon, book_stack: bookStack,

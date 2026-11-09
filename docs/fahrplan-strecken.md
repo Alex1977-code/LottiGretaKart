@@ -60,7 +60,8 @@ als Bonus.
 | 15 | Mond-Cup | Hyperring | Zukunfts-Rennring über dem Ozean | – |
 | 15 | Mond-Cup | Regenbogen-Ring | großes Regenbogen-Finale im All | – |
 
-Erledigt: **Etappe 11 – Turbo-Cup**, **Etappe 12 – Pfoten-Cup**, **Etappe 13 – Rüben-Cup**, **Etappe 14 – Propeller-Cup**.
+Erledigt: **Etappe 11 – Turbo-Cup**, **Etappe 12 – Pfoten-Cup**, **Etappe 13 – Rüben-Cup**, **Etappe 14 – Propeller-Cup** und **Etappe 15 – Mond-Cup**. Damit gibt es 14 Cups mit 56 Strecken nach den
+Archetypen plus den Kanaren-Cup als Bonus (58 Strecken insgesamt).
 
 Neue Technik für Etappe 5 ff.: Abschnitte ohne Leitplanken (`noWalls`, Herunterfallen = zurückgesetzt),
 Regenbogen-Fahrbahn (`rainbow`), Klaviertasten mit Tönen (`piano`), Matsch, Sand und Schnee neben der Fahrbahn
