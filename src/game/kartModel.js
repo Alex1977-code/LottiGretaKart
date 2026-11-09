@@ -40,7 +40,7 @@ function bodyGeo(st) {
     b.sphere(1, st.accent, { p: [0.42, 0.42, 0], s: [0.42, 0.15, 0.1] }, 16, 8);
     // Sitzschale und Lehne
     b.box(0.42, 0.12, 0.52, st.seat ?? 0x34304a, { p: [KART.seatX, 0.36, 0] }, 0.05);
-    b.box(0.14, 0.5, 0.56, st.seat ?? 0x34304a, { p: [KART.seatX - 0.26, 0.6, 0] , r: [0, 0, 0.18] }, 0.07);
+    b.box(0.14, 0.4, 0.56, st.seat ?? 0x34304a, { p: [KART.seatX - 0.25, 0.55, 0] , r: [0, 0, 0.18] }, 0.07);
     // Heck: Motorblock, Kühlrippen, Auspuff
     b.box(0.34, 0.3, 0.6, 0x8d8aa0, { p: [-0.7, 0.36, 0] }, 0.07);
     for (const z of [-0.18, 0, 0.18]) b.box(0.3, 0.05, 0.08, 0xb9b6c8, { p: [-0.7, 0.53, z] }, 0.02);
@@ -108,9 +108,8 @@ function bodyGeo(st) {
       // Haubenstifte auf der Nase
       b.cyl(0.014, 0.014, 0.03, ALU, { p: [0.6, 0.545, s * 0.16] }, 6);
     }
-    // Kopfstütze und Überrollbügel hinter dem Sitz
-    b.box(0.1, 0.16, 0.3, seatC, { p: [KART.seatX - 0.34, 0.9, 0], r: [0, 0, 0.18] }, 0.04);
-    b.torus(0.29, 0.026, ALU, { p: [-0.56, 0.6, 0], r: [0, Math.PI / 2, 0] }, 6, 20);
+    // (keine Kopfstütze und kein hoher Bügel: von hinten – der Fahrsicht – soll man die Figur sehen)
+    b.torus(0.27, 0.022, ALU, { p: [-0.56, 0.42, 0], r: [0, Math.PI / 2, 0] }, 6, 20);
     // Motor: Zylinderkopf mit Kühlrippen, Luftfilter mit Deckel, Zündkabel-Stutzen
     b.box(0.22, 0.12, 0.36, 0x6a677e, { p: [-0.72, 0.56, 0] }, 0);
     for (let k = 0; k < 5; k++) b.box(0.24, 0.012, 0.4, 0xa8a5ba, { p: [-0.72, 0.515 + k * 0.024, 0] }, 0);

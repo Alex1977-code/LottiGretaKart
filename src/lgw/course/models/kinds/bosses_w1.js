@@ -42,10 +42,15 @@ function bombBodyGeo() {
     b.tube([[0, 0.7, 0], [0.01, 0.8, 0], [-0.04, 0.88, 0.02], [-0.02, 0.94, 0.04]], 0.022, KB.fuse, null, 12, 6);
     // kleiner Mund
     b.torus(0.04, 0.012, KB.mouth, { p: [0.29, 0.3, 0], r: [0, Math.PI / 2, Math.PI] }, 6, 10, Math.PI);
+    // ---- Details: Nieten auf dem Gürtel, Aufziehschlüssel im Rücken ----
+    for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU + 0.3; b.sphere(0.018, 0xfff2b0, { p: [Math.cos(a) * 0.333, 0.38, Math.sin(a) * 0.333] }, 6, 5); }
+    b.cyl(0.018, 0.018, 0.16, KB.collar, { p: [-0.36, 0.52, 0], r: [0, 0, Math.PI / 2] }, 6);
+    for (const s of [1, -1]) b.torus(0.05, 0.016, KB.band, { p: [-0.45, 0.52, s * 0.052], r: [0, Math.PI / 2, 0] }, 5, 12);
     return b.geometry();
   });
 }
-const bombFootGeo = () => cached('bomb:foot', () => new Build().sphere(1, KB.foot, { s: [0.12, 0.065, 0.09] }, 14, 8).geometry());
+const bombFootGeo = () => cached('bomb:foot', () => new Build().sphere(1, KB.foot, { s: [0.12, 0.065, 0.09] }, 14, 8)
+  .sphere(1, 0x8a4a0a, { p: [0, -0.045, 0], s: [0.125, 0.024, 0.095] }, 10, 6).geometry());   // mit Sohle
 const sparkGeo = () => cached('bomb:spark', () => new Build().add(puffyStarGeo(0.06, 0.025, 0.03, 0.01, 6), 0xfff6a0).geometry());
 
 function buildKickbombe() {
@@ -152,6 +157,13 @@ function bearGeo() {
     // Monokel (rechtes Auge, +Z): Goldring, Glas, Kette zur Weste
     b.torus(0.105, 0.018, BB.monocle, { p: [0.52, 1.56, 0.17], r: [0, Math.PI / 2 - 0.45, 0] }, 8, 24);
     b.tube([[0.5, 1.47, 0.24], [0.5, 1.25, 0.32], [0.45, 1.05, 0.36], [0.42, 0.85, 0.34]], 0.01, BB.monocle, null, 16, 4);
+    // ---- Details: Wangenfell, Eckzähne, Westentasche mit Einstecktuch ----
+    for (const s of [1, -1]) {
+      for (const k of [0, 1, 2]) b.cone(0.06, 0.18, BB.fur, { p: [0.2, 1.3 + k * 0.07, s * 0.44], r: [s * (Math.PI / 2 + 0.35 - k * 0.3), 0, 0] }, 6);
+      b.cone(0.022, 0.06, 0xfff8ee, { p: [0.63, 1.225, s * 0.06], r: [0, 0, Math.PI] }, 5);
+    }
+    b.box(0.02, 0.02, 0.16, BB.ink, { p: [0.455, 0.73, -0.22], r: [0, 0.45, 0] }, 0);
+    b.cone(0.05, 0.09, 0xfff8ee, { p: [0.45, 0.78, -0.22] }, 4);
     return b.geometry();
   });
 }
@@ -163,6 +175,9 @@ function bearHatGeo() {
     b.cyl(0.29, 0.27, 0.56, BB.hat, { p: [0, 0.32, 0] }, 24);
     b.cyl(0.28, 0.28, 0.1, BB.band, { p: [0, 0.1, 0], s: [1.02, 1, 1.02] }, 24);
     b.cyl(0.3, 0.3, 0.02, 0x2e2a36, { p: [0, 0.6, 0] }, 24);
+    // Goldschnalle am Hutband und eine Feder
+    b.box(0.02, 0.08, 0.1, 0xffc21a, { p: [0.29, 0.1, 0] }, 0);
+    b.sphere(1, 0x3ad8b0, { p: [0.08, 0.36, 0.3], s: [0.03, 0.22, 0.07], r: [0.25, 0, -0.2] }, 8, 6);
     return b.geometry();
   });
 }
@@ -173,6 +188,7 @@ function bearArmGeo() {
     b.torus(0.13, 0.03, BB.shirt, { p: [0, -0.39, 0], r: [Math.PI / 2, 0, 0] }, 6, 14);
     b.sphere(0.17, BB.fur, { p: [0.02, -0.52, 0] }, 16, 12);
     b.sphere(1, BB.muzzle, { p: [0.12, -0.56, 0], s: [0.07, 0.08, 0.1] }, 10, 8);
+    for (const z of [-0.07, 0, 0.07]) b.cone(0.022, 0.07, 0xfff8ee, { p: [0.16, -0.62, z], r: [0, 0, -Math.PI / 2 - 0.5] }, 5);   // Krallen
     return b.geometry();
   });
 }

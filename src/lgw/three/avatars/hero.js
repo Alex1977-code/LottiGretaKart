@@ -106,6 +106,8 @@ const NECK_Y = 0.42;       // über der Hüfte (Kopf-Drehpunkt)
 const HEAD_R = 0.30;
 const HEAD_C = V(0.02, 0.28, 0); // Kopfmitte relativ zum Hals → Weltmitte (0.02, 1.20)
 const SKIN_C = '#ffd6b0', WHITE_C = '#f8f6f0';
+/** Einheitskugel mit wenigen Flächen für kleine Details (Knöpfe, Sommersprossen, Bänder). */
+const dotS = () => sphere(1, 8, 6);
 
 const STYLES = {
   lotti: { hair: '#c8963c', hairTip: '#f2d886', dress: '#3b7cf0', sleeve: WHITE_C, boot: '#7c4a24', iris: '#3e82f5', accent: '#e83a30', braids: true, bootShaft: true },
@@ -138,6 +140,14 @@ function headParts() {
     const d = dirAE(0.85 * s, -0.3);
     parts.push([unitSphere(), '#ff8f8f', placed(HEAD_C.clone().addScaledVector(d, HEAD_R - 0.012), d, V(0.05, 0.034, 0.02))]);
   }
+  // Stupsnase und Ohren (schauen unter dem Haar hervor, mit dunklerer Mulde)
+  const nd = dirAE(0, -0.1);
+  parts.push([dotS(), '#f8c8a2', placed(HEAD_C.clone().addScaledVector(nd, HEAD_R + 0.004), nd, V(0.027, 0.023, 0.026))]);
+  for (const s of [1, -1]) {
+    const d = dirAE(1.22 * s, -0.14);
+    parts.push([dotS(), SKIN_C, placed(HEAD_C.clone().addScaledVector(d, HEAD_R + 0.002), d, V(0.042, 0.058, 0.03))]);
+    parts.push([dotS(), '#eeb08a', placed(HEAD_C.clone().addScaledVector(d, HEAD_R + 0.022), d, V(0.02, 0.032, 0.012))]);
+  }
   return parts;
 }
 
@@ -160,10 +170,36 @@ function hairParts(st) {
       parts.push([unitSphere(), st.accent, bow.clone().multiply(m)]);
     }
     parts.push([unitSphere(), st.accent, bow.clone().multiply(new THREE.Matrix4().compose(V(0, 0, 0.01), new THREE.Quaternion(), V(0.04, 0.04, 0.045)))]);
+    // zwei herabhängende Schleifenbänder
+    for (const s of [1, -1]) parts.push([dotS(), st.accent, bow.clone().multiply(new THREE.Matrix4().compose(V(s * 0.045, -0.075, -0.012), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, s * 0.45)), V(0.026, 0.07, 0.018)))]);
   } else {
     parts.push(part(fringeGeo(false, Math.PI - 1.35, 2.2), st.hair, { x: HEAD_C.x, y: HEAD_C.y, rx: 0.42, rz: -0.05 }));
     const arc = Math.PI * 0.95;
     parts.push(part(torus(HEAD_R + 0.03, 0.03, 8, 20, arc), st.accent, { x: HEAD_C.x - 0.03, y: HEAD_C.y + 0.01, ry: Math.PI / 2, rz: (Math.PI - arc) / 2 }));
+    // Blüte am Haarreif (seitlich oben): fünf Blütenblätter um eine helle Mitte
+    const fa = 0.85, fr = HEAD_R + 0.062;
+    const fc = V(HEAD_C.x - 0.03, HEAD_C.y + 0.01 + fr * Math.cos(fa), fr * Math.sin(fa)), fd = V(0, Math.cos(fa), Math.sin(fa));
+    const fu = V(1, 0, 0), fv = new THREE.Vector3().crossVectors(fd, fu);
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * TAU;
+      parts.push([dotS(), WHITE_C, placed(fc.clone().addScaledVector(fu, Math.cos(a) * 0.036).addScaledVector(fv, Math.sin(a) * 0.036), fd, V(0.026, 0.026, 0.012))]);
+    }
+    parts.push([dotS(), '#ffd21f', placed(fc.clone().addScaledVector(fd, 0.006), fd, V(0.02, 0.02, 0.014))]);
+  }
+  // Strähnen: feine helle und dunkle Bögen vom Scheitel über den Hinterkopf (man sieht die Figur meist von hinten)
+  const capC0 = V(HEAD_C.x - 0.055, HEAD_C.y + 0.025, 0);
+  const dark = `#${new THREE.Color(st.hair).multiplyScalar(0.78).getHexString()}`;
+  [-1.15, -0.8, -0.48, -0.16, 0.16, 0.48, 0.8, 1.15].forEach((tilt, k) => {
+    parts.push(part(torus(0.3262, 0.0075, 4, 16, 1.95), k % 2 ? st.hairTip : dark, { x: capC0.x, y: capC0.y, rx: tilt, rz: 0.95 }));
+  });
+  // Augenbrauen (dunkler als das Haar), bei Lotti dazu Sommersprossen auf den Wangen
+  for (const s of [1, -1]) {
+    const d = dirAE(0.5 * s, 0.375);
+    parts.push([dotS(), dark, placed(HEAD_C.clone().addScaledVector(d, HEAD_R + 0.003), d, V(0.05, 0.0095, 0.008))]);
+    if (st.braids) for (const [da, de] of [[0, 0], [0.09, 0.05], [-0.08, 0.06], [0.02, 0.11]]) {
+      const f = dirAE((0.62 + da) * s, -0.16 + de);
+      parts.push([dotS(), '#d7986a', placed(HEAD_C.clone().addScaledVector(f, HEAD_R + 0.001), f, V(0.008, 0.008, 0.004))]);
+    }
   }
   return parts;
 }
@@ -257,6 +293,22 @@ function torsoParts(st) {
     part(sphere(0.085, 12, 10), st.sleeve, { y: SHOULDER_Y, z: -0.2 }),
   ];
   if (st.apron) parts.push(part(unitSphere(), st.apronC ?? WHITE_C, { x: 0.125, y: 0.29, sx: 0.035, sy: 0.085, sz: 0.085 }));
+  // ---- Details ----
+  // Schärpe um die Taille mit Schleife und Bändern im Rücken (aus der Fahrsicht gut zu sehen)
+  parts.push(part(torus(0.16, 0.021, 6, 20), st.accent, { y: 0.168, rx: Math.PI / 2 }));
+  for (const s of [1, -1]) {
+    parts.push(part(dotS(), st.accent, { x: -0.175, y: 0.178, z: s * 0.068, sx: 0.03, sy: 0.048, sz: 0.07, rx: s * 0.45 }));
+    parts.push(part(dotS(), st.accent, { x: -0.178, y: 0.095, z: s * 0.036, sx: 0.02, sy: 0.07, sz: 0.027, rx: s * 0.22 }));
+  }
+  parts.push(part(sphere(0.03, 8, 6), st.accent, { x: -0.178, y: 0.172 }));
+  // Knopfleiste im Rücken, Brosche am Kragen, Ärmelbündchen
+  for (const y of [0.235, 0.285, 0.335]) parts.push(part(sphere(0.013, 6, 5), WHITE_C, { x: -0.151, y, sx: 0.6 }));
+  parts.push(part(sphere(0.022, 8, 6), st.accent, { x: 0.148, y: SHOULDER_Y + 0.045, sx: 0.7 }));
+  for (const s of [1, -1]) parts.push(part(torus(0.058, 0.015, 6, 12), st.braids ? st.accent : WHITE_C, { y: SHOULDER_Y - 0.058, z: s * 0.214, rx: Math.PI / 2 }));
+  // vorn: Knöpfe (Lotti) bzw. Herz auf der Schürze (Greta)
+  if (st.apron) {
+    for (const s of [1, -1]) parts.push(part(dotS(), st.accent, { x: 0.162, y: 0.3, z: s * 0.013, sx: 0.008, sy: 0.02, sz: 0.017, rx: -s * 0.6 }));
+  } else for (const y of [0.225, 0.29]) parts.push(part(sphere(0.016, 8, 6), '#ffd21f', { x: 0.151, y, sx: 0.6 }));
   return parts;
 }
 
@@ -265,6 +317,10 @@ function skirtParts(st) {
   const prof = [[0.295, -0.125], [0.305, -0.10], [0.27, -0.03], [0.22, 0.05], [0.17, 0.12], [0.15, 0.18], [0.002, 0.19]];
   const skirt = geo('skirt', () => new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 16));
   const parts = [part(skirt, st.dress)];
+  // Saumborte und Zierlinie
+  const hem = st.braids ? WHITE_C : st.accent;
+  parts.push(part(torus(0.303, 0.0125, 6, 28), hem, { y: -0.112, rx: Math.PI / 2 }));
+  parts.push(part(torus(0.2895, 0.0065, 4, 28), hem, { y: -0.062, rx: Math.PI / 2 }));
   if (st.apron) {
     const o = 0.014;
     const ap = [[0.30 + o, -0.09], [0.27 + o, -0.03], [0.22 + o, 0.05], [0.17 + o, 0.12], [0.155 + o, 0.165]];
@@ -278,6 +334,17 @@ function skirtParts(st) {
 function bootParts(st) {
   const parts = [part(capsule(0.075, 0.1), st.boot, { x: 0.045, y: -0.065, rz: Math.PI / 2 })];
   if (st.socks) parts.push(part(cylinder(0.062, 0.062, 0.07, 10), WHITE_C));
+  // Sohle, hellere Kappe an der Spitze; Lotti: Schnürung, Greta: Riemchen mit Schnalle und Söckchenrand
+  const bc = new THREE.Color(st.boot);
+  parts.push(part(dotS(), `#${bc.clone().multiplyScalar(0.45).getHexString()}`, { x: 0.045, y: -0.13, sx: 0.128, sy: 0.02, sz: 0.072 }));
+  parts.push(part(sphere(0.05, 10, 8), `#${bc.clone().lerp(new THREE.Color(0xffffff), 0.22).getHexString()}`, { x: 0.118, y: -0.072, sy: 0.82 }));
+  if (st.socks) {
+    parts.push(part(torus(0.0765, 0.011, 5, 12), st.accent, { x: 0.03, y: -0.062, ry: Math.PI / 2 }));
+    parts.push(part(sphere(0.016, 6, 5), '#ffd21f', { x: 0.03, y: 0.016 }));
+    parts.push(part(torus(0.064, 0.011, 5, 12), WHITE_C, { y: 0.036, rx: Math.PI / 2 }));
+  } else {
+    for (const x of [0.02, 0.06]) parts.push(part(dotS(), WHITE_C, { x, y: 0.008, sx: 0.008, sy: 0.006, sz: 0.04 }));
+  }
   return parts;
 }
 
@@ -381,14 +448,19 @@ const fireStyle = (st) => ({ ...st, dress: FIRE_WHITE, sleeve: FIRE_RED, collar:
 
 /** Kurs-Arm (Ober- und Unterarm mit Ellbogen, eine SkinnedMesh): Röhre + Kappen, Hand/Handschuh, ggf. Peace-Finger. */
 function courseArmGeo(st, kind) {
-  return geo(`hero:carm:${kind}:${kind === 'glove' ? st.dress : ''}`, () => {
+  return geo(`hero:carm:${kind}:${st.dress}:${st.accent}`, () => {
     const parts = [
       part(geo('carm:tube', () => new THREE.CylinderGeometry(0.05, 0.05, ARM, 10, 12, true)), SKIN_C, { y: -ARM / 2 }),
       part(geo('carm:capT', () => new THREE.SphereGeometry(0.05, 10, 5, 0, TAU, 0, Math.PI / 2)), SKIN_C),
       part(geo('carm:capB', () => new THREE.SphereGeometry(0.05, 10, 5, 0, TAU, Math.PI / 2, Math.PI / 2)), SKIN_C, { y: -ARM }),
     ];
     if (kind === 'glove') parts.push(...gloveParts(st));
-    else parts.push(part(sphere(0.065, 12, 10), SKIN_C, { y: -HAND }));
+    else {
+      parts.push(part(sphere(0.065, 12, 10), SKIN_C, { y: -HAND }));
+      // Daumen und Armband in der Akzentfarbe
+      parts.push(part(sphere(0.027, 8, 6), SKIN_C, { x: 0.05, y: -HAND + 0.02, sy: 1.25 }));
+      parts.push(part(torus(0.053, 0.012, 5, 12), st.accent, { y: -ARM + 0.035, rx: Math.PI / 2 }));
+    }
     if (kind === 'peace') {
       // Zeige- und Mittelfinger als V, in Verlängerung des Unterarms
       for (const s of [1, -1]) {
@@ -1418,7 +1490,7 @@ export class HeroAvatar extends Avatar3D {
 }
 
 // ================================================================== Pflaume (Kaninchen)
-const FUR_C = '#2a2630', FURW_C = '#f4f1f8', PINK_C = '#ffa3c6';
+const FUR_C = '#2a2630', FURW_C = '#f4f1f8', PINK_C = '#ffa3c6', FUR2_C = '#3d3848';
 const HEAD_PIV = V(0.44, 0.74, 0);   // Halsansatz (Kopf-Drehpunkt)
 const HC = V(0.12, 0.20, 0);         // Kopfmitte, kopf-lokal → Welt ≈ (0.54, 0.88)
 
@@ -1429,6 +1501,12 @@ function rabbitTorsoParts() {
     part(sphere(0.30, 18, 14), FUR_C, { x: 0.1, y: 0.56, sx: 1.22, sy: 0.95, rz: 0.42 }),
     part(sphere(0.21, 14, 10), FURW_C, { x: 0.42, y: 0.46, sx: 0.75, sy: 1.15, sz: 0.85 }),
     part(sphere(0.14, 12, 10), FURW_C, { x: -0.70, y: 0.60 }),
+    // ---- Details: Puschelschwanz aus mehreren Flocken, Brustfell-Zotteln, Fellkamm auf dem Rücken ----
+    part(sphere(0.075, 8, 6), FURW_C, { x: -0.8, y: 0.66, z: 0.05 }),
+    part(sphere(0.07, 8, 6), FURW_C, { x: -0.79, y: 0.56, z: -0.06 }),
+    part(sphere(0.065, 8, 6), FURW_C, { x: -0.74, y: 0.7, z: -0.05 }),
+    ...[-0.1, 0, 0.1].map((z, k) => part(cone(0.05, 0.14, 5), FURW_C, { x: 0.5 - Math.abs(z) * 0.3, y: 0.34 + k % 2 * 0.03, z, rz: Math.PI - 0.5 })),
+    ...[0, 1, 2, 3].map((k) => part(cone(0.04, 0.11, 4), FUR2_C, { x: -0.05 - k * 0.16, y: 0.84 - k * 0.012 + (k === 0 ? 0.01 : 0), rz: 0.55 })),
   ];
 }
 /** Kopf mit Schnauze (die rosa Nase ist ein eigenes Mesh, sie wackelt). */
@@ -1436,6 +1514,13 @@ function rabbitHeadParts() {
   return [
     part(sphere(0.27, 18, 12), FUR_C, { x: HC.x, y: HC.y, sx: 1.08 }),
     part(sphere(0.15, 14, 10), FUR_C, { x: 0.34, y: 0.12, sx: 1.1, sy: 0.8, sz: 0.95 }),
+    // ---- Details: helle Schnauzenbacken, Hasenzähne, Wangenfell, Schopf zwischen den Ohren ----
+    part(sphere(0.07, 10, 8), FURW_C, { x: 0.44, y: 0.075, z: 0.055, sy: 0.8 }),
+    part(sphere(0.07, 10, 8), FURW_C, { x: 0.44, y: 0.075, z: -0.055, sy: 0.8 }),
+    part(dotS(), '#fffdf6', { x: 0.475, y: 0.015, z: 0.017, sx: 0.012, sy: 0.03, sz: 0.016 }),
+    part(dotS(), '#fffdf6', { x: 0.475, y: 0.015, z: -0.017, sx: 0.012, sy: 0.03, sz: 0.016 }),
+    ...[1, -1].flatMap((s) => [0, 1, 2].map((k) => part(cone(0.035, 0.12, 4), FUR2_C, { x: HC.x + 0.02, y: HC.y - 0.1 + k * 0.045, z: s * 0.255, rx: s * (Math.PI / 2 + 0.25 - k * 0.25) }))),
+    ...[-0.05, 0, 0.05].map((z, k) => part(cone(0.035, 0.11, 4), FUR2_C, { x: HC.x + 0.03 - k * 0.02, y: HC.y + 0.28, z, rz: -0.35 + k * 0.1 })),
   ];
 }
 /** Halstuch: Band um den Hals, Zipfel vor der Brust, Knoten – ein Mesh in Kraftfarbe. */
@@ -1458,6 +1543,9 @@ function rabbitEarParts(side) {
 /** Hinterlauf: langer Hasenfuß vom Fersengelenk nach vorn; der nahe Fuß trägt den weißen Fleck. */
 function rabbitHindParts(spot) {
   const parts = [part(capsule(0.1, 0.42), FUR_C, { x: 0.31, y: -0.10, rz: -Math.PI / 2, sz: 0.9 })];
+  // Zehen vorn am Hasenfuß und rosa Ballen an der Sohle
+  for (const z of [-0.055, 0, 0.055]) parts.push(part(sphere(0.045, 8, 6), FUR2_C, { x: 0.6, y: -0.1, z, sy: 0.8 }));
+  parts.push(part(dotS(), PINK_C, { x: 0.36, y: -0.195, sx: 0.12, sy: 0.012, sz: 0.05 }));
   if (spot) parts.push(part(sphere(0.075, 10, 8), FURW_C, { x: 0.5, y: -0.04, z: 0.02, sy: 0.8 }));
   return parts;
 }

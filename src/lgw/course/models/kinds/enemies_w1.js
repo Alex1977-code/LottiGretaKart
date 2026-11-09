@@ -51,6 +51,20 @@ function pilzStemGeo(kind) {
     }
     b.torus(0.05, 0.014, PZ.ink, { p: [0.262, 0.265, 0], r: [0, Math.PI / 2, 0] }, 6, 12, Math.PI);
     b.cone(0.018, 0.04, PZ.tooth, { p: [0.272, 0.27, 0.025], r: [0, 0, -0.2] }, 6);
+    // ---- Details: Bäckchen, kleine Arme mit Händen, heller Ring unter dem Hut ----
+    for (const s of [1, -1]) {
+      b.sphere(1, 0xffa890, { p: [0.232, 0.31, s * 0.15], s: [0.02, 0.035, 0.045] }, 8, 6);
+      b.capsule(0.034, 0.09, PZ.stem, { p: [0.1, 0.27, s * 0.275], r: [s * 0.55, 0, 0.45] }, 3, 8);
+      b.sphere(0.046, PZ.stemLow, { p: [0.15, 0.215, s * 0.31] }, 10, 8);
+      if (kind === 'krallen') for (let i = -1; i <= 1; i++) b.cone(0.012, 0.045, PZ.claw, { p: [0.195, 0.2, s * 0.31 + i * 0.025], r: [0, 0, -Math.PI / 2] }, 5);
+    }
+    b.torus(0.25, 0.018, 0xfff1d8, { p: [0, 0.43, 0], r: [Math.PI / 2, 0, 0] }, 5, 22);
+    if (kind === 'krallen') {
+      // gestreifter Katzenschwanz
+      b.tube([[-0.24, 0.18, 0], [-0.38, 0.2, 0.04], [-0.46, 0.32, 0.06], [-0.44, 0.44, 0.05]], 0.032, PZ.hood, null, 12, 6);
+      b.sphere(0.046, PZ.stripe, { p: [-0.44, 0.45, 0.05] }, 8, 6);
+      b.torus(0.034, 0.012, PZ.stripe, { p: [-0.43, 0.26, 0.05], r: [0.2, 0, 0.6] }, 4, 10);
+    }
     return b.geometry();
   });
 }
@@ -65,6 +79,12 @@ function pilzCapGeo() {
       [0.62, 0.08, 0.065], [-0.62, 0.08, 0.065], [1.9, 0.1, 0.065], [-1.9, 0.1, 0.065], [Math.PI, 0.12, 0.065]]
       .map(([az, el, r]) => ({ ...onLathe(CAP_PTS, 0.08, az, el), r }));
     decals(b, hits, 0.08, PZ.spot, 0.22);
+    // ---- Details: heller Hutrand, Lamellen an der Unterseite, kleine Zusatzpunkte ----
+    b.torus(0.433, 0.014, 0xffa255, { p: [0, 0.13, 0], r: [Math.PI / 2, 0, 0] }, 5, 32);
+    for (let i = 0; i < 18; i++) { const a = (i / 18) * TAU; b.box(0.2, 0.014, 0.012, 0xf2bd84, { p: [Math.cos(a) * 0.3, 0.02, Math.sin(a) * 0.3], r: [0, -a, 0] }, 0); }
+    const small = [[0.3, 0.3, 0.035], [-0.9, 0.3, 0.03], [0.95, 0.28, 0.03], [-0.25, 0.32, 0.03], [2.2, 0.3, 0.035], [-2.1, 0.32, 0.03], [3.0, 0.5, 0.035], [1.6, 0.85, 0.03], [-1.7, 0.9, 0.035]]
+      .map(([az, el, r]) => ({ ...onLathe(CAP_PTS, 0.08, az, el), r }));
+    decals(b, small, 0.035, PZ.spot, 0.22);
     return b.geometry();
   });
 }
@@ -86,6 +106,7 @@ function krallenHoodGeo() {
       b.sphere(0.14, PZ.hood, { p: [-0.03, 0.36, s * 0.22], s: [0.5, 1, 1], r: [0.45 * s, 0, 0] }, 16, 10);
       b.sphere(0.095, PZ.ear, { p: [0.02, 0.365, s * 0.225], s: [0.25, 0.8, 0.8], r: [0.45 * s, 0, 0] }, 14, 8);
     }
+    b.torus(0.413, 0.016, 0xffe6a0, { p: [0, 0.14, 0], r: [Math.PI / 2, 0, 0] }, 5, 32);   // heller Kapuzenrand
     return b.geometry();
   });
 }
@@ -94,6 +115,9 @@ function pilzFootGeo(kind) {
   return cached(`pilz:foot:${kind}`, () => {
     const b = new Build();
     b.sphere(1, PZ.foot, { s: [0.13, 0.075, 0.1] }, 12, 8);
+    // Sohle und hellere Schuhkappe
+    b.sphere(1, 0x3e2012, { p: [0, -0.05, 0], s: [0.135, 0.028, 0.105] }, 10, 6);
+    b.sphere(1, 0x8a5234, { p: [0.075, 0.012, 0], s: [0.06, 0.055, 0.08] }, 8, 6);
     if (kind === 'krallen') for (let i = -1; i <= 1; i++) b.cone(0.022, 0.07, PZ.claw, { p: [0.125, 0.0, i * 0.045], r: [0, 0, -Math.PI / 2 + 0.3] }, 6);
     return b.geometry();
   });

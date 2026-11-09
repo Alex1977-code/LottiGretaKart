@@ -43,6 +43,15 @@ function toadBodyGeo(key, skin, belly, withTorso = true) {
     b.torus(0.262, 0.013, TD.mouth, { p: [HEAD.c[0], 0.765, 0], r: [Math.PI / 2, 1.2, 0], s: [1, 1.08, 1], order: 'YXZ' }, 6, 30, 2.4);
     const cheeks = [1, -1].map((s) => ({ ...onEllipsoid(HEAD.c, HEAD.r, s * 1.05, 0.08), r: 0.055 }));
     decals(b, cheeks, 0.055, TD.cheek, 0.3);
+    // ---- Details: Nasenlöcher, Warzen am Hinterkopf, Querlinien auf dem Bauch ----
+    for (const s of [1, -1]) b.sphere(0.013, TD.mouth, { p: [HEAD.c[0] + HEAD.r[0] - 0.02, 0.85, s * 0.045], s: [0.6, 1, 1] }, 6, 5);
+    const wart = mix(skin, 0x0c2a0c, 0.3).getHex();
+    decals(b, [[2.2, 0.5, 0.032], [-2.2, 0.5, 0.032], [2.9, 0.22, 0.026], [-2.9, 0.22, 0.026], [3.14, 0.7, 0.03], [1.55, 0.78, 0.024], [-1.55, 0.78, 0.024]]
+      .map(([az, el, r]) => ({ ...onEllipsoid(HEAD.c, HEAD.r, az, el), r })), 0.03, wart, 0.45);
+    if (withTorso) {
+      const line = mix(belly, 0x7a5a1a, 0.3).getHex();
+      for (const y of [0.4, 0.5, 0.6]) b.torus(0.27 * Math.sqrt(1 - ((y - 0.5) / 0.3) ** 2) + 0.002, 0.007, line, { p: [0, y, 0], r: [Math.PI / 2, 0, -0.62] }, 4, 14, 1.24);
+    }
     return b.geometry();
   });
 }
@@ -57,6 +66,7 @@ function armGeo(key, skin, sleeve) {
     if (sleeve) b.cyl(0.075, 0.1, 0.18, sleeve, { p: [0, -0.07, 0] }, 12);
     else b.capsule(0.055, 0.13, skin, { p: [0, -0.075, 0] }, 3, 10);
     b.sphere(0.072, skin, { p: [0.01, -0.19, 0] }, 12, 10);
+    for (const z of [-0.045, 0, 0.045]) b.sphere(0.028, skin, { p: [0.06, -0.235, z] }, 8, 6);   // Finger
     return b.geometry();
   });
 }
@@ -83,6 +93,11 @@ function shellGeo(goldShell) {
     const hits = [{ ...onEllipsoid([0, 0, 0], SHELL_R, 0, Math.PI / 2), r: 0.1 }];
     for (let i = 0; i < 6; i++) hits.push({ ...onEllipsoid([0, 0, 0], SHELL_R, (i / 6) * TAU + 0.52, 0.62), r: 0.075 });
     decals(b, hits, 0.08, goldShell ? 0xfff2b0 : TD.plate, 0.22, 'hex');
+    // ---- Details: zweite Reihe kleiner Platten, Nieten am Panzerrand ----
+    const low = [];
+    for (let i = 0; i < 8; i++) low.push({ ...onEllipsoid([0, 0, 0], SHELL_R, (i / 8) * TAU + 0.2, 0.24), r: 0.05 });
+    decals(b, low, 0.05, goldShell ? 0xfff2b0 : TD.plate, 0.2, 'hex');
+    for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU; b.sphere(0.034, goldShell ? 0xfff2b0 : TD.under, { p: [Math.cos(a) * SHELL_R[0] * 1.12, 0.03, Math.sin(a) * SHELL_R[2] * 1.12], s: [1, 0.7, 1] }, 8, 6); }
     return b.geometry();
   });
 }
@@ -197,6 +212,13 @@ function robeGeo() {
     decals(b, stars, 0.05, TD.trim, 0.4, 'star');
     // Kragen
     b.torus(0.21, 0.045, TD.trim, { p: [0, 0.65, 0], r: [Math.PI / 2, 0, 0] }, 8, 20);
+    // ---- Details: Gürtel mit Schnalle, Faltenwurf ----
+    b.torus(0.318, 0.022, TD.robeDark, { p: [0, 0.36, 0], r: [Math.PI / 2, 0, 0] }, 6, 24);
+    b.box(0.03, 0.07, 0.08, TD.trim, { p: [0.335, 0.36, 0] }, 0);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU + 0.39;
+      b.tube([[Math.cos(a) * 0.386, 0.09, Math.sin(a) * 0.386], [Math.cos(a) * 0.346, 0.3, Math.sin(a) * 0.346], [Math.cos(a) * 0.286, 0.5, Math.sin(a) * 0.286]], 0.011, TD.robeDark, null, 8, 4);
+    }
     return b.geometry();
   });
 }
@@ -213,6 +235,9 @@ function hatGeo() {
       return { p: new THREE.Vector3(Math.cos(az) * r, y, Math.sin(az) * r), n: new THREE.Vector3(Math.cos(az), 0.36, Math.sin(az)).normalize(), r: 0.045, spin: az };
     });
     decals(b, stars, 0.045, TD.trim, 0.4, 'star');
+    // Krempenrand und Schnalle am Hutband
+    b.torus(0.306, 0.012, TD.trim, { p: [0, 0.012, 0], r: [Math.PI / 2, 0, 0] }, 5, 28);
+    b.box(0.02, 0.06, 0.07, 0xfff2b0, { p: [0.2, 0.07, 0] }, 0);
     return b.geometry();
   });
 }

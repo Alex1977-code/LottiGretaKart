@@ -518,6 +518,17 @@ function koboldGeo() {
     b.cone(0.16, 0.34, KO.cap, { p: [-0.03, 0.72, 0], r: [0, 0, 0.35] }, 16);
     b.torus(0.145, 0.03, KO.cap, { p: [0.0, 0.6, 0], r: [Math.PI / 2, 0, 0.2] }, 6, 18);
     b.sphere(0.055, KO.pom, { p: [-0.15, 0.88, 0] }, 10, 8);
+    // ---- Details: Kragen, Knöpfe, Bäckchen, Haarfransen, heller Mützenrand, Schnabelschuhe, Gürteltasche ----
+    b.torus(0.125, 0.03, 0xffe9a8, { p: [0, 0.385, 0], r: [Math.PI / 2, 0, 0] }, 6, 16);
+    for (const y of [0.26, 0.32]) b.sphere(0.016, KO.buckle, { p: [0.19 - (y - 0.26) * 0.2, y, 0] }, 6, 5);
+    for (const s of [1, -1]) {
+      b.sphere(1, 0xff9a8a, { p: [0.13, 0.46, s * 0.085], s: [0.02, 0.028, 0.035] }, 8, 6);
+      b.sphere(0.03, KO.boot, { p: [0.135, 0.078, s * 0.08] }, 8, 6);
+    }
+    for (let i = -2; i <= 2; i++) b.cone(0.03, 0.08, 0xc8742a, { p: [0.105 - Math.abs(i) * 0.03, 0.6, i * 0.055], r: [i * 0.25, 0, -2.3] }, 5);
+    b.torus(0.15, 0.012, 0xffe9a8, { p: [0.0, 0.615, 0], r: [Math.PI / 2, 0, 0.2] }, 5, 18);
+    b.box(0.07, 0.08, 0.05, KO.belt, { p: [0.02, 0.17, 0.2] }, 0);
+    b.sphere(0.012, KO.buckle, { p: [0.02, 0.185, 0.228] }, 6, 5);
     return b.geometry();
   });
 }

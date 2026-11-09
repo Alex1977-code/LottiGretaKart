@@ -206,6 +206,10 @@ function bullBodyGeo() {
     // Schwanz mit Quaste
     b.tube([[-0.36, 0.7, 0], [-0.5, 0.56, 0], [-0.53, 0.4, 0.04]], 0.025, BU.fur, null, 10, 6);
     b.sphere(0.06, BU.furDark, { p: [-0.53, 0.36, 0.04], s: [0.8, 1.3, 0.8] }, 10, 8);
+    // ---- Details: Brustfell, Backenbart, Nackenmähne ----
+    for (let i = -1; i <= 1; i++) b.cone(0.06, 0.17, BU.belly, { p: [0.37, 0.9 - Math.abs(i) * 0.03, i * 0.1], r: [0, 0, Math.PI - 0.9] }, 5);
+    for (const s of [1, -1]) for (const k of [0, 1]) b.cone(0.045, 0.13, BU.furDark, { p: [0.5, 1.03 + k * 0.06, s * 0.28], r: [s * (Math.PI / 2 + 0.25 - k * 0.3), 0, 0] }, 5);
+    for (let k = 0; k < 4; k++) b.cone(0.055, 0.14, BU.furDark, { p: [-0.1 - k * 0.09, 1.18 - k * 0.07, 0], r: [0, 0, 0.75] }, 5);
     return b.geometry();
   });
 }
@@ -215,6 +219,8 @@ function bullHelmetGeo() {
     b.dome(1, (x, y, z) => (Math.abs(z) < 0.17 ? BU.stripe : BU.helmet), { p: [0.33, 1.29, 0], s: [0.34, 0.28, 0.35], r: [0, 0, 0.22] }, Math.PI / 2, 28, 10);
     b.torus(1, 0.1, BU.helmet, { p: [0.34, 1.29, 0], r: [Math.PI / 2, 0, -0.22], s: [0.34, 0.35, 0.25] }, 8, 28);
     b.box(0.12, 0.035, 0.4, BU.helmet, { p: [0.64, 1.44, 0], r: [0, 0, -0.15] }, 0.015, 1);
+    // Nieten rund um den Helmrand
+    for (let i = 0; i < 9; i++) { const a = (i / 9) * TAU + 0.35; b.sphere(0.024, 0xfff2b0, { p: [0.34 + Math.cos(a) * 0.36 * 0.976, 1.31 + Math.cos(a) * 0.36 * 0.218, Math.sin(a) * 0.375] }, 6, 5); }
     return b.geometry();
   });
 }
@@ -421,6 +427,13 @@ function moleGeo() {
     b.box(0.04, 0.035, 0.06, WU.frame, { p: [0.27, 0.54, 0] }, 0.012, 1);
     // Schnurrhaare
     for (const s of [1, -1]) for (const a of [-0.25, 0.1]) b.cyl(0.006, 0.006, 0.16, 0x1a1a2a, { p: [0.29, 0.36 + a * 0.15, s * 0.12], r: [s * (Math.PI / 2 - 0.3), 0, a] }, 4);
+    // ---- Details: runde Öhrchen, Wangenfell, Schnalle am Brillenriemen, Stummelschwanz ----
+    for (const s of [1, -1]) {
+      b.sphere(0.05, WU.furDark, { p: [-0.03, 0.6, s * 0.2], s: [0.6, 1, 1] }, 8, 6);
+      for (const k of [0, 1]) b.cone(0.03, 0.1, WU.furDark, { p: [0.12, 0.29 + k * 0.05, s * 0.275], r: [s * (Math.PI / 2 + 0.3 - k * 0.3), 0, 0] }, 5);
+    }
+    b.box(0.03, 0.045, 0.05, WU.frame, { p: [-0.26, 0.45, 0] }, 0);
+    b.sphere(0.05, WU.furDark, { p: [-0.29, 0.2, 0] }, 8, 6);
     return b.geometry();
   });
 }
