@@ -18,9 +18,10 @@ class GameAudio {
 
   sfx(name) { try { if (engine.ready) playSfx(name); } catch (_) { /* egal */ } }
 
-  play(name) {
+  /** Musik wechseln; opts { fade, delay, energy } siehe Music.play (fade: altes Stück ausblenden statt abschneiden). */
+  play(name, opts) {
     this.musicName = name;
-    try { music.play(name); } catch (_) { /* egal */ }
+    try { music.play(name, opts); } catch (_) { /* egal */ }
   }
 
   stopMusic() { this.musicName = null; try { music.stop(); } catch (_) { /* egal */ } }
@@ -89,8 +90,9 @@ class GameAudio {
     if (!this.motor) return;
     const m = this.motor;
     try {
-      m.gain.gain.setTargetAtTime(0, engine.ctx.currentTime, 0.05);
-      setTimeout(() => { try { m.a.stop(); m.b.stop(); m.gain.disconnect(); } catch (_) { /* egal */ } }, 300);
+      // (weich: in gut einer halben Sekunde leiser – kein Knacken, kein abruptes Verstummen)
+      m.gain.gain.setTargetAtTime(0, engine.ctx.currentTime, 0.15);
+      setTimeout(() => { try { m.a.stop(); m.b.stop(); m.gain.disconnect(); } catch (_) { /* egal */ } }, 1100);
     } catch (_) { /* egal */ }
     this.motor = null;
   }

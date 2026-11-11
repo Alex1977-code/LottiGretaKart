@@ -125,7 +125,8 @@ export class Sky {
    * (nur wenn sich die Gewichte merklich ändern) und mischt Nebel, Hintergrund, Himmels-/Bodenlicht und Sonne.
    */
   blend(weights) {
-    const key = weights.map((x) => `${x.w.toFixed(2)}:${x.theme.sky[0][1]}:${x.theme.sky[3]?.[1]}`).join(',');
+    // (Gewichte auf Zwanzigstel gerundet: Kuppel und Umgebungslicht nur neu, wenn sich die Mischung sichtbar ändert)
+    const key = weights.map((x) => `${(Math.round(x.w * 20) / 20).toFixed(2)}:${x.theme.sky[0][1]}:${x.theme.sky[3]?.[1]}`).join(',');
     const C = (hex) => _c.setHex(hex);
     const mixHex = (get) => {
       const out = new THREE.Color(0, 0, 0);
@@ -192,9 +193,16 @@ export class Sky {
     const wk = this.weatherKey?.startsWith('rain') ? 0.25 : 1;
     this.envSun.material.color.copy(this.sun.color).multiplyScalar((this.nightOn ? 0.6 : 6) * wk * Math.min(1.5, Math.max(0.2, this.sun.intensity / 2.4)));
     const rt = this.pmrem.fromScene(this.envScene, 0, 1, SKY_R * 2, { size: 128 });
-    this.envRT?.dispose();
-    this.envRT = rt;
-    this.scene.environment = rt.texture;
+    if (!this.envRT) {
+      this.envRT = rt;
+      this.scene.environment = rt.texture;
+    } else {
+      // in die bisherige Textur kopieren: eine neue Textur zwänge den Renderer, im nächsten Bild jedes Material
+      // der Szene neu einzurichten – das ruckelt (Tageszeit- oder Wetterwechsel, Fahrt zwischen zwei Regionen)
+      try { R.copyTextureToTexture(rt.texture, this.envRT.texture); rt.dispose(); }
+      catch (_) { this.envRT.dispose(); this.envRT = rt; this.scene.environment = rt.texture; }
+      if (this.scene.environment !== this.envRT.texture) this.scene.environment = this.envRT.texture;
+    }
   }
 
   /** Nachts: Sterne, Mond statt Sonne (kühl, kleiner Hof), keine Wolken. */

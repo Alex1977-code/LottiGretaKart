@@ -118,7 +118,7 @@ export class Menus {
     this.demoReady = this.ctx.loadCourse(id).then(() => {
       if (token !== this.demoToken || this.ctx.race) return;   // inzwischen ein Rennen gestartet
       this.ctx.startRace({ mode: 'demo', courseId: id, roster: [...RACERS].sort(() => Math.random() - 0.5), cc: 100, laps: 40, seed: Math.floor(Math.random() * 1e6) });
-      this.ctx.audio.play('course_map');
+      this.ctx.audio.play('course_map', { fade: 0.8, energy: false });
     });
     return this.demoReady;
   }

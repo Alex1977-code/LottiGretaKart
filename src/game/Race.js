@@ -352,7 +352,7 @@ export class Race {
 
   onStar(r, on) {
     if (!r.isPlayer) return;
-    if (on) { this.audio.play('course_star'); this.starMusic = true; }
+    if (on) { this.audio.play('course_star', { fade: 0.35 }); this.starMusic = true; }
   }
 
   playerFinished(p = this.player) {
@@ -367,8 +367,9 @@ export class Race {
     if (this.split) hud?.message(place === 1 ? '1. Platz!' : `${place}. Platz`, 4, place <= 3 ? 'good' : '');
     this.onEvent?.('finish', place, p);
     if (this.humans.every((h) => h.finished || h.out)) {
-      this.audio.energy(false);
-      this.audio.play('course_clear');
+      // Rennmusik eine gute Sekunde lang ausblenden (sie spielt dabei weiter), die Ziel-Fanfare setzt kurz nach dem
+      // Leiserwerden ein; die Energie-Ebene der letzten Runde klingt mit der Rennmusik aus
+      this.audio.play('course_clear', { fade: 1.2, delay: 0.55, energy: false });
       this.checkHumansDone();
     }
   }
@@ -378,7 +379,7 @@ export class Race {
     this.stateT = 0;
     if (this.demo) { this.state = 'demo'; return; }
     this.state = 'intro';
-    this.audio.play(this.def.music ?? 'course_grass');
+    this.audio.play(this.def.music ?? 'course_grass', { fade: 0.8, energy: false });   // (Menümusik ausblenden)
     const MODE = { gp: 'Grand Prix', trial: 'Zeitfahren' };
     const info = {
       name: this.label || this.def.name || '',
@@ -478,7 +479,7 @@ export class Race {
 
     if (this.starMusic && this.humans.every((h) => h.starT <= 0)) {
       this.starMusic = false;
-      if (this.state === 'race') this.audio.play(this.def.music ?? 'course_grass');
+      if (this.state === 'race') this.audio.play(this.def.music ?? 'course_grass', { fade: 0.6, delay: 0.15 });
     }
     if (this.player && !this.demo) {
       const p = this.player;

@@ -200,10 +200,10 @@ function blobTexture() {
   blobTex = new THREE.CanvasTexture(c);
   return blobTex;
 }
-/** Lack der Karts: Klarlack über der Farbe (spiegelt Himmel und Sonne) ab Grafikstufe 2, sonst matter Kunststoff. */
+/** Lack der Karts: Klarlack über der Farbe (spiegelt Himmel und Sonne) auf Stufe 3, sonst Kunststoff. */
 function kartPaint() {
   if (PAINT) return PAINT;
-  PAINT = SURF.quality >= 2
+  PAINT = SURF.quality >= 3   // (Klarlack: zweiter Glanz je Bildpunkt – nur auf dem Rechner)
     ? new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.45, metalness: 0, clearcoat: 0.75, clearcoatRoughness: 0.14 })
     : vcol(0.38);
   PAINT.userData.shared = true;

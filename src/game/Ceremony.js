@@ -110,7 +110,7 @@ export class Ceremony {
       this.scene.add(m.root);
       this.crowd.push({ m, anim: n === 'fairy_spotter' ? 'cheer' : n === 'bunny_small' ? 'hop' : 'idle' });
     });
-    app.audio.play('course_clear');
+    app.audio.play('course_clear', { fade: 1.0, delay: 0.4, energy: false });
     this.confettiT = 0;
   }
 

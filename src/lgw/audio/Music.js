@@ -221,32 +221,46 @@ class Music {
     this.drums = false;       // Energie-Ebene an (Reiten) – Name aus Kompatibilität
     this.energyGain = null;
     this.fx = null;           // Effekt-Busse des laufenden Themas (createThemeBus)
+    this.out = null;          // Ausgang des laufenden Themas (zum Ausblenden)
     this.pending = null;
     this.lookahead = 0.12;    // Sekunden
     this.interval = 30;       // ms
   }
 
-  /** Thema starten (Neustart nur bei Wechsel). */
-  play(name) {
+  /**
+   * Thema starten (Neustart nur bei Wechsel).
+   * opts { fade: Sekunden – das laufende Thema spielt so lange weiter und wird dabei leiser (statt abgeschnitten),
+   *        delay: Sekunden bis zum Einsatz des neuen Themas, energy: Energie-Ebene beim Einsatz an/aus }
+   */
+  play(name, opts = {}) {
     if (!engine.ready) { this.pending = name; return; }
     if (this.current === name && this.timer) return;
-    this.stop();
+    this.stop(opts.fade ?? 0);
     if (!isTheme(name)) return; // unbekanntes Thema: Stille statt Fehler
     this.theme = compileTheme(name, THEMES[name]);
     this.current = name;
+    const ctx = engine.ctx, start = engine.now + 0.05 + (opts.delay ?? 0);
     if (!this.energyGain) {
-      this.energyGain = engine.ctx.createGain();
+      this.energyGain = ctx.createGain();
       this.energyGain.gain.value = this.drums ? 1 : 0;
       this.energyGain.connect(engine.musicIn);
     }
-    this.fx = createThemeBus(engine.ctx, this.theme.fx, this.theme.stepDur, engine.musicIn);
+    if (opts.energy !== undefined) {
+      // (die Ebene gehört dem neuen Thema: erst bei seinem Einsatz umschalten, das alte klingt mit ihr aus)
+      this.drums = opts.energy;
+      this.energyGain.gain.setTargetAtTime(opts.energy ? 1 : 0, start, 0.05);
+    }
+    // eigener Ausgang je Thema: darüber lässt es sich ausblenden, ohne das nächste Thema zu berühren
+    this.out = ctx.createGain();
+    this.out.connect(engine.musicIn);
+    this.fx = createThemeBus(ctx, this.theme.fx, this.theme.stepDur, this.out);
     engine.voices.stats.nodes += this.fx.nodes.length;
     this.seq = new Sequencer({
       voices: engine.voices,
-      dest: engine.musicIn,
+      dest: this.out,
       energyGain: this.energyGain,
       theme: this.theme,
-      startTime: engine.now + 0.05,
+      startTime: start,
       energy: this.drums,
       buses: this.fx.buses,
     });
@@ -254,13 +268,36 @@ class Music {
     this.schedule();
   }
 
-  stop() {
+  /**
+   * Thema beenden. fade > 0: es läuft weiter und wird in fade Sekunden leise (weiche Kurve), dann wird es gelöst;
+   * sonst endet es sofort – bereits angeschlagene Töne und Hall klingen aus.
+   */
+  stop(fade = 0) {
     if (this.timer) clearInterval(this.timer);
+    const seq = this.seq, out = this.out, fx = this.fx;
     this.timer = null;
     this.seq = null;
     this.current = null;
-    releaseThemeBus(this.fx); // Hall/Echo klingt noch aus, dann werden die Busse gelöst
+    this.out = null;
     this.fx = null;
+    if (!out) { releaseThemeBus(fx); return; }
+    const release = (delay) => setTimeout(() => { try { out.disconnect(); } catch (_) { /* egal */ } releaseThemeBus(fx); }, delay * 1000);
+    if (fade > 0 && seq && engine.ready) {
+      const t = engine.now, g = out.gain, end = t + fade;
+      g.cancelScheduledValues(t);
+      g.setValueAtTime(g.value, t);
+      // gleichmäßig leiser werden (wirkt fürs Ohr ruhiger als eine gerade Rampe): Zeitkonstante ein Viertel der Dauer
+      g.setTargetAtTime(0, t, fade / 4);
+      g.setValueAtTime(0, end);
+      // weiterspielen, bis es verklungen ist
+      const tm = setInterval(() => {
+        if (!engine.ready || engine.now >= end) { clearInterval(tm); release(0.1); return; }
+        seq.advance(Math.min(end, engine.now + this.lookahead));
+      }, this.interval);
+    } else {
+      // (Ausklang der letzten Töne: Ausgang erst nach dem längsten Hall lösen)
+      release(Math.min(fx?.tail ?? 0, 6) + 2.5);
+    }
   }
 
   /** Namen aller Themen. */

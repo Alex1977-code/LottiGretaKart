@@ -122,10 +122,13 @@ export class Post {
       this.gtao.blendIntensity = 0.95;
       this.composer.addPass(this.gtao);
     }
-    // Sonnenstrahlen (ab Stufe 2; am Handy mit weniger Proben)
-    this.shafts = new ShaderPass({ ...ShaftShader, uniforms: THREE.UniformsUtils.clone(ShaftShader.uniforms), defines: { SAMPLES: quality >= 3 ? 36 : 20 } });
-    this.shafts.enabled = false;
-    this.composer.addPass(this.shafts);
+    // Sonnenstrahlen nur auf Stufe 3 (Rechner): je Bildpunkt viele Texturzugriffe – am Handy ruckelt es, sobald man
+    // Richtung Sonne fährt
+    if (quality >= 3) {
+      this.shafts = new ShaderPass({ ...ShaftShader, uniforms: THREE.UniformsUtils.clone(ShaftShader.uniforms), defines: { SAMPLES: 32 } });
+      this.shafts.enabled = false;
+      this.composer.addPass(this.shafts);
+    }
     this._sp = new THREE.Vector3(); this._fw = new THREE.Vector3();
     // Bloom in halber Auflösung (spart Leistung, weicher)
     this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.3, 0.35, 1.7);
@@ -177,6 +180,7 @@ export class Post {
   setSun(dir, color, on) { this.sunDir = dir; this.sunColor = color; this.sunOn = on; }
 
   updateShafts(camera) {
+    if (!this.shafts) return;
     const u = this.shafts.uniforms;
     let k = 0;
     if (this.sunOn && this.sunDir && !this.noRays) {
