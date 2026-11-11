@@ -11,6 +11,9 @@ import { Menus } from './ui/menus.js';
 import { TouchControls } from './ui/touch.js';
 import { readMeta, isTouch, endFrame, onPadChange, keepAwake } from './ui/input.js';
 import { Race } from './game/Race.js';
+import { ITEMS } from './game/items.js';
+import { getModel } from './lgw/course/models/index.js';
+import { sparkleSprite } from './lgw/course/models/lib/kit.js';
 import { aiInput, initAI } from './game/ai.js';
 import { RACERS, RACER_BY_ID } from './game/racers.js';
 import { TRACK_BY_ID } from './tracks/index.js';
@@ -139,6 +142,13 @@ ctx.startRace = (o) => {
  */
 function warmShaders(race) {
   const scene = ctx.scene, hidden = [], offLights = [];
+  // Gegenstände/Geschosse gibt es erst mitten im Rennen – je ein Muster mitübersetzen (sonst hakt der erste Goldpanzer)
+  const probe = new THREE.Group();
+  const cam = race.camera ?? camera;
+  probe.position.copy(cam.position);
+  for (const [name, opts] of WARM_MODELS) { try { probe.add(getModel(name, opts).root); } catch (_) {} }
+  probe.add(sparkleSprite());   // Glitzer der Kulisse, die erst unterwegs nachgeladen wird
+  scene.add(probe);
   // Lichter, die gerade nicht leuchten, bleiben aus (sonst würde für eine falsche Lichterzahl übersetzt)
   scene.traverse((o) => { if (o.isLight) { let v = true; o.traverseAncestors((a) => { if (!a.visible) v = false; }); if (!v || !o.visible) offLights.push([o, o.visible]); } });
   scene.traverse((o) => { if (!o.visible) { hidden.push(o); o.visible = true; } });
@@ -148,9 +158,14 @@ function warmShaders(race) {
   renderer.setRenderTarget(rt);   // gleiche Ausgabe wie beim Zeichnen (Zwischenbild der Nachbearbeitung)
   try { ctx.warm = renderer.compileAsync(scene, race.camera ?? camera).catch(() => {}); } catch (_) { ctx.warm = null; }
   renderer.setRenderTarget(prev);
+  scene.remove(probe);   // Materialien nicht freigeben: die übersetzten Programme bleiben so im Zwischenspeicher
   for (const o of hidden) o.visible = false;
   for (const [l, v] of offLights) l.visible = v;
 }
+const WARM_MODELS = [
+  ...Object.values(ITEMS).map((d) => [d.model, d.opts ?? {}]),
+  ['funkenball', {}], ['zauberkugel', {}], ['krabbelkaefer', { color: 'red' }],
+];
 /** Beliebige Szene mit update/render/dispose (Siegerehrung) statt eines Rennens zeigen. */
 ctx.setScene = (scene) => {
   ctx.endRace();
