@@ -26,6 +26,7 @@ export class Sky {
   constructor(scene, theme, { quality = 1, sunDisc = null, envLight = false, renderer = null } = {}) {
     // mit Umgebungslicht (Himmel als Lichtquelle) weniger Himmelslicht, sonst wird alles zu hell
     this.hemiK = envLight ? 0.5 : 1;
+    this.quality = quality;
     this.renderer = envLight ? renderer : null;
     this.envDirty = true;
     this.groundCol = new THREE.Color(theme.grass ?? 0x6a9a4a);
@@ -273,7 +274,8 @@ export class Sky {
   update(dt, camera, focus) {
     this.updateEnv();
     SUN_DIR.value.copy(this.sunDir);
-    CLOUD_SHADE.value = this.clouds?.visible && !this.nightOn ? (this.weatherKey?.startsWith('rain') ? 0.4 : 1) : 0;
+    // Wolkenschatten nur auf Stufe 3 (zusätzliches Rauschen auf jedem Boden-Bildpunkt – am Handy gespart)
+    CLOUD_SHADE.value = this.quality >= 3 && this.clouds?.visible && !this.nightOn ? (this.weatherKey?.startsWith('rain') ? 0.4 : 1) : 0;
     this.domeGroup.position.copy(camera.position);
     if (this.clouds) this.clouds.rotation.y += dt * 0.004;
     if (focus) {
